@@ -1,0 +1,36 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@inertiajs/vue3": "^3.6.1",
+        "@tailwindcss/forms": "^0.5.3",
+        "@tailwindcss/vite": "^4.3.3",
+        "@vitejs/plugin-vue": "^6.0.0",
+        "autoprefixer": "^10.4.12",
+        "concurrently": "^10.0.3",
+        "laravel-vite-plugin": "^3.1",
+        "postcss": "^8.4.31",
+        "tailwindcss": "^4.3.3",
+        "vite": "^8.0.0",
+        "vue": "^3.4.0"
+    },
+    "optionalDependencies": {
+        "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@ckeditor/ckeditor5-vue": "^8.2.0",
+        "@fortawesome/fontawesome-svg-core": "^7.3.1",
+        "@fortawesome/free-brands-svg-icons": "^7.3.1",
+        "@fortawesome/free-solid-svg-icons": "^7.3.1",
+        "@fortawesome/vue-fontawesome": "^3.3.3",
+        "@inertiajs/vite": "^3.6.1",
+        "ckeditor5": "^48.4.0",
+        "dompurify": "^3.4.13",
+        "vue-i18n": "^11.4.8"
+    }
+}
