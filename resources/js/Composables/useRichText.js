@@ -37,6 +37,21 @@ export function sanitizeRichText(html) {
     }
   })
 
+  container.querySelectorAll('a[target="_blank"]').forEach((link) => {
+    const relValues = (link.getAttribute('rel') || '')
+      .split(/\s+/)
+      .map((value) => value.trim().toLowerCase())
+      .filter(Boolean)
+
+    ;['noopener', 'noreferrer'].forEach((value) => {
+      if (!relValues.includes(value)) {
+        relValues.push(value)
+      }
+    })
+
+    link.setAttribute('rel', relValues.join(' '))
+  })
+
   return container.innerHTML
 }
 

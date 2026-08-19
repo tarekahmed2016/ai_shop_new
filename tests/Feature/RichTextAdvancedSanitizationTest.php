@@ -131,3 +131,13 @@ test('server strips remote and data image sources from stored rich html', functi
     expect($stored)->not->toContain('evil.example')
         ->and($stored)->not->toContain('data:image');
 });
+
+test('server adds noopener noreferrer to blank target links in stored rich html', function () {
+    $html = '<a href="https://example.org" target="_blank">External</a>';
+
+    $stored = RichTextSanitizer::sanitize($html);
+
+    expect($stored)->toContain('target="_blank"')
+        ->and($stored)->toMatch('/rel="[^"]*noopener[^"]*"/')
+        ->and($stored)->toMatch('/rel="[^"]*noreferrer[^"]*"/');
+});

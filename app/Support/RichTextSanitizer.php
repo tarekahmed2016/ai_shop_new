@@ -55,7 +55,7 @@ class RichTextSanitizer
 
         $purified = self::purifier()->purify($html);
 
-        return self::enforceImageSourcePolicy($purified);
+        return self::enforceLinkRelPolicy(self::enforceImageSourcePolicy($purified));
     }
 
     /**
@@ -116,7 +116,7 @@ class RichTextSanitizer
         ]);
         $config->set('AutoFormat.RemoveEmpty', true);
         $config->set('HTML.DefinitionID', 'company-profile-rich-text');
-        $config->set('HTML.DefinitionRev', 1);
+        $config->set('HTML.DefinitionRev', 2);
 
         if ($def = $config->maybeGetRawHTMLDefinition()) {
             $def->addElement('figure', 'Block', 'Flow', 'Common');
@@ -144,6 +144,33 @@ class RichTextSanitizer
             }
 
             return '';
+        }, $html);
+    }
+
+    private static function enforceLinkRelPolicy(string $html): string
+    {
+        return (string) preg_replace_callback('/<a\b[^>]*>/i', function (array $matches) {
+            $tag = $matches[0];
+
+            if (! preg_match('/\starget=(["\'])_blank\1/i', $tag)) {
+                return $tag;
+            }
+
+            if (preg_match('/\srel=(["\'])(.*?)\1/i', $tag, $relMatch)) {
+                $relValues = preg_split('/\s+/', strtolower(trim($relMatch[2]))) ?: [];
+                $required = ['noopener', 'noreferrer'];
+                $merged = array_values(array_unique(array_merge($relValues, $required)));
+                $rel = implode(' ', $merged);
+
+                return (string) preg_replace(
+                    '/\srel=(["\']).*?\1/i',
+                    ' rel="'.htmlspecialchars($rel, ENT_QUOTES).'"',
+                    $tag,
+                    1,
+                );
+            }
+
+            return preg_replace('/<a\b/i', '<a rel="noopener noreferrer"', $tag, 1);
         }, $html);
     }
 

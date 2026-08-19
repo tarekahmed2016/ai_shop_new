@@ -33,6 +33,14 @@ class SafeHttpUrl implements ValidationRule
 
         if (! filter_var($value, FILTER_VALIDATE_URL)) {
             $fail(__('validation.url'));
+
+            return;
+        }
+
+        $scheme = strtolower((string) parse_url($value, PHP_URL_SCHEME));
+
+        if (! in_array($scheme, ['http', 'https'], true)) {
+            $fail('The :attribute must be a valid http or https URL.');
         }
     }
 }
