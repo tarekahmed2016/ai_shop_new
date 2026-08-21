@@ -4,6 +4,7 @@ import { ZiggyVue } from '../../vendor/tightenco/ziggy'
 import i18n from './Plugins/I18n'
 import fontawesome from './Plugins/FontAwesome'
 import DashboardLayout from './Layouts/DashboardLayout.vue'
+import CustomerLayout from './Layouts/CustomerLayout.vue'
 import FrontLayout from './Layouts/FrontLayout.vue'
 import PublicLayout from './Layouts/PublicLayout.vue'
 
@@ -13,7 +14,9 @@ createInertiaApp({
         const pages = import.meta.glob('./Pages/**/*.vue', { eager: true })
         const page = pages[`./Pages/${name}.vue`]
         if (!page.default.layout) {
-            if (
+            if (name.startsWith('CustomerPortal/') && name !== 'CustomerPortal/RegisterPage') {
+                page.default.layout = CustomerLayout
+            } else if (
                 name.startsWith('Dashboard/')
                 || name.startsWith('Users/')
                 || name.startsWith('Roles/')
@@ -40,7 +43,7 @@ createInertiaApp({
                 page.default.layout = DashboardLayout
             } else if (name.startsWith('Public/')) {
                 page.default.layout = PublicLayout
-            } else if (name.startsWith('Auth/')) {
+            } else if (name.startsWith('Auth/') || name === 'CustomerPortal/RegisterPage') {
                 page.default.layout = FrontLayout
             }
         }

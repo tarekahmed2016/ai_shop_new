@@ -56,6 +56,20 @@ class CustomerRequestPolicy
         return $match !== null && $match->isVisibleToMerchant();
     }
 
+    public function viewOwn(User $user, CustomerRequest $customerRequest): bool
+    {
+        $customer = $user->customer;
+
+        return $customer !== null
+            && $customer->isActive()
+            && (int) $customer->id === (int) $customerRequest->customer_id;
+    }
+
+    public function createOwn(User $user): bool
+    {
+        return $user->customer?->isActive() === true;
+    }
+
     public function create(User $user): bool
     {
         return $user->hasRole('admin');

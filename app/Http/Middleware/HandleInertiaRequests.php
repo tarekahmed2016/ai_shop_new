@@ -7,6 +7,7 @@ use App\Services\MerchantContextService;
 use App\Services\PageService;
 use App\Services\PublicHomeService;
 use App\Services\PublicNavService;
+use App\Support\CustomerContext;
 use App\Support\MerchantContext;
 use App\Support\ThemeColor;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class HandleInertiaRequests extends Middleware
     {
         if ($request->user()) {
             app(MerchantContextService::class)->establishFromSession($request->user(), $request);
+            app(CustomerContext::class)->resolveFromUser($request->user());
         }
 
         return [
@@ -46,8 +48,10 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
                 'role' => $request->user()?->getRoleNames()->first(),
                 'isAdmin' => (bool) $request->user()?->hasRole('admin'),
+                'isCustomer' => (bool) $request->user()?->customer,
             ],
             'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
+            'customerContext' => fn () => app(CustomerContext::class)->toArray(),
             'availableMerchants' => fn () => $request->user()
                 ? app(MerchantContextService::class)->availableMerchantsFor($request->user())
                 : [],

@@ -72,6 +72,7 @@ Route::middleware(['admin'])->group(function () {
     Route::delete('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'destroy'])->name('merchants.categories.destroy');
     Route::resource('/categories', CategoryController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::post('/customers/{customer}/portal-access', [CustomerController::class, 'enablePortal'])->name('customers.portal-access');
     Route::get('/customer-requests/{customerRequest}/image', [CustomerRequestController::class, 'image'])->name('customer-requests.image');
     Route::post('/customer-requests/{customerRequest}/match', [RequestMatchController::class, 'sync'])->name('customer-requests.match');
     Route::resource('/customer-requests', CustomerRequestController::class)

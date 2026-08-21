@@ -31,11 +31,27 @@
                             {{ customer.status_formatted.label }}
                         </span>
                     </td>
+                    <td class="table-cell table-cell-secondary text-body">
+                        <span v-if="customer.has_portal_access || customer.user_id" class="text-green-700 dark:text-green-300">
+                            {{ t('customers.portal.enabled') }}
+                        </span>
+                        <span v-else class="text-amber-700 dark:text-amber-300">
+                            {{ t('customers.portal.disabled') }}
+                        </span>
+                    </td>
                     <td class="table-cell table-cell-actions">
-                        <button @click="$emit('requests', customer)" class="btn btn-secondary me-2">
+                        <button type="button" @click="$emit('requests', customer)" class="btn btn-secondary me-2">
                             {{ t('customers.table.requests') }}
                         </button>
-                        <button @click="$emit('edit', customer)" class="btn btn-primary">
+                        <button
+                            v-if="!(customer.has_portal_access || customer.user_id)"
+                            type="button"
+                            @click="$emit('enablePortal', customer)"
+                            class="btn btn-secondary me-2"
+                        >
+                            {{ t('customers.portal.createLogin') }}
+                        </button>
+                        <button type="button" @click="$emit('edit', customer)" class="btn btn-primary">
                             {{ t('customers.table.edit') }}
                         </button>
                     </td>
@@ -59,7 +75,7 @@ const props = defineProps({
     sortDirection: { type: String, default: 'desc' }
 })
 
-const emit = defineEmits(['edit', 'requests', 'sort'])
+const emit = defineEmits(['edit', 'requests', 'enablePortal', 'sort'])
 
 const columns = computed(() => [
     { key: 'id', label: t('customers.table.id'), sortable: true },
@@ -67,6 +83,7 @@ const columns = computed(() => [
     { key: 'phone', label: t('customers.table.phone'), sortable: true },
     { key: 'email', label: t('customers.table.email'), sortable: true },
     { key: 'status', label: t('customers.table.status'), sortable: true },
+    { key: 'portal', label: t('customers.table.portal'), sortable: false },
 ])
 
 const handleSort = (column) => {

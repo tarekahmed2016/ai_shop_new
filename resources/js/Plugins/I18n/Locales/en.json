@@ -9,7 +9,84 @@
       "forgotPassword": "Forgot password?",
       "loggingIn": "Logging in...",
       "loginButton": "Login",
-      "title": "Login"
+      "title": "Login",
+      "noAccount": "Don't have an account?",
+      "registerLink": "Create a customer account"
+    }
+  },
+  "customerPortal": {
+    "nav": {
+      "home": "Home",
+      "requests": "My Requests",
+      "create": "New Request",
+      "profile": "Profile"
+    },
+    "register": {
+      "title": "Create customer account",
+      "subtitle": "Register to submit and track your requests",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "password": "Password",
+      "passwordConfirmation": "Confirm password",
+      "submit": "Register",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an account?",
+      "login": "Login"
+    },
+    "home": {
+      "title": "Customer Home",
+      "subtitle": "Welcome, {name}",
+      "createRequest": "Create New Request",
+      "total": "Total requests",
+      "open": "Open requests",
+      "ready": "Ready requests",
+      "closed": "Closed requests",
+      "recent": "Recent requests",
+      "viewAll": "View all"
+    },
+    "requests": {
+      "title": "My Requests",
+      "subtitle": "Requests you submitted",
+      "search": "Search requests...",
+      "reference": "Reference",
+      "category": "Category",
+      "text": "Request",
+      "status": "Status",
+      "date": "Created",
+      "image": "Image",
+      "actions": "Actions",
+      "view": "View",
+      "back": "Back to requests",
+      "empty": "No requests yet",
+      "hasImage": "Yes"
+    },
+    "create": {
+      "title": "New Request",
+      "subtitle": "Choose a category and describe what you need",
+      "category": "Category",
+      "selectCategory": "Select an active category",
+      "requestText": "Request details",
+      "image": "Optional image",
+      "imageHint": "One JPEG/PNG/WebP image, private storage",
+      "submit": "Submit request",
+      "submitting": "Submitting..."
+    },
+    "show": {
+      "title": "Request details",
+      "offersTitle": "Offers",
+      "noOffers": "No offers yet"
+    },
+    "profile": {
+      "title": "Profile",
+      "subtitle": "Manage your account details",
+      "save": "Save",
+      "saving": "Saving...",
+      "passwordTitle": "Change password",
+      "currentPassword": "Current password",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "updatePassword": "Update password"
     }
   },
   "common": {
@@ -970,6 +1047,7 @@
       "phone": "Phone",
       "email": "Email",
       "status": "Status",
+      "portal": "Portal Access",
       "actions": "Actions",
       "edit": "Edit",
       "requests": "Requests"
@@ -981,11 +1059,24 @@
       "phoneLabel": "Phone",
       "emailLabel": "Email",
       "whatsappLabel": "WhatsApp ID",
+      "passwordLabel": "Password",
+      "passwordConfirmationLabel": "Confirm Password",
+      "portalAlwaysEnabled": "New customers always receive Customer Portal login access.",
       "statusLabel": "Status",
       "selectStatus": "Select status",
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving..."
+    },
+    "portal": {
+      "enabled": "Portal Access: Enabled",
+      "disabled": "Portal Access: Not Enabled",
+      "enabledHint": "This customer can sign in to the Customer Portal.",
+      "disabledHint": "This historical customer has no login yet. Use Create Login Account to enable access.",
+      "createLogin": "Create Login Account",
+      "createLoginTitle": "Create Login Account",
+      "createLoginHint": "Creates a new user account and links it to this customer. Existing accounts are never auto-linked by email.",
+      "createLoginSubmit": "Enable Portal Access"
     }
   },
   "customerRequests": {

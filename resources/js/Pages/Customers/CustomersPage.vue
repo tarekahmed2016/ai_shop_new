@@ -4,6 +4,7 @@ import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import CustomersTable from '../../Components/Features/Customers/CustomersTable.vue'
 import CustomerFormModal from '../../Components/Features/Customers/CustomerFormModal.vue'
+import CustomerEnablePortalModal from '../../Components/Features/Customers/CustomerEnablePortalModal.vue'
 import Pagination from '../../Components/Dashboard/Pagination.vue'
 import LoadingOverlay from '../../Components/Common/LoadingOverlay.vue'
 import { useTableFilters } from '../../Composables/Dashboard/useTableFilters.js'
@@ -25,6 +26,7 @@ const {
 } = useTableFilters('customers.index', 'customers')
 
 const formModal = useModal()
+const portalModal = useModal()
 
 const openRequests = (customer) => {
     router.visit(route('customer-requests.index', { customer: customer.public_id }))
@@ -55,7 +57,7 @@ const openRequests = (customer) => {
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden relative">
                 <LoadingOverlay :show="isPaginating" />
                 <CustomersTable :customers="customers" :sortColumn="sortColumn" :sortDirection="sortDirection"
-                    @edit="formModal.open" @requests="openRequests" @sort="handleSort" />
+                    @edit="formModal.open" @enablePortal="portalModal.open" @requests="openRequests" @sort="handleSort" />
                 <Pagination :paginationData="paginationData" routeName="customers.index" @paginating="handlePaginating" />
             </div>
         </div>
@@ -65,5 +67,10 @@ const openRequests = (customer) => {
             :customer="formModal.selectedItem.value"
             :statuses="statuses"
             @close="formModal.close" />
+
+        <CustomerEnablePortalModal
+            :isOpen="portalModal.isOpen.value"
+            :customer="portalModal.selectedItem.value"
+            @close="portalModal.close" />
     </div>
 </template>

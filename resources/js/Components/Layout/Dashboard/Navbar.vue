@@ -7,6 +7,9 @@ const page = usePage()
 const isAdmin = computed(() => page.props.auth?.isAdmin === true)
 const profileHref = computed(() => {
     try {
+        if (page.props.auth?.isCustomer && typeof route === 'function' && route().has('customer.profile.edit')) {
+            return route('customer.profile.edit')
+        }
         return typeof route === 'function' && route().has('profile.edit') ? route('profile.edit') : null
     } catch {
         return null

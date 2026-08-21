@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Models\MerchantCategory;
 use App\Models\MerchantUser;
 use App\Services\MerchantPermissionService;
+use App\Support\CustomerContext;
 use App\Support\MerchantAuthorization;
 use App\Support\MerchantContext;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -24,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(MerchantContext::class);
         $this->app->scoped(MerchantAuthorization::class);
         $this->app->scoped(MerchantPermissionService::class);
+        $this->app->scoped(CustomerContext::class);
     }
 
     /**

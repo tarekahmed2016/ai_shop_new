@@ -3,9 +3,12 @@
 namespace App\Services;
 
 use App\Enums\Customers\Status;
+use App\Enums\Users\Status as UserStatus;
 use App\Models\Customer;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -15,6 +18,7 @@ class CustomerService
      * @var list<string>
      */
     private const ACTIVITY_FIELDS = [
+        'user_id',
         'name',
         'phone',
         'whatsapp_id',
@@ -35,7 +39,8 @@ class CustomerService
         $allowedSorts = ['id', 'name', 'phone', 'email', 'status', 'created_at'];
         $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'created_at';
 
-        return Customer::query()
+        $paginator = Customer::query()
+            ->with('user:id,name,email,phone')
             ->withCount('requests')
             ->when($search, fn ($q) => $q->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
@@ -46,6 +51,14 @@ class CustomerService
             ->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->withQueryString();
+
+        $paginator->getCollection()->transform(function (Customer $customer) {
+            $customer->setAttribute('has_portal_access', $customer->user_id !== null);
+
+            return $customer;
+        });
+
+        return $paginator;
     }
 
     /**
@@ -61,24 +74,51 @@ class CustomerService
     }
 
     /**
+     * Admin create: always User + linked Customer in one transaction.
+     *
      * @param  array<string, mixed>  $data
      */
     public function store(array $data): Customer
     {
-        $this->assertIdentifiable($data);
+        unset($data['user_id']);
 
-        $customer = new Customer;
-        $customer->public_id = (string) Str::ulid();
-        $customer->fill($data);
-        $customer->save();
+        $email = strtolower(trim((string) ($data['email'] ?? '')));
+        $this->assertEmailAvailableForNewUser($email);
 
-        $this->activityLogService->recordCreated(
-            subject: $customer,
-            allowedFields: self::ACTIVITY_FIELDS,
-            subjectLabel: $customer->display_name,
-        );
+        return DB::transaction(function () use ($data, $email) {
+            $user = new User;
+            $user->name = (string) $data['name'];
+            $user->email = $email;
+            $user->phone = $data['phone'] ?? null;
+            $user->password = (string) $data['password'];
+            $user->status = UserStatus::Active;
+            $user->save();
 
-        return $customer;
+            $customer = new Customer;
+            $customer->public_id = (string) Str::ulid();
+            $customer->user_id = $user->id;
+            $customer->name = $user->name;
+            $customer->email = $user->email;
+            $customer->phone = $user->phone;
+            $customer->whatsapp_id = $data['whatsapp_id'] ?? null;
+            $customer->status = $data['status'] instanceof Status
+                ? $data['status']
+                : Status::from((int) $data['status']);
+            $customer->save();
+
+            $this->activityLogService->recordCreated(
+                subject: $customer,
+                allowedFields: self::ACTIVITY_FIELDS,
+                subjectLabel: $customer->display_name,
+                metadata: [
+                    'action' => 'customer.admin_created_with_user',
+                    'user_id' => $user->id,
+                ],
+                actor: auth()->user() instanceof User ? auth()->user() : null,
+            );
+
+            return $customer->load('user');
+        });
     }
 
     /**
@@ -86,20 +126,119 @@ class CustomerService
      */
     public function update(Customer $customer, array $data): Customer
     {
+        unset($data['user_id'], $data['password'], $data['password_confirmation']);
+
         $this->assertIdentifiable($data);
 
         $originalValues = $customer->only(self::ACTIVITY_FIELDS);
 
-        $customer->update($data);
+        return DB::transaction(function () use ($customer, $data, $originalValues) {
+            $email = isset($data['email']) ? strtolower(trim((string) $data['email'])) : $customer->email;
 
-        $this->activityLogService->recordChanges(
-            subject: $customer,
-            originalValues: $originalValues,
-            allowedFields: self::ACTIVITY_FIELDS,
-            subjectLabel: $customer->display_name,
-        );
+            if ($customer->user_id) {
+                $this->assertEmailAvailableForNewUser($email, ignoreUserId: (int) $customer->user_id);
+            }
 
-        return $customer;
+            $customer->fill([
+                'name' => $data['name'] ?? $customer->name,
+                'phone' => $data['phone'] ?? $customer->phone,
+                'email' => $email,
+                'whatsapp_id' => array_key_exists('whatsapp_id', $data) ? $data['whatsapp_id'] : $customer->whatsapp_id,
+                'status' => $data['status'] ?? $customer->status,
+            ]);
+            $customer->save();
+
+            if ($customer->user_id) {
+                $user = $customer->user;
+                if ($user) {
+                    $user->name = $customer->name;
+                    $user->email = $customer->email;
+                    $user->phone = $customer->phone;
+                    if ($user->isDirty('email')) {
+                        $user->email_verified_at = null;
+                    }
+                    $user->save();
+                }
+            }
+
+            $this->activityLogService->recordChanges(
+                subject: $customer,
+                originalValues: $originalValues,
+                allowedFields: self::ACTIVITY_FIELDS,
+                subjectLabel: $customer->display_name,
+            );
+
+            return $customer->fresh('user');
+        });
+    }
+
+    /**
+     * Explicit portal enable for historical unlinked customers.
+     * Never auto-links an existing User by email.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function createLoginAccount(Customer $customer, array $data): Customer
+    {
+        if ($customer->user_id !== null) {
+            throw ValidationException::withMessages([
+                'email' => 'This customer already has portal access.',
+            ]);
+        }
+
+        unset($data['user_id']);
+
+        $email = strtolower(trim((string) ($data['email'] ?? '')));
+        $this->assertEmailAvailableForNewUser($email);
+
+        return DB::transaction(function () use ($customer, $data, $email) {
+            $user = new User;
+            $user->name = (string) ($data['name'] ?? $customer->name ?? $email);
+            $user->email = $email;
+            $user->phone = $data['phone'] ?? $customer->phone;
+            $user->password = (string) $data['password'];
+            $user->status = UserStatus::Active;
+            $user->save();
+
+            $customer->user_id = $user->id;
+            $customer->name = $user->name;
+            $customer->email = $user->email;
+            $customer->phone = $user->phone;
+            $customer->save();
+
+            $this->activityLogService->recordChanges(
+                subject: $customer,
+                originalValues: ['user_id' => null],
+                allowedFields: ['user_id', 'name', 'email', 'phone'],
+                subjectLabel: $customer->display_name,
+                metadata: [
+                    'action' => 'customer.portal_access_enabled',
+                    'user_id' => $user->id,
+                ],
+            );
+
+            return $customer->fresh('user');
+        });
+    }
+
+    private function assertEmailAvailableForNewUser(string $email, ?int $ignoreUserId = null): void
+    {
+        if ($email === '') {
+            throw ValidationException::withMessages([
+                'email' => 'The email field is required.',
+            ]);
+        }
+
+        $query = User::query()->whereRaw('LOWER(email) = ?', [$email]);
+        if ($ignoreUserId !== null) {
+            $query->where('id', '!=', $ignoreUserId);
+        }
+
+        if ($query->exists()) {
+            throw ValidationException::withMessages([
+                'email' => 'This email is already registered and cannot be used for a new customer login.',
+            ]);
+        }
     }
 
     /**

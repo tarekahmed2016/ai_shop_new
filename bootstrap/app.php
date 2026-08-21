@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckAdmin;
+use App\Http\Middleware\EnsureCustomer;
 use App\Http\Middleware\EnsureMerchantContext;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -18,6 +19,8 @@ return Application::configure(basePath: dirname(__DIR__))
         then: function () {
             Route::middleware('web')
                 ->group(base_path('routes/dashboard.php'));
+            Route::middleware('web')
+                ->group(base_path('routes/customer.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
@@ -32,6 +35,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('merchant', [
             Authenticate::class,
             EnsureMerchantContext::class,
+        ]);
+        $middleware->appendToGroup('customer', [
+            Authenticate::class,
+            EnsureCustomer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

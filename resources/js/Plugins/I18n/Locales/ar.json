@@ -9,7 +9,84 @@
       "forgotPassword": "نسيت كلمة المرور؟",
       "loggingIn": "جاري تسجيل الدخول...",
       "loginButton": "تسجيل الدخول",
-      "title": "تسجيل الدخول"
+      "title": "تسجيل الدخول",
+      "noAccount": "ليس لديك حساب؟",
+      "registerLink": "إنشاء حساب عميل"
+    }
+  },
+  "customerPortal": {
+    "nav": {
+      "home": "الرئيسية",
+      "requests": "طلباتي",
+      "create": "طلب جديد",
+      "profile": "الملف الشخصي"
+    },
+    "register": {
+      "title": "إنشاء حساب عميل",
+      "subtitle": "سجّل لإرسال الطلبات ومتابعتها",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "password": "كلمة المرور",
+      "passwordConfirmation": "تأكيد كلمة المرور",
+      "submit": "تسجيل",
+      "submitting": "جاري إنشاء الحساب...",
+      "haveAccount": "لديك حساب بالفعل؟",
+      "login": "تسجيل الدخول"
+    },
+    "home": {
+      "title": "مساحة العميل",
+      "subtitle": "مرحباً، {name}",
+      "createRequest": "إنشاء طلب جديد",
+      "total": "إجمالي الطلبات",
+      "open": "طلبات مفتوحة",
+      "ready": "طلبات جاهزة",
+      "closed": "طلبات مغلقة",
+      "recent": "أحدث الطلبات",
+      "viewAll": "عرض الكل"
+    },
+    "requests": {
+      "title": "طلباتي",
+      "subtitle": "الطلبات التي أرسلتها",
+      "search": "بحث في الطلبات...",
+      "reference": "المرجع",
+      "category": "التصنيف",
+      "text": "الطلب",
+      "status": "الحالة",
+      "date": "التاريخ",
+      "image": "صورة",
+      "actions": "إجراءات",
+      "view": "عرض",
+      "back": "العودة للطلبات",
+      "empty": "لا توجد طلبات بعد",
+      "hasImage": "نعم"
+    },
+    "create": {
+      "title": "طلب جديد",
+      "subtitle": "اختر تصنيفاً ووصف ما تحتاجه",
+      "category": "التصنيف",
+      "selectCategory": "اختر تصنيفاً نشطاً",
+      "requestText": "تفاصيل الطلب",
+      "image": "صورة اختيارية",
+      "imageHint": "صورة واحدة JPEG/PNG/WebP، تخزين خاص",
+      "submit": "إرسال الطلب",
+      "submitting": "جاري الإرسال..."
+    },
+    "show": {
+      "title": "تفاصيل الطلب",
+      "offersTitle": "العروض",
+      "noOffers": "لا توجد عروض بعد"
+    },
+    "profile": {
+      "title": "الملف الشخصي",
+      "subtitle": "إدارة بيانات حسابك",
+      "save": "حفظ",
+      "saving": "جاري الحفظ...",
+      "passwordTitle": "تغيير كلمة المرور",
+      "currentPassword": "كلمة المرور الحالية",
+      "newPassword": "كلمة المرور الجديدة",
+      "confirmPassword": "تأكيد كلمة المرور",
+      "updatePassword": "تحديث كلمة المرور"
     }
   },
   "common": {
@@ -970,6 +1047,7 @@
       "phone": "الهاتف",
       "email": "البريد",
       "status": "الحالة",
+      "portal": "دخول البوابة",
       "actions": "إجراءات",
       "edit": "تعديل",
       "requests": "الطلبات"
@@ -981,11 +1059,24 @@
       "phoneLabel": "الهاتف",
       "emailLabel": "البريد",
       "whatsappLabel": "معرّف واتساب",
+      "passwordLabel": "كلمة المرور",
+      "passwordConfirmationLabel": "تأكيد كلمة المرور",
+      "portalAlwaysEnabled": "العملاء الجدد يحصلون دائماً على دخول بوابة العميل.",
       "statusLabel": "الحالة",
       "selectStatus": "اختر الحالة",
       "cancel": "إلغاء",
       "save": "حفظ",
       "saving": "جاري الحفظ..."
+    },
+    "portal": {
+      "enabled": "دخول البوابة: مفعّل",
+      "disabled": "دخول البوابة: غير مفعّل",
+      "enabledHint": "يمكن لهذا العميل تسجيل الدخول إلى بوابة العميل.",
+      "disabledHint": "هذا عميل سابق بلا حساب دخول. استخدم إنشاء حساب دخول لتفعيل الوصول.",
+      "createLogin": "إنشاء حساب دخول",
+      "createLoginTitle": "إنشاء حساب دخول",
+      "createLoginHint": "ينشئ حساب مستخدم جديداً ويربطه بهذا العميل. لن يتم ربط حساب موجود تلقائياً بالبريد فقط.",
+      "createLoginSubmit": "تفعيل دخول البوابة"
     }
   },
   "customerRequests": {

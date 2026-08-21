@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Customers\Status;
+use App\Http\Requests\CustomerEnablePortalRequest;
 use App\Http\Requests\CustomerFormRequest;
 use App\Models\Customer;
 use App\Services\CustomerService;
@@ -48,5 +49,12 @@ class CustomerController extends Controller
         $this->customerService->update(customer: $customer, data: $request->validated());
 
         return redirect()->back()->with('success', 'تم التحديث بنجاح');
+    }
+
+    public function enablePortal(CustomerEnablePortalRequest $request, Customer $customer)
+    {
+        $this->customerService->createLoginAccount($customer, $request->validated());
+
+        return redirect()->back()->with('success', 'تم تفعيل دخول بوابة العميل');
     }
 }

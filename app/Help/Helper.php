@@ -11,7 +11,15 @@ function target(): string
         return '/';
     }
 
-    return 'dashboard';
+    if ($user->hasRole('admin')) {
+        return route('dashboard', absolute: false);
+    }
+
+    if ($user->customer) {
+        return route('customer.home', absolute: false);
+    }
+
+    return route('dashboard', absolute: false);
 }
 
 /**

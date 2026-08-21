@@ -36,6 +36,8 @@ test('admin can create a customer with unique public_id', function () {
             'name' => 'Sara Ahmed',
             'phone' => '01011112222',
             'email' => 'sara@example.test',
+            'password' => 'password12',
+            'password_confirmation' => 'password12',
             'status' => CustomerStatus::Active->value,
         ])
         ->assertRedirect();
@@ -44,6 +46,7 @@ test('admin can create a customer with unique public_id', function () {
 
     expect($customer)->not->toBeNull()
         ->and(Str::isUlid($customer->public_id))->toBeTrue()
+        ->and($customer->user_id)->not->toBeNull()
         ->and(ActivityLog::where('event', Event::Created)->where('subject_id', $customer->id)->exists())->toBeTrue();
 });
 

@@ -1,5 +1,5 @@
 <script setup>
-import { watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import DashboardModalShell from '../../Common/DashboardModalShell.vue'
@@ -14,12 +14,17 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
+const isEdit = computed(() => !!props.customer)
+const hasPortalAccess = computed(() => !!props.customer?.has_portal_access || !!props.customer?.user_id)
+
 const form = useForm({
   name: '',
   phone: '',
   email: '',
   whatsapp_id: '',
   status: '',
+  password: '',
+  password_confirmation: '',
 })
 
 watch(() => props.isOpen, (isOpen) => {
@@ -31,8 +36,11 @@ watch(() => props.isOpen, (isOpen) => {
     form.email = props.customer.email || ''
     form.whatsapp_id = props.customer.whatsapp_id || ''
     form.status = props.customer.status || ''
+    form.password = ''
+    form.password_confirmation = ''
   } else {
     form.reset()
+    form.status = props.statuses?.[0]?.value ?? 1
   }
 
   form.clearErrors()
@@ -44,12 +52,24 @@ const submit = () => {
     onSuccess: () => {
       form.reset()
       emit('close')
-    }
+    },
+    onFinish: () => {
+      form.transform((data) => data)
+    },
   }
 
-  props.customer
-    ? form.put(route('customers.update', props.customer.public_id), options)
-    : form.post(route('customers.store'), options)
+  if (props.customer) {
+    form.transform((data) => ({
+      name: data.name,
+      phone: data.phone,
+      email: data.email,
+      whatsapp_id: data.whatsapp_id,
+      status: data.status,
+    })).put(route('customers.update', props.customer.public_id), options)
+    return
+  }
+
+  form.post(route('customers.store'), options)
 }
 
 const handleClose = () => {
@@ -63,9 +83,9 @@ const handleClose = () => {
   <DashboardModalShell :isOpen="isOpen" title-id="customer-form-modal-title" @close="handleClose">
     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
       <h2 id="customer-form-modal-title" class="text-card-title text-gray-900 dark:text-gray-100">
-        {{ customer ? t('customers.form.editTitle') : t('customers.form.addTitle') }}
+        {{ isEdit ? t('customers.form.editTitle') : t('customers.form.addTitle') }}
       </h2>
-      <button @click="handleClose" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer">
+      <button type="button" @click="handleClose" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer">
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
         </svg>
@@ -73,28 +93,69 @@ const handleClose = () => {
     </div>
 
     <form @submit.prevent="submit" class="px-6 py-4 space-y-4 max-h-[75vh] overflow-y-auto">
+      <div v-if="isEdit" class="rounded-md border border-gray-200 dark:border-gray-700 p-3">
+        <p class="text-body font-medium text-gray-900 dark:text-gray-100">
+          {{ hasPortalAccess ? t('customers.portal.enabled') : t('customers.portal.disabled') }}
+        </p>
+        <p class="text-muted text-sm mt-1">
+          {{ hasPortalAccess ? t('customers.portal.enabledHint') : t('customers.portal.disabledHint') }}
+        </p>
+      </div>
+
+      <div v-else class="rounded-md border border-blue-200 dark:border-blue-900 bg-blue-50 dark:bg-blue-950/30 p-3">
+        <p class="text-body text-gray-900 dark:text-gray-100">{{ t('customers.form.portalAlwaysEnabled') }}</p>
+      </div>
+
       <div>
-        <label class="form-label text-label">{{ t('customers.form.nameLabel') }}</label>
-        <input v-model="form.name" type="text" class="form-input text-body" />
+        <label class="form-label text-label">
+          {{ t('customers.form.nameLabel') }}
+          <span v-if="!isEdit" class="text-red-500">*</span>
+        </label>
+        <input v-model="form.name" type="text" :required="!isEdit" class="form-input text-body" />
         <p v-if="form.errors.name" class="form-error">{{ form.errors.name }}</p>
       </div>
-      <div class="grid grid-cols-2 gap-4">
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="form-label text-label">{{ t('customers.form.phoneLabel') }}</label>
-          <input v-model="form.phone" type="text" dir="ltr" class="form-input text-body" />
+          <label class="form-label text-label">
+            {{ t('customers.form.phoneLabel') }}
+            <span v-if="!isEdit" class="text-red-500">*</span>
+          </label>
+          <input v-model="form.phone" type="text" dir="ltr" :required="!isEdit" class="form-input text-body" />
           <p v-if="form.errors.phone" class="form-error">{{ form.errors.phone }}</p>
         </div>
         <div>
-          <label class="form-label text-label">{{ t('customers.form.emailLabel') }}</label>
-          <input v-model="form.email" type="email" class="form-input text-body" />
+          <label class="form-label text-label">
+            {{ t('customers.form.emailLabel') }}
+            <span v-if="!isEdit" class="text-red-500">*</span>
+          </label>
+          <input v-model="form.email" type="email" :required="!isEdit" class="form-input text-body" />
           <p v-if="form.errors.email" class="form-error">{{ form.errors.email }}</p>
         </div>
       </div>
+
       <div>
         <label class="form-label text-label">{{ t('customers.form.whatsappLabel') }}</label>
         <input v-model="form.whatsapp_id" type="text" dir="ltr" class="form-input text-body" />
         <p v-if="form.errors.whatsapp_id" class="form-error">{{ form.errors.whatsapp_id }}</p>
       </div>
+
+      <template v-if="!isEdit">
+        <div>
+          <label class="form-label text-label">
+            {{ t('customers.form.passwordLabel') }} <span class="text-red-500">*</span>
+          </label>
+          <input v-model="form.password" type="password" required autocomplete="new-password" class="form-input text-body" />
+          <p v-if="form.errors.password" class="form-error">{{ form.errors.password }}</p>
+        </div>
+        <div>
+          <label class="form-label text-label">
+            {{ t('customers.form.passwordConfirmationLabel') }} <span class="text-red-500">*</span>
+          </label>
+          <input v-model="form.password_confirmation" type="password" required autocomplete="new-password" class="form-input text-body" />
+        </div>
+      </template>
+
       <div>
         <label class="form-label text-label">
           {{ t('customers.form.statusLabel') }} <span class="text-red-500">*</span>
@@ -105,6 +166,7 @@ const handleClose = () => {
         </select>
         <p v-if="form.errors.status" class="form-error">{{ form.errors.status }}</p>
       </div>
+
       <div class="flex justify-end gap-3 pt-2">
         <button type="button" @click="handleClose" class="btn btn-secondary px-4 py-2">{{ t('customers.form.cancel') }}</button>
         <button type="submit" :disabled="form.processing" class="btn btn-primary px-4 py-2 disabled:opacity-50">

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed } from 'vue'
-import { useForm, usePage } from '@inertiajs/vue3'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faEnvelope, faLock, faSignInAlt, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons'
 import { resolveBilingualField } from '../../Composables/useBilingualContent.js'
@@ -75,6 +75,10 @@ const handleLogin = () => {
                         {{ form.processing ? t('auth.login.loggingIn') : t('auth.login.loginButton') }}
                     </button>
                 </form>
+                <p class="text-center text-small text-lighter mt-6">
+                    {{ t('auth.login.noAccount') }}
+                    <Link :href="route('customer.register')" class="text-blue-400 hover:text-blue-300">{{ t('auth.login.registerLink') }}</Link>
+                </p>
             </div>
         </div>
     </div>
