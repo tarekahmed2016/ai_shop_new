@@ -184,6 +184,20 @@ test('feature band and promo strip require image on create', function () {
         ->assertSessionHasErrors('image');
 });
 
+test('admin can delete homepage promo block', function () {
+    $block = HomepagePromoBlock::factory()->businessCta()->create([
+        'title_en' => 'Delete Me',
+        'title_ar' => '1111',
+    ]);
+
+    $this->actingAs($this->admin)
+        ->delete(route('homepage-promos.destroy', $block))
+        ->assertRedirect();
+
+    expect(HomepagePromoBlock::count())->toBe(0)
+        ->and(ActivityLog::where('event', Event::Deleted)->where('subject_id', $block->id)->exists())->toBeTrue();
+});
+
 test('public homepage receives active promo blocks by type', function () {
     HomepagePromoBlock::factory()->businessCta()->create([
         'title_en' => 'Franchise CTA',

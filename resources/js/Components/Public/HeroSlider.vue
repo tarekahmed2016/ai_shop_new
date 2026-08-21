@@ -128,7 +128,6 @@ onUnmounted(clearTimer)
                 class="public-hero-slide-bg"
                 :style="slide.image ? { backgroundImage: `url(${slide.image})` } : undefined"
             ></div>
-            <div class="public-hero-overlay"></div>
             <div class="public-container public-hero-slide-inner">
                 <div class="public-hero-content">
                     <img

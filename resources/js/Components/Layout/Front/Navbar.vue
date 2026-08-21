@@ -9,7 +9,7 @@ const { locale } = useI18n()
 const page = usePage()
 const isAuthenticated = computed(() => page.props.auth?.user)
 const companyName = computed(() =>
-    resolveBilingualField(page.props.companyInfo, 'name', locale.value) || 'Company Profile'
+    resolveBilingualField(page.props.companyInfo, 'name', locale.value) || 'ai_shop_new'
 )
 
 const isMenuOpen = ref(false)

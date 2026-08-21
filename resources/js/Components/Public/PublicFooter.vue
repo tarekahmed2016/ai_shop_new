@@ -93,7 +93,7 @@ const footerLinks = computed(() => {
                 <div>
                     <h4>{{ t('public.home.footer.contact') }}</h4>
                     <a v-if="companyInfo.phone" :href="`tel:${companyInfo.phone}`">
-                        {{ companyInfo.phone }}
+                        <span dir="ltr">{{ companyInfo.phone }}</span>
                     </a>
                     <a v-if="companyInfo.email" :href="`mailto:${companyInfo.email}`">
                         {{ companyInfo.email }}

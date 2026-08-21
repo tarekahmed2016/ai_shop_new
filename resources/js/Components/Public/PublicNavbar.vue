@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { usePage } from '@inertiajs/vue3'
 import { resolveBilingualField } from '../../Composables/useBilingualContent.js'
 import { usePublicNavLinks } from '../../Composables/usePublicNavLinks.js'
+import { faEnvelope, faPhone } from '@fortawesome/free-solid-svg-icons'
 import SocialLinks from './SocialLinks.vue'
 
 /** Temporary visibility toggles — set true to restore public top-bar items. */
@@ -56,47 +57,26 @@ const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
   <header>
     <div class="public-top-bar">
       <div class="public-top-bar-inner">
-        <SocialLinks :company-info="companyInfo" variant="top-bar" :include-website="false" />
+        <div class="public-top-bar-group">
+          <SocialLinks :company-info="companyInfo" variant="top-bar" :include-website="false" />
 
-        <div class="public-top-right">
           <a
-            v-if="SHOW_PUBLIC_BUSINESS_CTA"
-            :href="businessCtaUrl"
-            class="public-cta-btn"
+            v-if="companyInfo.phone"
+            :href="`tel:${companyInfo.phone}`"
+            class="public-top-contact-link"
           >
-            {{ businessCtaLabel }}
+            <font-awesome-icon :icon="faPhone" />
+            <span dir="ltr">{{ companyInfo.phone }}</span>
           </a>
 
-          <Link
-            v-if="SHOW_PUBLIC_STAFF_LOGIN"
-            :href="route('login')"
-            class="public-staff-login-link hidden sm:inline"
+          <a
+            v-if="companyInfo.email"
+            :href="`mailto:${companyInfo.email}`"
+            class="public-top-contact-link"
           >
-            {{ t('public.home.nav.staffLogin') }}
-          </Link>
-
-          <div class="public-language-flags" role="group" :aria-label="t('public.home.nav.selectLanguage')">
-            <button
-              type="button"
-              class="public-language-flag"
-              :class="{ 'is-active': locale === 'ar' }"
-              aria-label="العربية"
-              title="العربية"
-              @click="setLanguage('ar')"
-            >
-              🇴🇲
-            </button>
-            <button
-              type="button"
-              class="public-language-flag"
-              :class="{ 'is-active': locale === 'en' }"
-              aria-label="English"
-              title="English"
-              @click="setLanguage('en')"
-            >
-              🇬🇧
-            </button>
-          </div>
+            <font-awesome-icon :icon="faEnvelope" />
+            <span dir="ltr">{{ companyInfo.email }}</span>
+          </a>
         </div>
       </div>
     </div>
@@ -127,7 +107,7 @@ const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
             <div v-else class="public-nav-logo-fallback">
               {{ companyName.charAt(0).toUpperCase() }}
             </div>
-            <span class="public-nav-brand-name hidden md:inline font-bold text-lg truncate max-w-[10rem] lg:max-w-xs">
+            <span class="public-nav-brand-name hidden md:inline truncate max-w-[12rem] lg:max-w-sm xl:max-w-md">
               {{ companyName }}
             </span>
           </a>
@@ -141,6 +121,29 @@ const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
           >
             {{ link.label }}
           </a>
+
+          <div class="public-language-flags public-nav-language-flags" role="group" :aria-label="t('public.home.nav.selectLanguage')">
+            <button
+              type="button"
+              class="public-language-flag"
+              :class="{ 'is-active': locale === 'ar' }"
+              aria-label="العربية"
+              title="العربية"
+              @click="setLanguage('ar')"
+            >
+              🇴🇲
+            </button>
+            <button
+              type="button"
+              class="public-language-flag"
+              :class="{ 'is-active': locale === 'en' }"
+              aria-label="English"
+              title="English"
+              @click="setLanguage('en')"
+            >
+              🇬🇧
+            </button>
+          </div>
         </div>
       </div>
 

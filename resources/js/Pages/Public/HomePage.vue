@@ -241,7 +241,7 @@ const submitContactForm = () => {
     </section>
 
     <!-- Services -->
-    <section id="services" class="public-section public-section-marble">
+    <section id="services" class="public-section public-section-services">
         <div class="public-container">
             <div class="public-section-header">
                 <h2 class="public-section-title">
@@ -252,7 +252,7 @@ const submitContactForm = () => {
                 </p>
             </div>
 
-            <div v-if="services.length" class="public-promo-grid">
+            <div v-if="services.length" class="public-promo-grid public-promo-grid--three">
                 <article
                     v-for="(service, index) in services"
                     :key="`${serviceName(service)}-${index}`"
@@ -274,8 +274,8 @@ const submitContactForm = () => {
                             tag="p"
                             class="public-promo-card-text"
                         />
-                        <a href="#contact" class="public-link" style="margin-top: 0.75rem;">
-                            {{ t('public.home.services.learnMore') }}
+                        <a href="#contact" class="public-link">
+                          {{ t('public.home.services.learnMore') }}
                         </a>
                     </div>
                 </article>
@@ -545,7 +545,7 @@ const submitContactForm = () => {
                             style="display: inline-flex; align-items: center; justify-content: center; gap: 0.375rem; text-transform: none; letter-spacing: normal; font-size: 0.8125rem;"
                         >
                             <font-awesome-icon :icon="faPhone" />
-                            {{ member.phone }}
+                            <span dir="ltr">{{ member.phone }}</span>
                         </a>
                     </div>
                 </article>
@@ -706,7 +706,7 @@ const submitContactForm = () => {
     </section>
 
     <!-- Contact -->
-    <section id="contact" class="public-section public-section-marble">
+    <section id="contact" class="public-section public-section-services">
         <div class="public-container">
             <div class="public-section-header">
                 <h2 class="public-section-title">
@@ -765,6 +765,7 @@ const submitContactForm = () => {
                                 <input
                                     v-model="contactForm.phone"
                                     type="text"
+                                    dir="ltr"
                                     class="public-form-input"
                                     :placeholder="t('public.home.contact.formPhonePlaceholder')"
                                 />
@@ -822,7 +823,7 @@ const submitContactForm = () => {
                             </div>
                             <div>
                                 <p style="font-size: 0.875rem; color: var(--sf-muted); margin-bottom: 0.25rem;">{{ t('public.home.contact.phone') }}</p>
-                                <p style="font-weight: 700;">{{ companyInfo.phone }}</p>
+                                <p style="font-weight: 700;"><span dir="ltr">{{ companyInfo.phone }}</span></p>
                             </div>
                         </a>
 

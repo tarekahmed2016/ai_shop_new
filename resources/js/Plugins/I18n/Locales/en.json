@@ -59,7 +59,7 @@
   },
   "dashboard": {
     "pageTitle": "Dashboard",
-    "pageSubtitle": "Welcome to Company Profile",
+    "pageSubtitle": "Welcome to ai_shop_new",
     "quickLinksTitle": "Quick links",
     "viewPublicSite": "View public site",
     "manageCompanyInfo": "Manage company info",
@@ -808,7 +808,7 @@
   },
   "public": {
     "home": {
-      "defaultCompanyName": "Company Profile",
+      "defaultCompanyName": "ai_shop_new",
       "nav": {
         "home": "Home",
         "about": "About",
@@ -827,7 +827,7 @@
         "selectLanguage": "Select language:"
       },
       "hero": {
-        "eyebrow": "Welcome",
+        "eyebrow": "",
         "subheadlineWithCompany": "Discover how {company} delivers professional services with quality, trust, and dedication.",
         "subheadlineFallback": "A professional company profile showcasing our services and contact information.",
         "ctaServices": "View Our Services",

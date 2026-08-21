@@ -39,9 +39,14 @@ const links = computed(() => (props.includeWebsite ? socialLinks.value : socialL
       target="_blank"
       rel="noopener noreferrer"
       :aria-label="link.label"
-      :class="{
-        'public-chip': variant === 'footer' || variant === 'contact',
-      }"
+      class="public-social-link"
+      :class="[
+        `public-social-link--${link.key}`,
+        {
+          'public-chip': variant === 'footer' || variant === 'contact',
+          'top-contact-whatsapp': variant === 'top-bar' && link.key === 'whatsapp',
+        },
+      ]"
     >
       <font-awesome-icon :icon="link.icon" />
       <span v-if="variant !== 'top-bar'" class="ms-2">{{ link.label }}</span>

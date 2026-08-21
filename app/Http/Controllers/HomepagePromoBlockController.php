@@ -64,10 +64,10 @@ class HomepagePromoBlockController extends Controller
         return redirect()->back()->with('success', 'تم الإضافة بنجاح');
     }
 
-    public function update(HomepagePromoBlockRequest $request, HomepagePromoBlock $homepagePromoBlock)
+    public function update(HomepagePromoBlockRequest $request, HomepagePromoBlock $homepagePromo)
     {
         $this->homepagePromoBlockService->update(
-            block: $homepagePromoBlock,
+            block: $homepagePromo,
             data: $request->safe()->except(['image', 'badge_image', 'remove_badge']),
             image: $request->file('image'),
             badgeImage: $request->file('badge_image'),
@@ -77,9 +77,9 @@ class HomepagePromoBlockController extends Controller
         return redirect()->back()->with('success', 'تم التحديث بنجاح');
     }
 
-    public function destroy(HomepagePromoBlock $homepagePromoBlock)
+    public function destroy(HomepagePromoBlock $homepagePromo)
     {
-        $this->homepagePromoBlockService->delete(block: $homepagePromoBlock);
+        $this->homepagePromoBlockService->delete(block: $homepagePromo);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');
     }

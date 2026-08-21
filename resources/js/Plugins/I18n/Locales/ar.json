@@ -59,7 +59,7 @@
   },
   "dashboard": {
     "pageTitle": "لوحة التحكم",
-    "pageSubtitle": "مرحباً بك في الملف التعريفي للشركة",
+    "pageSubtitle": "مرحباً بك في ai_shop_new",
     "quickLinksTitle": "روابط سريعة",
     "viewPublicSite": "عرض الموقع العام",
     "manageCompanyInfo": "إدارة بيانات الشركة",
@@ -808,7 +808,7 @@
   },
   "public": {
     "home": {
-      "defaultCompanyName": "الملف التعريفي للشركة",
+      "defaultCompanyName": "ai_shop_new",
       "nav": {
         "home": "الرئيسية",
         "about": "من نحن",
@@ -827,7 +827,7 @@
         "selectLanguage": "اختر اللغة:"
       },
       "hero": {
-        "eyebrow": "مرحباً بكم",
+        "eyebrow": "",
         "subheadlineWithCompany": "اكتشف كيف تقدم {company} خدمات احترافية بجودة وثقة والتزام.",
         "subheadlineFallback": "ملف تعريفي احترافي يعرض خدماتنا ومعلومات التواصل.",
         "ctaServices": "استعرض خدماتنا",
