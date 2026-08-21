@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\CheckAdmin;
+use App\Http\Middleware\EnsureMerchantContext;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Foundation\Application;
@@ -27,6 +28,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('admin', [
             Authenticate::class,
             CheckAdmin::class,
+        ]);
+        $middleware->appendToGroup('merchant', [
+            Authenticate::class,
+            EnsureMerchantContext::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

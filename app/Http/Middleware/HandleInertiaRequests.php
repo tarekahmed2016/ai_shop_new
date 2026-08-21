@@ -3,9 +3,11 @@
 namespace App\Http\Middleware;
 
 use App\Services\CompanyInfoService;
+use App\Services\MerchantContextService;
 use App\Services\PageService;
 use App\Services\PublicHomeService;
 use App\Services\PublicNavService;
+use App\Support\MerchantContext;
 use App\Support\ThemeColor;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,6 +30,10 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        if ($request->user()) {
+            app(MerchantContextService::class)->establishFromSession($request->user(), $request);
+        }
+
         return [
             ...parent::share($request),
             'flash' => Inertia::always([
@@ -41,6 +47,10 @@ class HandleInertiaRequests extends Middleware
                 'role' => $request->user()?->getRoleNames()->first(),
                 'isAdmin' => (bool) $request->user()?->hasRole('admin'),
             ],
+            'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
+            'availableMerchants' => fn () => $request->user()
+                ? app(MerchantContextService::class)->availableMerchantsFor($request->user())
+                : [],
             'companyInfo' => fn () => tap(
                 app(CompanyInfoService::class)->getCompanyInfo(),
                 function ($companyInfo) {

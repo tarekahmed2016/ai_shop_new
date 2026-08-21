@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons'
@@ -32,18 +32,20 @@ const companyInitial = computed(() => companyName.value.trim().charAt(0).toUpper
 
 const isCollapsed = computed(() => props.collapsed)
 
-// Track expanded parent items
 const expandedItems = ref(new Set())
 
-const toggleExpand = (itemRoute) => {
-  if (expandedItems.value.has(itemRoute)) {
-    expandedItems.value.delete(itemRoute)
+const itemKey = (item) => item.id || item.route || item.label
+
+const toggleExpand = (item) => {
+  const key = itemKey(item)
+  if (expandedItems.value.has(key)) {
+    expandedItems.value.delete(key)
   } else {
-    expandedItems.value.add(itemRoute)
+    expandedItems.value.add(key)
   }
 }
 
-const isExpanded = (itemRoute) => expandedItems.value.has(itemRoute)
+const isExpanded = (item) => expandedItems.value.has(itemKey(item))
 
 const handleToggle = () => {
   emit('toggle')
@@ -65,15 +67,10 @@ const isActiveRoute = (item) => {
   const currentPath = getRoutePath(currentRoute.value)
   const itemPath = getRoutePath(item.route)
 
-  // Check if current route matches item route
-  if (currentPath === itemPath) return true
+  if (itemPath && (currentPath === itemPath || (itemPath !== '/' && currentPath.startsWith(`${itemPath}/`)))) return true
 
-  // Check if any child route is active
   if (item.children && item.children.length > 0) {
-    return item.children.some(child => {
-      const childPath = getRoutePath(child.route)
-      return currentPath === childPath
-    })
+    return item.children.some(child => isActiveRoute(child))
   }
 
   return false
@@ -85,35 +82,37 @@ const navigateTo = (path) => {
 
 const handleItemClick = (item) => {
   if (item.children && item.children.length > 0) {
-    // Has children: toggle expansion
-    toggleExpand(item.route)
+    toggleExpand(item)
   } else if (item.route) {
-    // No children: navigate
     navigateTo(item.route)
   }
 }
 
-// Auto-expand parent items if their children are active
-const autoExpandActiveItems = () => {
-  const currentPath = getRoutePath(currentRoute.value)
-  props.items.forEach(item => {
+const collectActiveParentKeys = (items, currentPath, keys) => {
+  items.forEach((item) => {
     if (item.children && item.children.length > 0) {
-      const hasActiveChild = item.children.some(child => {
-        const childPath = getRoutePath(child.route)
-        return currentPath === childPath
-      })
+      const hasActiveChild = item.children.some(child => isActiveRoute(child))
       if (hasActiveChild) {
-        toggleExpand(item.route)
-        return;
+        keys.add(itemKey(item))
+        collectActiveParentKeys(item.children, currentPath, keys)
       }
     }
   })
 }
 
-// Initialize expanded state on mount
-onMounted(() => {
-  autoExpandActiveItems()
-})
+const syncExpandedFromRoute = () => {
+  const keys = new Set()
+  collectActiveParentKeys(props.items, getRoutePath(currentRoute.value), keys)
+  expandedItems.value = keys
+}
+
+watch(
+  [currentRoute, () => props.items.length],
+  () => {
+    syncExpandedFromRoute()
+  },
+  { immediate: true }
+)
 
 </script>
 
@@ -166,7 +165,7 @@ onMounted(() => {
     <!-- Navigation Menu -->
     <nav class="flex-1 px-3 py-4 overflow-y-auto">
       <ul class="space-y-2">
-        <li v-for="item in items" :key="item.route" class="relative">
+        <li v-for="item in items" :key="item.id || item.route" class="relative">
           <!-- Parent Item -->
           <div
             @click="handleItemClick(item)"
@@ -178,7 +177,7 @@ onMounted(() => {
                 : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
             ]"
             :aria-label="item.label"
-            :aria-expanded="item.children ? isExpanded(item.route) : undefined"
+            :aria-expanded="item.children ? isExpanded(item) : undefined"
             :title="isCollapsed ? item.label : ''"
           >
             <!-- Icon -->
@@ -208,7 +207,7 @@ onMounted(() => {
               v-if="!isCollapsed && item.children && item.children.length > 0"
               :class="[
                 'shrink-0 transition-all duration-300',
-                isExpanded(item.route) ? 'rotate-90' : '',
+                isExpanded(item) ? 'rotate-90' : '',
                 isActiveRoute(item) ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'
               ]"
             >
@@ -226,16 +225,16 @@ onMounted(() => {
           <transition
             enter-active-class="transition-all duration-300 ease-out"
             enter-from-class="opacity-0 -translate-y-2 max-h-0"
-            enter-to-class="opacity-100 translate-y-0 max-h-96"
+            enter-to-class="opacity-100 translate-y-0 max-h-[70vh]"
             leave-active-class="transition-all duration-200 ease-in"
-            leave-from-class="opacity-100 translate-y-0 max-h-96"
+            leave-from-class="opacity-100 translate-y-0 max-h-[70vh]"
             leave-to-class="opacity-0 -translate-y-2 max-h-0"
           >
             <ul
-              v-if="!isCollapsed && item.children && item.children.length > 0 && isExpanded(item.route)"
+              v-if="!isCollapsed && item.children && item.children.length > 0 && isExpanded(item)"
               class="mt-1.5 space-y-0.5 ms-2 overflow-hidden"
             >
-              <li v-for="(child, index) in item.children" :key="child.route" class="relative">
+              <li v-for="(child, index) in item.children" :key="child.id || child.route" class="relative">
                 <!-- Connecting Line -->
                 <div
                   class="absolute start-[13px] top-0 w-px bg-gray-700/50"
@@ -245,13 +244,38 @@ onMounted(() => {
                   ]"
                 ></div>
 
+                <div
+                  v-if="child.children && child.children.length > 0"
+                  @click.stop="handleItemClick(child)"
+                  :class="[
+                    'group relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
+                    'hover:scale-[1.01] active:scale-[0.99] ms-3',
+                    isActiveRoute(child)
+                      ? 'bg-blue-900 text-white'
+                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200  border-transparent hover:border-gray-600'
+                  ]"
+                  :aria-label="child.label"
+                  :aria-expanded="isExpanded(child)"
+                >
+                  <span class="shrink-0">
+                    <font-awesome-icon v-if="child.icon" :icon="child.icon" class="w-3.5 h-3.5" />
+                  </span>
+                  <span :class="['text-muted whitespace-nowrap overflow-hidden flex-1', isActiveRoute(child) ? 'font-medium' : 'font-normal']">
+                    {{ child.label }}
+                  </span>
+                  <font-awesome-icon
+                    :icon="faChevronRight"
+                    :class="['w-3 h-3 shrink-0 transition-transform', isExpanded(child) ? 'rotate-90' : '']"
+                  />
+                </div>
                 <a
+                  v-else
                   :href="child.route"
                   @click.prevent="navigateTo(child.route)"
                   :class="[
                     'group relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200',
                     'hover:scale-[1.01] active:scale-[0.99] ms-3',
-                    getRoutePath(currentRoute) === getRoutePath(child.route)
+                    isActiveRoute(child)
                       ? 'bg-blue-900 text-white'
                       : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200  border-transparent hover:border-gray-600'
                   ]"
@@ -287,10 +311,33 @@ onMounted(() => {
 
                   <!-- Hover indicator -->
                   <span
-                    v-if="getRoutePath(currentRoute) === getRoutePath(child.route)"
+                    v-if="isActiveRoute(child) && !child.children"
                     class="absolute end-2 w-1 h-1 rounded-full bg-blue-400 animate-pulse"
                   ></span>
                 </a>
+                <ul
+                  v-if="!isCollapsed && child.children && child.children.length > 0 && isExpanded(child)"
+                  class="mt-1 mb-1 space-y-0.5 ms-4"
+                >
+                  <li v-for="grandchild in child.children" :key="grandchild.id || grandchild.route">
+                    <a
+                      :href="grandchild.route"
+                      @click.prevent="navigateTo(grandchild.route)"
+                      :class="[
+                        'group relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 ms-3',
+                        isActiveRoute(grandchild)
+                          ? 'bg-blue-900 text-white'
+                          : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                      ]"
+                      :aria-label="grandchild.label"
+                    >
+                      <font-awesome-icon v-if="grandchild.icon" :icon="grandchild.icon" class="w-3.5 h-3.5 shrink-0" />
+                      <span :class="['text-muted whitespace-nowrap overflow-hidden', isActiveRoute(grandchild) ? 'font-medium' : 'font-normal']">
+                        {{ grandchild.label }}
+                      </span>
+                    </a>
+                  </li>
+                </ul>
               </li>
             </ul>
           </transition>

@@ -4,6 +4,27 @@ import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 
 const page = usePage()
+const isAdmin = computed(() => page.props.auth?.isAdmin === true)
+const profileHref = computed(() => {
+    try {
+        return typeof route === 'function' && route().has('profile.edit') ? route('profile.edit') : null
+    } catch {
+        return null
+    }
+})
+const settingsHref = computed(() => {
+    if (!isAdmin.value) {
+        return null
+    }
+
+    try {
+        return typeof route === 'function' && route().has('company-info.index')
+            ? route('company-info.index')
+            : null
+    } catch {
+        return null
+    }
+})
 
 const userInitials = computed(() => {
     const name = page.props.auth?.user?.name?.trim()
@@ -203,8 +224,11 @@ const handleToggleSidebar = () => {
 
                         <!-- Menu Items -->
                         <div class="py-1">
-                            <a href="#"
-                                class="flex items-center gap-3 px-4 py-2 text-body text-gray-300 hover:bg-gray-700 hover:text-gray-100 transition-colors">
+                            <Link
+                                v-if="profileHref"
+                                :href="profileHref"
+                                class="flex items-center gap-3 px-4 py-2 text-body text-gray-300 hover:bg-gray-700 hover:text-gray-100 transition-colors"
+                                @click="isUserDropdownOpen = false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                     stroke-linejoin="round">
@@ -212,9 +236,12 @@ const handleToggleSidebar = () => {
                                     <circle cx="12" cy="7" r="4"></circle>
                                 </svg>
                                 {{ t('navbar.profile') }}
-                            </a>
-                            <a href="#"
-                                class="flex items-center gap-3 px-4 py-2 text-body text-gray-300 hover:bg-gray-700 hover:text-gray-100 transition-colors">
+                            </Link>
+                            <Link
+                                v-if="settingsHref"
+                                :href="settingsHref"
+                                class="flex items-center gap-3 px-4 py-2 text-body text-gray-300 hover:bg-gray-700 hover:text-gray-100 transition-colors"
+                                @click="isUserDropdownOpen = false">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
                                     stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                     stroke-linejoin="round">
@@ -224,7 +251,7 @@ const handleToggleSidebar = () => {
                                     </path>
                                 </svg>
                                 {{ t('navbar.settings') }}
-                            </a>
+                            </Link>
                         </div>
 
                         <!-- Logout -->

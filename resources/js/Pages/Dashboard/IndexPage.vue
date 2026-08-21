@@ -1,12 +1,26 @@
 <script setup>
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { faArrowUpRightFromSquare, faBuilding, faBriefcase, faEnvelope } from '@fortawesome/free-solid-svg-icons'
+import {
+    faArrowUpRightFromSquare,
+    faBriefcase,
+    faBuilding,
+    faClipboardList,
+    faEnvelope,
+    faEye,
+    faStore,
+    faTags,
+} from '@fortawesome/free-solid-svg-icons'
 
 const { t } = useI18n()
+const page = usePage()
 
-const quickLinks = computed(() => [
+const isAdmin = computed(() => page.props.isAdmin === true || page.props.auth?.isAdmin === true)
+const merchantWorkspace = computed(() => page.props.merchantWorkspace || null)
+const hasMerchantMemberships = computed(() => page.props.hasMerchantMemberships === true)
+
+const adminQuickLinks = computed(() => [
     {
         label: t('dashboard.manageCompanyInfo'),
         route: route('company-info.index'),
@@ -29,6 +43,30 @@ const quickLinks = computed(() => [
         external: true,
     },
 ])
+
+const merchantStats = computed(() => {
+    if (!merchantWorkspace.value) {
+        return []
+    }
+
+    return [
+        {
+            label: t('dashboard.merchant.categoriesCount'),
+            value: merchantWorkspace.value.categories_count ?? 0,
+            icon: faTags,
+        },
+        {
+            label: t('dashboard.merchant.availableRequestsCount'),
+            value: merchantWorkspace.value.available_requests_count ?? 0,
+            icon: faClipboardList,
+        },
+        {
+            label: t('dashboard.merchant.viewedRequestsCount'),
+            value: merchantWorkspace.value.viewed_requests_count ?? 0,
+            icon: faEye,
+        },
+    ]
+})
 </script>
 
 <template>
@@ -39,11 +77,11 @@ const quickLinks = computed(() => [
                 <p class="mt-2 text-muted muted-color">{{ t('dashboard.pageSubtitle') }}</p>
             </div>
 
-            <section>
+            <section v-if="isAdmin">
                 <h2 class="text-section-title text-gray-900 dark:text-gray-100 mb-4">{{ t('dashboard.quickLinksTitle') }}</h2>
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <component
-                        v-for="link in quickLinks"
+                        v-for="link in adminQuickLinks"
                         :key="link.label"
                         :is="link.external ? 'a' : Link"
                         :href="link.route"
@@ -59,6 +97,73 @@ const quickLinks = computed(() => [
                         </span>
                     </component>
                 </div>
+            </section>
+
+            <section v-else-if="merchantWorkspace" class="space-y-6">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                            <font-awesome-icon :icon="faStore" class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <h2 class="text-section-title text-gray-900 dark:text-gray-100">
+                                {{ t('dashboard.merchant.workspaceTitle') }}
+                            </h2>
+                            <p class="mt-2 text-body text-gray-700 dark:text-gray-300">
+                                {{ t('dashboard.merchant.workingAs', { name: merchantWorkspace.name }) }}
+                            </p>
+                            <p class="mt-1 text-muted muted-color">
+                                {{ t('dashboard.merchant.roleLabel') }}: {{ merchantWorkspace.role }}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div
+                        v-for="stat in merchantStats"
+                        :key="stat.label"
+                        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                                <font-awesome-icon :icon="stat.icon" class="h-4 w-4" />
+                            </span>
+                            <div>
+                                <p class="text-muted muted-color">{{ stat.label }}</p>
+                                <p class="text-card-title text-gray-900 dark:text-gray-100">{{ stat.value }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap gap-4">
+                    <Link :href="route('merchant.requests.index')" class="text-blue-600 hover:text-blue-700">
+                        {{ t('dashboard.merchant.viewAvailableRequests') }}
+                    </Link>
+                    <Link :href="route('merchant.home')" class="text-blue-600 hover:text-blue-700">
+                        {{ t('dashboard.merchant.openWorkspace') }}
+                    </Link>
+                    <Link :href="route('merchant.select')" class="text-blue-600 hover:text-blue-700">
+                        {{ t('dashboard.merchant.switchMerchant') }}
+                    </Link>
+                </div>
+            </section>
+
+            <section v-else-if="hasMerchantMemberships" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h2 class="text-section-title text-gray-900 dark:text-gray-100">
+                    {{ t('dashboard.merchant.selectTitle') }}
+                </h2>
+                <p class="mt-2 text-body text-gray-700 dark:text-gray-300">
+                    {{ t('dashboard.merchant.selectSubtitle') }}
+                </p>
+                <Link :href="route('merchant.select')" class="inline-block mt-4 text-blue-600 hover:text-blue-700">
+                    {{ t('dashboard.merchant.selectAction') }}
+                </Link>
+            </section>
+
+            <section v-else class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <p class="text-body text-gray-700 dark:text-gray-300">{{ t('dashboard.merchant.emptyAccess') }}</p>
             </section>
         </div>
     </div>

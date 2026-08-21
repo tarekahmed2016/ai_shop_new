@@ -2,104 +2,12 @@
 import SideMenu from '../Components/Layout/Dashboard/SideMenu.vue'
 import Navbar from '../Components/Layout/Dashboard/Navbar.vue'
 import { useSidebar } from '../Composables/Dashboard/useSidebar.js'
+import { useDashboardNav } from '../Composables/Dashboard/useDashboardNav.js'
 import CustomCursor from '../Components/Common/CustomCursor.vue'
 import FlashMessage from '../Components/Common/FlashMessage.vue'
-import { faCog, faUsers, faHome, faUserShield, faBuilding, faBriefcase, faFolderOpen, faUserGroup, faHandshake, faAward, faEnvelope, faImages, faBullhorn, faNewspaper, faFileLines, faPalette, faCode } from '@fortawesome/free-solid-svg-icons'
-import { useI18n } from 'vue-i18n'
-import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
 
 const { isCollapsed, toggle } = useSidebar()
-const { t } = useI18n()
-const page = usePage()
-
-const isAdmin = computed(() => page.props.auth?.isAdmin === true)
-
-const menuItems = computed(() => {
-    const items = [
-        {
-            label: t('sidebar.dashboard'),
-            icon: faHome,
-            route: route('dashboard'),
-        },
-    ]
-
-    if (isAdmin.value) {
-        items.push(
-            {
-                label: t('sidebar.roles'),
-                icon: faUserShield,
-                route: route('roles.index'),
-            },
-            {
-                label: t('sidebar.users'),
-                icon: faUsers,
-                route: route('users.index'),
-            },
-            {
-                label: t('sidebar.services'),
-                icon: faBriefcase,
-                route: route('services.index'),
-            },
-            {
-                label: t('sidebar.projects'),
-                icon: faFolderOpen,
-                route: route('projects.index'),
-            },
-            {
-                label: t('sidebar.teamMembers'),
-                icon: faUserGroup,
-                route: route('team-members.index'),
-            },
-            {
-                label: t('sidebar.clientsPartners'),
-                icon: faHandshake,
-                route: route('clients-partners.index'),
-            },
-            {
-                label: t('sidebar.certificatesAwards'),
-                icon: faAward,
-                route: route('certificates-awards.index'),
-            },
-            {
-                label: t('sidebar.contactMessages'),
-                icon: faEnvelope,
-                route: route('contact-messages.index'),
-            },
-            {
-                label: t('sidebar.heroSlides'),
-                icon: faImages,
-                route: route('hero-slides.index'),
-            },
-            {
-                label: t('sidebar.homepagePromos'),
-                icon: faBullhorn,
-                route: route('homepage-promos.index'),
-            },
-            {
-                label: t('sidebar.pages'),
-                icon: faFileLines,
-                route: route('pages.index'),
-            },
-            {
-                label: t('sidebar.newsletterSubscribers'),
-                icon: faNewspaper,
-                route: route('newsletter-subscribers.index'),
-            },
-            {
-                label: t('sidebar.settings'),
-                icon: faCog,
-                children: [
-                    { label: t('sidebar.companyInfo'), icon: faBuilding, route: route('company-info.index') },
-                    { label: t('sidebar.themeColors'), icon: faPalette, route: route('theme-colors.index') },
-                    { label: t('sidebar.customAssets'), icon: faCode, route: route('custom-assets.index') },
-                ],
-            },
-        )
-    }
-
-    return items
-})
+const { menuItems } = useDashboardNav()
 </script>
 
 <template>

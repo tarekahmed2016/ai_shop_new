@@ -1,15 +1,28 @@
 <?php
 
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificateAwardController;
 use App\Http\Controllers\ClientPartnerController;
 use App\Http\Controllers\CompanyInfoController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\CustomAssetsController;
+use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerRequestController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\HomepagePromoBlockController;
+use App\Http\Controllers\MerchantBusinessActivityController;
+use App\Http\Controllers\MerchantCategoryController;
+use App\Http\Controllers\MerchantContextController;
+use App\Http\Controllers\MerchantController;
+use App\Http\Controllers\MerchantMembershipController;
+use App\Http\Controllers\MerchantRequestController;
+use App\Http\Controllers\MerchantTeamController;
 use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\RequestMatchController;
 use App\Http\Controllers\RichTextImageController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\ServiceController;
@@ -19,7 +32,29 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth'])->group(function () {
-    Route::inertia('/dashboard', 'Dashboard/IndexPage')->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/merchant/select', [MerchantContextController::class, 'select'])->name('merchant.select');
+    Route::post('/merchant/context', [MerchantContextController::class, 'store'])->name('merchant.context.store');
+});
+
+Route::middleware(['merchant'])->group(function () {
+    Route::get('/merchant', [MerchantContextController::class, 'home'])->name('merchant.home');
+    Route::get('/merchant/requests', [MerchantRequestController::class, 'index'])->name('merchant.requests.index');
+    Route::get('/merchant/requests/{customerRequest}', [MerchantRequestController::class, 'show'])->name('merchant.requests.show');
+    Route::get('/merchant/requests/{customerRequest}/image', [MerchantRequestController::class, 'image'])->name('merchant.requests.image');
+    Route::post('/merchant/requests/{customerRequest}/dismiss', [MerchantRequestController::class, 'dismiss'])->name('merchant.requests.dismiss');
+
+    Route::get('/merchant/activities', [MerchantBusinessActivityController::class, 'index'])->name('merchant.activities.index');
+    Route::post('/merchant/activities', [MerchantBusinessActivityController::class, 'store'])->name('merchant.activities.store');
+    Route::delete('/merchant/activities/{merchantCategory}', [MerchantBusinessActivityController::class, 'destroy'])->name('merchant.activities.destroy');
+
+    Route::get('/merchant/team', [MerchantTeamController::class, 'index'])->name('merchant.team.index');
+    Route::get('/merchant/team/lookup', [MerchantTeamController::class, 'lookup'])->name('merchant.team.lookup');
+    Route::post('/merchant/team', [MerchantTeamController::class, 'store'])->name('merchant.team.store');
+    Route::patch('/merchant/team/{membership}', [MerchantTeamController::class, 'update'])->name('merchant.team.update');
+    Route::delete('/merchant/team/{membership}', [MerchantTeamController::class, 'destroy'])->name('merchant.team.destroy');
 });
 
 Route::middleware(['admin'])->group(function () {
@@ -31,6 +66,22 @@ Route::middleware(['admin'])->group(function () {
     Route::put('/custom-assets', [CustomAssetsController::class, 'update'])->name('custom-assets.update');
     Route::resource('/users', UserController::class)->except(['show', 'create', 'edit']);
     Route::resource('/roles', RoleController::class)->except(['show', 'create', 'edit']);
+    Route::resource('/merchants', MerchantController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::get('/merchants/{merchant}/categories', [MerchantCategoryController::class, 'index'])->name('merchants.categories.index');
+    Route::post('/merchants/{merchant}/categories', [MerchantCategoryController::class, 'store'])->name('merchants.categories.store');
+    Route::delete('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'destroy'])->name('merchants.categories.destroy');
+    Route::resource('/categories', CategoryController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::get('/customer-requests/{customerRequest}/image', [CustomerRequestController::class, 'image'])->name('customer-requests.image');
+    Route::post('/customer-requests/{customerRequest}/match', [RequestMatchController::class, 'sync'])->name('customer-requests.match');
+    Route::resource('/customer-requests', CustomerRequestController::class)
+        ->except(['show', 'create', 'edit', 'destroy'])
+        ->parameters(['customer-requests' => 'customerRequest']);
+    Route::get('/matching', [RequestMatchController::class, 'index'])->name('matching.index');
+    Route::get('/merchants/{merchant}/memberships', [MerchantMembershipController::class, 'index'])->name('merchants.memberships.index');
+    Route::post('/merchants/{merchant}/memberships', [MerchantMembershipController::class, 'store'])->name('merchants.memberships.store');
+    Route::put('/merchants/{merchant}/memberships/{membership}', [MerchantMembershipController::class, 'update'])->name('merchants.memberships.update');
+    Route::delete('/merchants/{merchant}/memberships/{membership}', [MerchantMembershipController::class, 'destroy'])->name('merchants.memberships.destroy');
     Route::resource('/services', ServiceController::class)->except(['show', 'create', 'edit']);
     Route::get('/services-next-ordering', [ServiceController::class, 'getNextOrdering'])->name('services.next-ordering');
     Route::resource('/pages', PageController::class)->except(['show', 'create', 'edit']);
