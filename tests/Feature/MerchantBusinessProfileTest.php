@@ -243,7 +243,8 @@ test('updated business phone is used for customer offer whatsapp url', function 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('offers', 1)
-            ->where('offers.0.whatsapp_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96877416103?text='))
+            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96877416103?text='))
+            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96877416103&text='))
             ->missing('offers.0.merchant')
             ->missing('request.customer.phone')
         );

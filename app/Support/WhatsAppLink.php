@@ -54,7 +54,7 @@ class WhatsAppLink
         return self::digits($phone) !== null;
     }
 
-    public static function url(?string $phone, string $message): ?string
+    public static function mobileUrl(?string $phone, string $message): ?string
     {
         $digits = self::digits($phone);
 
@@ -63,6 +63,40 @@ class WhatsAppLink
         }
 
         return 'https://wa.me/'.$digits.'?text='.rawurlencode($message);
+    }
+
+    public static function webUrl(?string $phone, string $message): ?string
+    {
+        $digits = self::digits($phone);
+
+        if ($digits === null) {
+            return null;
+        }
+
+        return 'https://web.whatsapp.com/send?phone='.$digits.'&text='.rawurlencode($message);
+    }
+
+    /**
+     * @return array{mobile: string, web: string}|null
+     */
+    public static function pair(?string $phone, string $message): ?array
+    {
+        $mobile = self::mobileUrl($phone, $message);
+        $web = self::webUrl($phone, $message);
+
+        if ($mobile === null || $web === null) {
+            return null;
+        }
+
+        return [
+            'mobile' => $mobile,
+            'web' => $web,
+        ];
+    }
+
+    public static function url(?string $phone, string $message): ?string
+    {
+        return self::mobileUrl($phone, $message);
     }
 
     private static function defaultCountryCode(): string

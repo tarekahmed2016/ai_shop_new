@@ -292,7 +292,7 @@ class MerchantOfferService
                 'notes' => $offer->notes,
                 'valid_until' => $offer->valid_until?->toDateString(),
                 'submitted_at' => $offer->submitted_at,
-                'whatsapp_url' => $this->customerWhatsAppUrl($customerRequest, $offer),
+                ...$this->customerWhatsAppUrls($customerRequest, $offer),
                 'images' => $offer->images->map(fn (MerchantOfferImage $image) => [
                     'id' => $image->id,
                     'url' => route('customer.offers.images.show', [$offer, $image]),
@@ -439,7 +439,10 @@ class MerchantOfferService
         ];
     }
 
-    private function customerWhatsAppUrl(CustomerRequest $customerRequest, MerchantOffer $offer): ?string
+    /**
+     * @return array{whatsapp_mobile_url: ?string, whatsapp_web_url: ?string}
+     */
+    private function customerWhatsAppUrls(CustomerRequest $customerRequest, MerchantOffer $offer): array
     {
         $message = $this->customerWhatsAppMessage($customerRequest, $offer);
         $activityPhone = $offer->merchant?->categoryAssignments
@@ -447,14 +450,20 @@ class MerchantOfferService
             ?->whatsapp_phone;
 
         foreach ([$activityPhone, $offer->merchant?->phone] as $phone) {
-            $url = WhatsAppLink::url($phone, $message);
+            $pair = WhatsAppLink::pair($phone, $message);
 
-            if ($url !== null) {
-                return $url;
+            if ($pair !== null) {
+                return [
+                    'whatsapp_mobile_url' => $pair['mobile'],
+                    'whatsapp_web_url' => $pair['web'],
+                ];
             }
         }
 
-        return null;
+        return [
+            'whatsapp_mobile_url' => null,
+            'whatsapp_web_url' => null,
+        ];
     }
 
     private function customerWhatsAppMessage(CustomerRequest $customerRequest, MerchantOffer $offer): string

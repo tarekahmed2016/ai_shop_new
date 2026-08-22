@@ -29,11 +29,22 @@ test('invalid short or trunk-prefixed numbers remain unavailable', function () {
 });
 
 test('whatsapp url encodes the prefilled message and uses digits only', function () {
-    $url = WhatsAppLink::url('91234567', 'Hello, request ABC priced at 32.500 OMR.');
+    $message = 'Hello, request ABC priced at 32.500 OMR.';
+    $encoded = rawurlencode($message);
+    $mobile = WhatsAppLink::mobileUrl('91234567', $message);
+    $web = WhatsAppLink::webUrl('91234567', $message);
+    $pair = WhatsAppLink::pair('91234567', $message);
 
-    expect($url)->toStartWith('https://wa.me/96891234567?text=')
-        ->and($url)->toContain(rawurlencode('Hello, request ABC priced at 32.500 OMR.'))
+    expect($mobile)->toBe('https://wa.me/96891234567?text='.$encoded)
+        ->and($web)->toBe('https://web.whatsapp.com/send?phone=96891234567&text='.$encoded)
+        ->and($pair)->toBe([
+            'mobile' => $mobile,
+            'web' => $web,
+        ])
+        ->and(WhatsAppLink::url('91234567', $message))->toBe($mobile)
         ->and(WhatsAppLink::url('12345', 'hi'))->toBeNull()
+        ->and(WhatsAppLink::webUrl('12345', 'hi'))->toBeNull()
+        ->and(WhatsAppLink::pair('12345', 'hi'))->toBeNull()
         ->and(WhatsAppLink::isValid('77416103'))->toBeTrue()
         ->and(WhatsAppLink::isValid('01012345678'))->toBeFalse();
 });

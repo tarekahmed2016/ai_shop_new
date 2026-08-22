@@ -320,7 +320,8 @@ test('submitted offers use activity whatsapp with merchant phone fallback and ne
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('offers', 1)
-            ->where('offers.0.whatsapp_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96891111111?text='))
+            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96891111111?text='))
+            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96891111111&text='))
             ->missing('offers.0.phone')
             ->missing('offers.0.merchant_categories')
         );
@@ -329,7 +330,8 @@ test('submitted offers use activity whatsapp with merchant phone fallback and ne
         ->get(route('customer.requests.show', $setup['requestB']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96892222222?text='))
+            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96892222222?text='))
+            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96892222222&text='))
         );
 
     $setup['assignmentA']->update(['whatsapp_phone' => null]);
@@ -338,7 +340,8 @@ test('submitted offers use activity whatsapp with merchant phone fallback and ne
         ->get(route('customer.requests.show', $setup['requestA']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96890000000?text='))
+            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96890000000?text='))
+            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96890000000&text='))
         );
 
     $setup['assignmentA']->update(['whatsapp_phone' => '01012345678']);
@@ -347,7 +350,8 @@ test('submitted offers use activity whatsapp with merchant phone fallback and ne
         ->get(route('customer.requests.show', $setup['requestA']))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96890000000?text='))
+            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96890000000?text='))
+            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96890000000&text='))
         );
 
     expect($setup['owner']->fresh()->phone)->toBe('999000111')

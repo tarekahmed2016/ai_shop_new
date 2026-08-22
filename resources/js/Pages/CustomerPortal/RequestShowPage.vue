@@ -9,6 +9,23 @@ const page = usePage()
 const request = computed(() => page.props.request || {})
 const offers = computed(() => page.props.offers || [])
 
+const isMobileClient = computed(() => {
+    if (typeof navigator === 'undefined') {
+        return false
+    }
+
+    const ua = navigator.userAgent || ''
+    if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+        return true
+    }
+
+    return navigator.maxTouchPoints > 1 && window.matchMedia('(pointer: coarse)').matches
+})
+
+const offerWhatsAppHref = (offer) => (
+    isMobileClient.value ? offer.whatsapp_mobile_url : offer.whatsapp_web_url
+)
+
 const categoryName = computed(() => {
     const category = request.value.category
     if (!category) return '—'
@@ -66,8 +83,8 @@ const formatDate = (value) => value ? new Date(value).toLocaleString() : '—'
                     </div>
                     <div class="pt-3">
                         <a
-                            v-if="offer.whatsapp_url"
-                            :href="offer.whatsapp_url"
+                            v-if="offerWhatsAppHref(offer)"
+                            :href="offerWhatsAppHref(offer)"
                             target="_blank"
                             rel="noopener noreferrer"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-[#25D366] hover:bg-[#1ebe5d]"
