@@ -124,6 +124,7 @@ test('category can be attached to merchant A', function () {
     $this->actingAs($this->admin)
         ->post(route('merchants.categories.store', $merchant), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
             'merchant_id' => 999999,
         ])
         ->assertRedirect();
@@ -148,6 +149,7 @@ test('duplicate merchant category assignment is rejected', function () {
     $this->actingAs($this->admin)
         ->post(route('merchants.categories.store', $merchant), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
         ])
         ->assertSessionHasErrors('category_id');
 
@@ -165,12 +167,14 @@ test('same category can belong to merchant A and merchant B', function () {
     $this->actingAs($this->admin)
         ->post(route('merchants.categories.store', $merchantA), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '91111111',
         ])
         ->assertRedirect();
 
     $this->actingAs($this->admin)
         ->post(route('merchants.categories.store', $merchantB), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '92222222',
         ])
         ->assertRedirect();
 
@@ -196,6 +200,7 @@ test('merchant A cannot modify merchant B category assignments', function () {
     $this->actingAs($this->user)
         ->post(route('merchants.categories.store', $merchantB), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
         ])
         ->assertRedirect(route('login'));
 
@@ -221,6 +226,7 @@ test('forged merchant public_id and assignment id have no effect', function () {
     $this->actingAs($this->admin)
         ->post(route('merchants.categories.store', ['merchant' => '01FAKEPUBLICIDNOTFOUND00']), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
         ])
         ->assertNotFound();
 

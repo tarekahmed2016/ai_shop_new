@@ -33,5 +33,7 @@ test('whatsapp url encodes the prefilled message and uses digits only', function
 
     expect($url)->toStartWith('https://wa.me/96891234567?text=')
         ->and($url)->toContain(rawurlencode('Hello, request ABC priced at 32.500 OMR.'))
-        ->and(WhatsAppLink::url('12345', 'hi'))->toBeNull();
+        ->and(WhatsAppLink::url('12345', 'hi'))->toBeNull()
+        ->and(WhatsAppLink::isValid('77416103'))->toBeTrue()
+        ->and(WhatsAppLink::isValid('01012345678'))->toBeFalse();
 });

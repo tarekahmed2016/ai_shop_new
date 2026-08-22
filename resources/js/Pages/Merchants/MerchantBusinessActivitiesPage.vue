@@ -95,6 +95,7 @@ const handleDeleteConfirm = () => {
                     :sortDirection="sortDirection"
                     :canManage="canManageActivities"
                     @remove="deleteModal.open"
+                    @edit="formModal.open"
                     @sort="handleSort"
                 />
                 <Pagination
@@ -110,7 +111,9 @@ const handleDeleteConfirm = () => {
             :isOpen="formModal.isOpen.value"
             :merchant="merchant"
             :availableCategories="availableCategories"
+            :assignment="formModal.selectedItem.value"
             store-route-name="merchant.activities.store"
+            update-route-name="merchant.activities.update"
             @close="formModal.close"
         />
 

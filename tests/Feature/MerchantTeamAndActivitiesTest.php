@@ -472,6 +472,7 @@ test('owner and manager can manage business activities while staff is read only'
         ->withSession(teamSession($merchant))
         ->post(route('merchant.activities.store'), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
             'merchant_id' => 999999,
         ])
         ->assertSessionHasErrors('merchant_id');
@@ -480,6 +481,7 @@ test('owner and manager can manage business activities while staff is read only'
         ->withSession(teamSession($merchant))
         ->post(route('merchant.activities.store'), [
             'category_id' => $category->public_id,
+            'whatsapp_phone' => '77416103',
         ])
         ->assertRedirect();
 

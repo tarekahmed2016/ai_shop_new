@@ -81,6 +81,7 @@ class Merchant extends Model
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'merchant_categories')
+            ->withPivot(['whatsapp_phone'])
             ->withTimestamps();
     }
 

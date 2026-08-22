@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\MerchantCategoryRequest;
+use App\Http\Requests\MerchantCategoryWhatsAppRequest;
 use App\Models\Merchant;
 use App\Models\MerchantCategory;
 use App\Services\CategoryService;
@@ -47,9 +48,21 @@ class MerchantCategoryController extends Controller
         $this->merchantCategoryService->attach(
             merchant: $merchant,
             categoryPublicId: $request->validated('category_id'),
+            whatsappPhone: $request->validated('whatsapp_phone'),
         );
 
         return redirect()->back()->with('success', 'تم الإضافة بنجاح');
+    }
+
+    public function update(MerchantCategoryWhatsAppRequest $request, Merchant $merchant, MerchantCategory $merchantCategory)
+    {
+        $this->merchantCategoryService->updateWhatsappPhone(
+            merchant: $merchant,
+            assignment: $merchantCategory,
+            whatsappPhone: $request->validated('whatsapp_phone'),
+        );
+
+        return redirect()->back()->with('success', 'تم التحديث بنجاح');
     }
 
     public function destroy(Request $request, Merchant $merchant, MerchantCategory $merchantCategory)

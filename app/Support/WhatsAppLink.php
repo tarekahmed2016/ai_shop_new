@@ -49,6 +49,11 @@ class WhatsAppLink
         return $digits;
     }
 
+    public static function isValid(?string $phone): bool
+    {
+        return self::digits($phone) !== null;
+    }
+
     public static function url(?string $phone, string $message): ?string
     {
         $digits = self::digits($phone);

@@ -6,6 +6,7 @@ use App\Enums\Categories\Status;
 use App\Models\Category;
 use App\Models\Merchant;
 use App\Models\MerchantCategory;
+use App\Support\WhatsAppPhoneValidation;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -31,12 +32,14 @@ class MerchantCategoryRequest extends FormRequest
                     fn ($query) => $query->where('status', Status::Active->value)
                 ),
             ],
+            'whatsapp_phone' => WhatsAppPhoneValidation::rules(required: true),
         ];
     }
 
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
+            WhatsAppPhoneValidation::after($validator);
             /** @var Merchant|null $merchant */
             $merchant = $this->route('merchant');
             $categoryPublicId = $this->input('category_id');

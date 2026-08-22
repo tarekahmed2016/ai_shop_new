@@ -2,15 +2,13 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\Categories\Status as CategoryStatus;
 use App\Support\MerchantAuthorization;
 use App\Support\WhatsAppPhoneValidation;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
-class MerchantBusinessActivityRequest extends FormRequest
+class MerchantBusinessActivityWhatsAppRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -23,16 +21,13 @@ class MerchantBusinessActivityRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'category_id' => [
-                'required',
-                'string',
-                Rule::exists('categories', 'public_id')->where(
-                    fn ($query) => $query->where('status', CategoryStatus::Active->value)
-                ),
-            ],
             'whatsapp_phone' => WhatsAppPhoneValidation::rules(required: true),
             'merchant_id' => ['prohibited'],
             'user_id' => ['prohibited'],
+            'category_id' => ['prohibited'],
+            'status' => ['prohibited'],
+            'id' => ['prohibited'],
+            'public_id' => ['prohibited'],
         ];
     }
 

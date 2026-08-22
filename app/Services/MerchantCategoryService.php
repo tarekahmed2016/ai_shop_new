@@ -17,6 +17,7 @@ class MerchantCategoryService
     private const ACTIVITY_FIELDS = [
         'merchant_id',
         'category_id',
+        'whatsapp_phone',
     ];
 
     public function __construct(
@@ -48,7 +49,7 @@ class MerchantCategoryService
             ->withQueryString();
     }
 
-    public function attach(Merchant $merchant, string $categoryPublicId): MerchantCategory
+    public function attach(Merchant $merchant, string $categoryPublicId, ?string $whatsappPhone = null): MerchantCategory
     {
         $category = Category::query()->where('public_id', $categoryPublicId)->first();
 
@@ -78,6 +79,7 @@ class MerchantCategoryService
         $assignment = new MerchantCategory;
         $assignment->merchant_id = $merchant->id;
         $assignment->category_id = $category->id;
+        $assignment->whatsapp_phone = $this->normalizedStoredPhone($whatsappPhone);
         $assignment->save();
 
         $this->activityLogService->recordCreated(
@@ -107,5 +109,38 @@ class MerchantCategoryService
         $assignment->delete();
 
         $this->requestMatchingService->removeMatchesForMerchantCategory($merchant, (int) $categoryId);
+    }
+
+    public function updateWhatsappPhone(Merchant $merchant, MerchantCategory $assignment, string $whatsappPhone): MerchantCategory
+    {
+        if ($assignment->merchant_id !== $merchant->id) {
+            abort(404);
+        }
+
+        $originalValues = $assignment->only(self::ACTIVITY_FIELDS);
+        $assignment->whatsapp_phone = $this->normalizedStoredPhone($whatsappPhone);
+        $assignment->save();
+
+        $assignment->loadMissing('category');
+
+        $this->activityLogService->recordChanges(
+            subject: $assignment,
+            originalValues: $originalValues,
+            allowedFields: self::ACTIVITY_FIELDS,
+            subjectLabel: $merchant->name.' / '.($assignment->category?->name_en ?? 'category'),
+        );
+
+        return $assignment;
+    }
+
+    private function normalizedStoredPhone(?string $whatsappPhone): ?string
+    {
+        if ($whatsappPhone === null) {
+            return null;
+        }
+
+        $trimmed = trim($whatsappPhone);
+
+        return $trimmed === '' ? null : $trimmed;
     }
 }

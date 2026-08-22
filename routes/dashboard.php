@@ -53,6 +53,7 @@ Route::middleware(['merchant'])->group(function () {
 
     Route::get('/merchant/activities', [MerchantBusinessActivityController::class, 'index'])->name('merchant.activities.index');
     Route::post('/merchant/activities', [MerchantBusinessActivityController::class, 'store'])->name('merchant.activities.store');
+    Route::patch('/merchant/activities/{merchantCategory}', [MerchantBusinessActivityController::class, 'update'])->name('merchant.activities.update');
     Route::delete('/merchant/activities/{merchantCategory}', [MerchantBusinessActivityController::class, 'destroy'])->name('merchant.activities.destroy');
 
     Route::get('/merchant/team', [MerchantTeamController::class, 'index'])->name('merchant.team.index');
@@ -76,6 +77,7 @@ Route::middleware(['admin'])->group(function () {
     Route::resource('/merchants', MerchantController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::get('/merchants/{merchant}/categories', [MerchantCategoryController::class, 'index'])->name('merchants.categories.index');
     Route::post('/merchants/{merchant}/categories', [MerchantCategoryController::class, 'store'])->name('merchants.categories.store');
+    Route::patch('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'update'])->name('merchants.categories.update');
     Route::delete('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'destroy'])->name('merchants.categories.destroy');
     Route::resource('/categories', CategoryController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);

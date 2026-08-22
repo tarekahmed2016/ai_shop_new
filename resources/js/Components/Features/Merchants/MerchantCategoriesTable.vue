@@ -29,10 +29,18 @@
                             {{ assignment.category?.status_formatted?.label || '—' }}
                         </span>
                     </td>
+                    <td class="table-cell table-cell-secondary text-body">
+                        {{ assignment.whatsapp_phone || t('merchantCategories.whatsappNotSet') }}
+                    </td>
                     <td v-if="canManage" class="table-cell table-cell-actions">
-                        <button @click="$emit('remove', assignment)" class="btn btn-danger">
-                            {{ t('merchantCategories.table.remove') }}
-                        </button>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" @click="$emit('edit', assignment)" class="btn btn-secondary">
+                                {{ t('merchantCategories.table.editWhatsApp') }}
+                            </button>
+                            <button type="button" @click="$emit('remove', assignment)" class="btn btn-danger">
+                                {{ t('merchantCategories.table.remove') }}
+                            </button>
+                        </div>
                     </td>
                 </tr>
             </tbody>
@@ -68,12 +76,13 @@ const props = defineProps({
     }
 })
 
-const emit = defineEmits(['remove', 'sort'])
+const emit = defineEmits(['remove', 'edit', 'sort'])
 
 const columns = computed(() => [
     { key: 'name_ar', label: t('merchantCategories.table.nameAr'), sortable: false },
     { key: 'name_en', label: t('merchantCategories.table.nameEn'), sortable: false },
     { key: 'status', label: t('merchantCategories.table.status'), sortable: false },
+    { key: 'whatsapp_phone', label: t('merchantCategories.table.whatsapp'), sortable: false },
 ])
 
 const handleSort = (column) => {

@@ -85,7 +85,7 @@ const handleDeleteConfirm = () => {
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden relative">
                 <LoadingOverlay :show="isPaginating" />
                 <MerchantCategoriesTable :assignments="assignments" :sortColumn="sortColumn" :sortDirection="sortDirection"
-                    @remove="deleteModal.open" @sort="handleSort" />
+                    @remove="deleteModal.open" @edit="formModal.open" @sort="handleSort" />
                 <Pagination :paginationData="paginationData" routeName="merchants.categories.index" :routeParams="{ merchant: merchant.public_id }" @paginating="handlePaginating" />
             </div>
         </div>
@@ -94,6 +94,7 @@ const handleDeleteConfirm = () => {
             :isOpen="formModal.isOpen.value"
             :merchant="merchant"
             :availableCategories="availableCategories"
+            :assignment="formModal.selectedItem.value"
             @close="formModal.close" />
 
         <MerchantCategoryDeleteModal

@@ -17,6 +17,11 @@ class MerchantCategoryPolicy
         return $user->hasRole('admin');
     }
 
+    public function update(User $user, MerchantCategory $merchantCategory): bool
+    {
+        return $user->hasRole('admin');
+    }
+
     public function delete(User $user, MerchantCategory $merchantCategory): bool
     {
         return $user->hasRole('admin');

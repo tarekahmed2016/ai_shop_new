@@ -273,7 +273,13 @@ class MerchantOfferService
         return MerchantOffer::query()
             ->submitted()
             ->where('customer_request_id', $customerRequest->id)
-            ->with(['merchant:id,name,phone', 'images'])
+            ->with([
+                'merchant:id,name,phone',
+                'merchant.categoryAssignments' => fn ($query) => $query
+                    ->where('category_id', $customerRequest->category_id)
+                    ->select(['id', 'merchant_id', 'category_id', 'whatsapp_phone']),
+                'images',
+            ])
             ->latest('submitted_at')
             ->latest('id')
             ->get()
@@ -435,10 +441,20 @@ class MerchantOfferService
 
     private function customerWhatsAppUrl(CustomerRequest $customerRequest, MerchantOffer $offer): ?string
     {
-        return WhatsAppLink::url(
-            $offer->merchant?->phone,
-            $this->customerWhatsAppMessage($customerRequest, $offer),
-        );
+        $message = $this->customerWhatsAppMessage($customerRequest, $offer);
+        $activityPhone = $offer->merchant?->categoryAssignments
+            ->firstWhere('category_id', $customerRequest->category_id)
+            ?->whatsapp_phone;
+
+        foreach ([$activityPhone, $offer->merchant?->phone] as $phone) {
+            $url = WhatsAppLink::url($phone, $message);
+
+            if ($url !== null) {
+                return $url;
+            }
+        }
+
+        return null;
     }
 
     private function customerWhatsAppMessage(CustomerRequest $customerRequest, MerchantOffer $offer): string

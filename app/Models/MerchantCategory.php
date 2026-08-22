@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['merchant_id', 'category_id'])]
+#[Fillable(['merchant_id', 'category_id', 'whatsapp_phone'])]
 class MerchantCategory extends Model
 {
     /** @use HasFactory<MerchantCategoryFactory> */
