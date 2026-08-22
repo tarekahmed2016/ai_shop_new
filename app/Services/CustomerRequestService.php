@@ -46,7 +46,7 @@ class CustomerRequestService
         $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'created_at';
 
         return CustomerRequest::query()
-            ->with(['customer:id,public_id,name,phone,email', 'category:id,public_id,name_ar,name_en', 'image', 'merchantOffers.merchant:id,name', 'merchantOffers.images'])
+            ->with(['customer:id,public_id,name,phone,email', 'category:id,public_id,name_ar,name_en', 'image', 'merchantOffers.merchant:id,name', 'merchantOffers.images', 'latestClassification.suggestedCategory:id,public_id,name_ar,name_en', 'latestClassification.confirmedCategory:id,public_id,name_ar,name_en'])
             ->withCount(['matches', 'submittedOffers'])
             ->when($customerPublicId, function ($q) use ($customerPublicId) {
                 $q->whereHas('customer', fn ($customer) => $customer->where('public_id', $customerPublicId));
@@ -158,6 +158,77 @@ class CustomerRequestService
 
             return $request->fresh(['customer', 'category', 'image']);
         });
+    }
+
+    /**
+     * Draft request used only for AI assistance. Matching must not run.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function storePendingForCustomer(Customer $customer, array $data, ?UploadedFile $image = null): CustomerRequest
+    {
+        if (! $customer->isActive()) {
+            throw ValidationException::withMessages([
+                'customer' => 'Inactive customers cannot create requests.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($customer, $data, $image) {
+            $request = new CustomerRequest;
+            $request->public_id = (string) Str::ulid();
+            $request->customer_id = $customer->id;
+            $request->source = Source::Web;
+            $request->status = RequestStatus::PendingClassification;
+            $request->request_text = (string) $data['request_text'];
+            $request->category_id = null;
+            $request->save();
+
+            $this->activityLogService->recordCreated(
+                subject: $request,
+                allowedFields: self::ACTIVITY_FIELDS,
+                subjectLabel: $customer->display_name,
+                metadata: [
+                    'action' => 'customer.request_pending_classification',
+                    'customer_id' => $customer->id,
+                    'user_id' => $customer->user_id,
+                ],
+            );
+
+            if ($image) {
+                $this->requestImageService->store($request, $image);
+            }
+
+            return $request->fresh(['image']);
+        });
+    }
+
+    public function appendDetailsAndMaybeReplaceImage(
+        CustomerRequest $customerRequest,
+        ?string $additionalDetails,
+        ?UploadedFile $image = null
+    ): CustomerRequest {
+        if (is_string($additionalDetails) && trim($additionalDetails) !== '') {
+            $customerRequest->request_text = trim($customerRequest->request_text."\n".$additionalDetails);
+            $customerRequest->save();
+        }
+
+        if ($image) {
+            $this->requestImageService->store($customerRequest, $image);
+        }
+
+        return $customerRequest->fresh(['image']);
+    }
+
+    public function finalizeReady(CustomerRequest $customerRequest, int $categoryId): CustomerRequest
+    {
+        $customerRequest->category_id = $categoryId;
+        $customerRequest->status = RequestStatus::Ready;
+        $customerRequest->save();
+        $customerRequest->unsetRelation('category');
+
+        $this->requestMatchingService->sync($customerRequest);
+
+        return $customerRequest->fresh(['category', 'image']);
     }
 
     /**

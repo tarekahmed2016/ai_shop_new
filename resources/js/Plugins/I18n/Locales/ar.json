@@ -58,6 +58,7 @@
       "image": "صورة",
       "actions": "إجراءات",
       "view": "عرض",
+      "continue": "استكمال الطلب",
       "back": "العودة للطلبات",
       "empty": "لا توجد طلبات بعد",
       "hasImage": "نعم"
@@ -72,6 +73,33 @@
       "imageHint": "صورة واحدة JPEG/PNG/WebP، تخزين خاص",
       "submit": "إرسال الطلب",
       "submitting": "جاري الإرسال..."
+    },
+    "classify": {
+      "howToChoose": "كيف تريد تحديد النشاط؟",
+      "helpMe": "ساعدني في تحديد النشاط",
+      "chooseManually": "اختيار التصنيف يدوياً",
+      "analyzing": "جاري التحليل...",
+      "failed": "تعذر تحديد التصنيف تلقائياً. يمكنك اختياره يدوياً.",
+      "highIntro": "نعتقد أنك تبحث عن:",
+      "detectedItem": "العنصر المكتشف",
+      "suggestedCategory": "التصنيف المقترح",
+      "bandHigh": "ثقة عالية",
+      "bandMedium": "احتمالات مطابقة",
+      "bandLow": "نحتاج مزيداً من المعلومات",
+      "confirmSubmit": "تأكيد وإرسال",
+      "confirmSend": "تأكيد وإرسال",
+      "changeCategory": "تغيير التصنيف",
+      "retryAnalysis": "إعادة تحليل الطلب",
+      "resumeTitle": "استكمال التصنيف",
+      "confidence": "الثقة",
+      "reason": "السبب",
+      "alternatives": "بدائل",
+      "inactiveSuggestion": "التصنيف المقترح لم يعد متاحاً. يمكنك اختيار تصنيف آخر أو إعادة التحليل.",
+      "mediumIntro": "لسنا متأكدين تماماً. أي تصنيف يناسب طلبك؟",
+      "continue": "متابعة",
+      "lowIntro": "نحتاج مزيداً من المعلومات لتحديد التصنيف الصحيح.",
+      "moreDetails": "أضف تفاصيل إضافية",
+      "tryAgain": "حاول مرة أخرى"
     },
     "show": {
       "title": "تفاصيل الطلب",
@@ -1135,7 +1163,15 @@
       "matchedMerchants": "التجار المطابقون: {count}",
       "noMerchantsMatched": "لا يوجد تجار مطابقون بعد",
       "offers": "العروض",
-      "offersTitle": "العروض المستلمة"
+      "offersTitle": "العروض المستلمة",
+      "classification": "تصنيف الذكاء الاصطناعي",
+      "detectedItem": "العنصر المكتشف",
+      "suggestedCategory": "التصنيف المقترح",
+      "confirmedCategory": "التصنيف الذي أكده العميل",
+      "confidence": "الثقة",
+      "provider": "المزوّد",
+      "model": "النموذج",
+      "classifiedAt": "وقت التصنيف"
     }
   },
   "merchantMemberships": {

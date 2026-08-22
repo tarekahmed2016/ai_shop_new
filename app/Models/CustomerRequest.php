@@ -23,7 +23,7 @@ class CustomerRequest extends Model
     /**
      * @var list<string>
      */
-    protected $appends = ['status_formatted', 'source_formatted', 'has_image', 'image_url'];
+    protected $appends = ['status_formatted', 'source_formatted', 'has_image', 'image_url', 'classification_summary'];
 
     /**
      * @return array<string, string>
@@ -92,6 +92,41 @@ class CustomerRequest extends Model
         );
     }
 
+    /**
+     * @return Attribute<array<string, mixed>|null, never>
+     */
+    protected function classificationSummary(): Attribute
+    {
+        return Attribute::make(
+            get: function () {
+                if (! $this->relationLoaded('latestClassification') || $this->latestClassification === null) {
+                    return null;
+                }
+
+                $row = $this->latestClassification;
+
+                return [
+                    'provider' => $row->provider,
+                    'model' => $row->model,
+                    'detected_item' => $row->detected_item,
+                    'confidence' => $row->confidence,
+                    'status' => $row->status?->name,
+                    'status_formatted' => $row->status_formatted,
+                    'suggested_category' => $row->suggestedCategory ? [
+                        'name_ar' => $row->suggestedCategory->name_ar,
+                        'name_en' => $row->suggestedCategory->name_en,
+                    ] : null,
+                    'confirmed_category' => $row->confirmedCategory ? [
+                        'name_ar' => $row->confirmedCategory->name_ar,
+                        'name_en' => $row->confirmedCategory->name_en,
+                    ] : null,
+                    'created_at' => $row->created_at,
+                    'confirmed_at' => $row->confirmed_at,
+                ];
+            }
+        );
+    }
+
     public function getRouteKeyName(): string
     {
         return 'public_id';
@@ -119,6 +154,22 @@ class CustomerRequest extends Model
     public function image(): HasOne
     {
         return $this->hasOne(RequestImage::class);
+    }
+
+    /**
+     * @return HasMany<RequestClassification, $this>
+     */
+    public function classifications(): HasMany
+    {
+        return $this->hasMany(RequestClassification::class);
+    }
+
+    /**
+     * @return HasOne<RequestClassification, $this>
+     */
+    public function latestClassification(): HasOne
+    {
+        return $this->hasOne(RequestClassification::class)->latestOfMany();
     }
 
     /**

@@ -58,6 +58,7 @@
       "image": "Image",
       "actions": "Actions",
       "view": "View",
+      "continue": "Continue Request",
       "back": "Back to requests",
       "empty": "No requests yet",
       "hasImage": "Yes"
@@ -72,6 +73,33 @@
       "imageHint": "One JPEG/PNG/WebP image, private storage",
       "submit": "Submit request",
       "submitting": "Submitting..."
+    },
+    "classify": {
+      "howToChoose": "How would you like to choose the activity?",
+      "helpMe": "Help me choose the category",
+      "chooseManually": "Choose category manually",
+      "analyzing": "Analyzing...",
+      "failed": "We couldn't determine the category automatically. You can choose it manually.",
+      "highIntro": "We think you're looking for:",
+      "detectedItem": "Detected item",
+      "suggestedCategory": "Suggested category",
+      "bandHigh": "High confidence",
+      "bandMedium": "Possible matches",
+      "bandLow": "Need more information",
+      "confirmSubmit": "Confirm & Submit",
+      "confirmSend": "Confirm & Send",
+      "changeCategory": "Change Category",
+      "retryAnalysis": "Retry Analysis",
+      "resumeTitle": "Complete classification",
+      "confidence": "Confidence",
+      "reason": "Reason",
+      "alternatives": "Alternatives",
+      "inactiveSuggestion": "The suggested category is no longer available. Choose another category or retry analysis.",
+      "mediumIntro": "We are not completely sure. Which category best matches your request?",
+      "continue": "Continue",
+      "lowIntro": "We need more information to identify the correct category.",
+      "moreDetails": "Add more details",
+      "tryAgain": "Try again"
     },
     "show": {
       "title": "Request details",
@@ -1135,7 +1163,15 @@
       "matchedMerchants": "Matched merchants: {count}",
       "noMerchantsMatched": "No merchants matched yet",
       "offers": "Offers",
-      "offersTitle": "Received offers"
+      "offersTitle": "Received offers",
+      "classification": "AI classification",
+      "detectedItem": "Detected item",
+      "suggestedCategory": "Suggested category",
+      "confirmedCategory": "Customer confirmed category",
+      "confidence": "Confidence",
+      "provider": "Provider",
+      "model": "Model",
+      "classifiedAt": "Classified at"
     }
   },
   "merchantMemberships": {

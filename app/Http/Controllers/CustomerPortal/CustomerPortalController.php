@@ -3,15 +3,21 @@
 namespace App\Http\Controllers\CustomerPortal;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\CustomerPortalClassificationConfirmRequest;
+use App\Http\Requests\CustomerPortalClassificationRequest;
+use App\Http\Requests\CustomerPortalClassificationRetryRequest;
+use App\Http\Requests\CustomerPortalPendingCategoryRequest;
 use App\Http\Requests\CustomerPortalProfileUpdateRequest;
 use App\Http\Requests\CustomerPortalRequestStoreRequest;
 use App\Models\CustomerRequest;
 use App\Models\MerchantOffer;
 use App\Models\MerchantOfferImage;
+use App\Models\RequestClassification;
 use App\Models\RequestImage;
 use App\Services\CategoryService;
 use App\Services\CustomerPortalService;
 use App\Services\MerchantOfferService;
+use App\Services\RequestClassificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +31,7 @@ class CustomerPortalController extends Controller
         public CustomerPortalService $customerPortalService,
         public CategoryService $categoryService,
         public MerchantOfferService $merchantOfferService,
+        public RequestClassificationService $requestClassificationService,
     ) {}
 
     public function home(): Response
@@ -69,6 +76,9 @@ class CustomerPortalController extends Controller
 
         return Inertia::render('CustomerPortal/RequestCreatePage', [
             'availableCategories' => $this->categoryService->activeCategoriesForAssignment(),
+            'classification' => null,
+            'pendingRequest' => null,
+            'classificationError' => null,
         ]);
     }
 
@@ -87,10 +97,91 @@ class CustomerPortalController extends Controller
             ->with('success', 'تم إنشاء الطلب بنجاح');
     }
 
+    public function requestsClassify(CustomerPortalClassificationRequest $request): Response
+    {
+        $customer = $this->customerPortalService->requireCustomer();
+
+        $classification = $this->requestClassificationService->classify(
+            customer: $customer,
+            data: $request->validated(),
+            image: $request->file('image'),
+        );
+
+        $message = $classification->status?->name === 'Failed'
+            ? __('We couldn\'t determine the category automatically. You can choose it manually.')
+            : null;
+
+        return Inertia::render('CustomerPortal/RequestCreatePage', [
+            'availableCategories' => $this->categoryService->activeCategoriesForAssignment(),
+            'classification' => $this->requestClassificationService->presentForCustomer($classification),
+            'pendingRequest' => [
+                'public_id' => $classification->customerRequest?->public_id,
+                'request_text' => $classification->customerRequest?->request_text,
+                'has_image' => $classification->customerRequest?->image !== null,
+            ],
+            'classificationError' => $message,
+        ]);
+    }
+
+    public function requestsClassificationConfirm(
+        CustomerPortalClassificationConfirmRequest $request,
+        RequestClassification $requestClassification
+    ): RedirectResponse {
+        $customer = $this->customerPortalService->requireCustomer();
+
+        $created = $this->requestClassificationService->confirm(
+            customer: $customer,
+            classification: $requestClassification,
+            categoryPublicId: $request->validated('category_id'),
+        );
+
+        return redirect()
+            ->route('customer.requests.show', $created)
+            ->with('success', 'تم إنشاء الطلب بنجاح');
+    }
+
+    public function requestsRetryClassification(
+        CustomerPortalClassificationRetryRequest $request,
+        CustomerRequest $customerRequest
+    ): RedirectResponse {
+        $customer = $this->customerPortalService->requireCustomer();
+        $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
+
+        $this->requestClassificationService->retry(
+            customer: $customer,
+            request: $owned,
+            data: $request->validated(),
+            image: $request->file('image'),
+        );
+
+        return redirect()
+            ->route('customer.requests.show', $owned)
+            ->with('success', 'تم تحديث تحليل الطلب');
+    }
+
+    public function requestsFinalizeCategory(
+        CustomerPortalPendingCategoryRequest $request,
+        CustomerRequest $customerRequest
+    ): RedirectResponse {
+        $customer = $this->customerPortalService->requireCustomer();
+        $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
+
+        $finalized = $this->requestClassificationService->finalizeWithCategory(
+            customer: $customer,
+            request: $owned,
+            categoryPublicId: $request->validated('category_id'),
+        );
+
+        return redirect()
+            ->route('customer.requests.show', $finalized)
+            ->with('success', 'تم إنشاء الطلب بنجاح');
+    }
+
     public function requestsShow(CustomerRequest $customerRequest): Response
     {
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
+        $classification = $this->requestClassificationService->presentLatestForPendingRequest($owned);
 
         return Inertia::render('CustomerPortal/RequestShowPage', [
             'request' => [
@@ -107,8 +198,15 @@ class CustomerPortalController extends Controller
                 ] : null,
                 'has_image' => $owned->image !== null,
                 'offers_count' => $owned->submittedOffers()->count(),
+                'can_resume_classification' => $classification !== null,
             ],
-            'offers' => $this->merchantOfferService->presentSubmittedForCustomer($owned),
+            'classification' => $classification,
+            'availableCategories' => $classification !== null
+                ? $this->categoryService->activeCategoriesForAssignment()
+                : [],
+            'offers' => $classification !== null
+                ? []
+                : $this->merchantOfferService->presentSubmittedForCustomer($owned),
         ]);
     }
 

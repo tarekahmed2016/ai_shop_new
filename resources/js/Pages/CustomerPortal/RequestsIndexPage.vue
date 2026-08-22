@@ -76,7 +76,9 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString() : 'â€
                                 <td class="table-cell text-body">{{ formatDate(item.created_at) }}</td>
                                 <td class="table-cell text-body">{{ item.image ? t('customerPortal.requests.hasImage') : 'â€”' }}</td>
                                 <td class="table-cell">
-                                    <Link :href="route('customer.requests.show', item.public_id)" class="text-blue-600">{{ t('customerPortal.requests.view') }}</Link>
+                                    <Link :href="route('customer.requests.show', item.public_id)" class="text-blue-600">
+                                        {{ item.status_formatted?.name === 'PendingClassification' ? t('customerPortal.requests.continue') : t('customerPortal.requests.view') }}
+                                    </Link>
                                 </td>
                             </tr>
                         </tbody>

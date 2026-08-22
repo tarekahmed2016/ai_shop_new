@@ -39,6 +39,23 @@ const matchesSummary = computed(() => {
       <p><strong>{{ t('customerRequests.table.matches') }}:</strong> {{ matchesSummary }}</p>
       <p><strong>{{ t('customerRequests.details.offers') }}:</strong> {{ customerRequest.submitted_offers_count ?? customerRequest.merchant_offers?.length ?? 0 }}</p>
       <p class="whitespace-pre-wrap">{{ customerRequest.request_text }}</p>
+      <div v-if="customerRequest.classification_summary" class="rounded border border-gray-200 dark:border-gray-700 p-3 space-y-1">
+        <p class="font-medium">{{ t('customerRequests.details.classification') }}</p>
+        <p>{{ t('customerRequests.details.detectedItem') }}: {{ customerRequest.classification_summary.detected_item || '—' }}</p>
+        <p>{{ t('customerRequests.details.suggestedCategory') }}:
+          {{ customerRequest.classification_summary.suggested_category
+            ? `${customerRequest.classification_summary.suggested_category.name_ar} / ${customerRequest.classification_summary.suggested_category.name_en}`
+            : '—' }}
+        </p>
+        <p>{{ t('customerRequests.details.confirmedCategory') }}:
+          {{ customerRequest.classification_summary.confirmed_category
+            ? `${customerRequest.classification_summary.confirmed_category.name_ar} / ${customerRequest.classification_summary.confirmed_category.name_en}`
+            : '—' }}
+        </p>
+        <p>{{ t('customerRequests.details.confidence') }}: {{ customerRequest.classification_summary.confidence ?? '—' }}</p>
+        <p>{{ t('customerRequests.details.provider') }}: {{ customerRequest.classification_summary.provider }} · {{ t('customerRequests.details.model') }}: {{ customerRequest.classification_summary.model || '—' }}</p>
+        <p>{{ customerRequest.classification_summary.status_formatted?.label }}</p>
+      </div>
       <div v-if="customerRequest.image_url">
         <p class="mb-2">{{ t('customerRequests.details.image') }}</p>
         <img :src="customerRequest.image_url" alt="" class="max-h-64 rounded border border-gray-200 dark:border-gray-700" />

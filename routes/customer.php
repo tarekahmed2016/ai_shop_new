@@ -14,6 +14,16 @@ Route::middleware(['customer'])->prefix('customer')->name('customer.')->group(fu
     Route::get('/requests', [CustomerPortalController::class, 'requestsIndex'])->name('requests.index');
     Route::get('/requests/create', [CustomerPortalController::class, 'requestsCreate'])->name('requests.create');
     Route::post('/requests', [CustomerPortalController::class, 'requestsStore'])->name('requests.store');
+    Route::post('/requests/classify', [CustomerPortalController::class, 'requestsClassify'])
+        ->middleware('throttle:request-classification')
+        ->name('requests.classify');
+    Route::post('/requests/classifications/{requestClassification}/confirm', [CustomerPortalController::class, 'requestsClassificationConfirm'])
+        ->name('requests.classifications.confirm');
+    Route::post('/requests/{customerRequest}/classify', [CustomerPortalController::class, 'requestsRetryClassification'])
+        ->middleware('throttle:request-classification')
+        ->name('requests.classify.resume');
+    Route::post('/requests/{customerRequest}/category', [CustomerPortalController::class, 'requestsFinalizeCategory'])
+        ->name('requests.category');
     Route::get('/requests/{customerRequest}', [CustomerPortalController::class, 'requestsShow'])->name('requests.show');
     Route::get('/requests/{customerRequest}/image', [CustomerPortalController::class, 'requestsImage'])->name('requests.image');
     Route::get('/offers/{merchantOffer}/images/{offerImage}', [CustomerPortalController::class, 'offerImage'])->name('offers.images.show');

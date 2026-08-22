@@ -1,13 +1,32 @@
 <script setup>
-import { computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { computed, ref, watch } from 'vue'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
+import CategoryTreeSelector from '../../Components/Features/Categories/CategoryTreeSelector.vue'
 
 const { t, locale } = useI18n()
 const page = usePage()
 const request = computed(() => page.props.request || {})
 const offers = computed(() => page.props.offers || [])
+const classification = computed(() => page.props.classification || null)
+const availableCategories = computed(() => page.props.availableCategories || [])
+const showManual = ref(false)
+const selectedSuggestion = ref('')
+const additionalDetails = ref('')
+
+const confirmForm = useForm({
+    category_id: '',
+})
+const retryForm = useForm({
+    additional_details: '',
+    image: null,
+})
+const categoryForm = useForm({
+    category_id: '',
+})
+
+const isPendingClassification = computed(() => request.value.status_formatted?.name === 'PendingClassification')
 
 const isMobileClient = computed(() => {
     if (typeof navigator === 'undefined') {
@@ -32,7 +51,41 @@ const categoryName = computed(() => {
     return locale.value === 'ar' ? (category.name_ar || category.name_en) : (category.name_en || category.name_ar)
 })
 
+const categoryLabel = (row) => {
+    if (!row) return ''
+    return locale.value === 'ar' ? (row.name_ar || row.name_en) : (row.name_en || row.name_ar)
+}
+
 const formatDate = (value) => value ? new Date(value).toLocaleString() : '—'
+
+const formatConfidence = (value) => {
+    if (value === null || value === undefined || value === '') return '—'
+    return `${Math.round(Number(value) * 100)}%`
+}
+
+const confirmSuggestion = (categoryPublicId) => {
+    if (!classification.value?.public_id || !categoryPublicId) return
+    confirmForm.category_id = categoryPublicId
+    confirmForm.post(route('customer.requests.classifications.confirm', classification.value.public_id))
+}
+
+const retryAnalysis = () => {
+    retryForm.additional_details = additionalDetails.value
+    retryForm.post(route('customer.requests.classify.resume', request.value.public_id), {
+        forceFormData: true,
+        preserveScroll: true,
+    })
+}
+
+const submitManualCategory = () => {
+    categoryForm.post(route('customer.requests.category', request.value.public_id))
+}
+
+const processing = computed(() => confirmForm.processing || retryForm.processing || categoryForm.processing)
+
+watch(classification, (value) => {
+    selectedSuggestion.value = value?.primary?.category_public_id || value?.suggestions?.[0]?.category_public_id || ''
+}, { immediate: true })
 </script>
 
 <template>
@@ -67,7 +120,75 @@ const formatDate = (value) => value ? new Date(value).toLocaleString() : '—'
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+            <div v-if="isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+                <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.classify.resumeTitle') }}</h2>
+                <p v-if="classification?.failed" class="form-error">{{ t('customerPortal.classify.failed') }}</p>
+                <p v-if="classification?.suggested_category_inactive" class="form-error">{{ t('customerPortal.classify.inactiveSuggestion') }}</p>
+                <p v-if="classification?.needs_more_information && classification?.question" class="text-body font-medium text-amber-700 dark:text-amber-300">
+                    {{ classification.question }}
+                </p>
+
+                <p class="text-body">{{ t('customerPortal.classify.detectedItem') }}: {{ classification?.detected_item || '—' }}</p>
+                <p class="text-body">{{ t('customerPortal.classify.suggestedCategory') }}: {{ categoryLabel(classification?.primary || classification?.suggested_category) }}</p>
+                <p class="text-muted text-sm">{{ t('customerPortal.classify.confidence') }}: {{ formatConfidence(classification?.confidence) }}</p>
+                <p v-if="classification?.reason" class="text-muted text-sm">{{ t('customerPortal.classify.reason') }}: {{ classification.reason }}</p>
+
+                <div v-if="classification?.suggestions?.length" class="space-y-2">
+                    <p class="text-label text-muted">{{ t('customerPortal.classify.alternatives') }}</p>
+                    <label v-for="row in classification.suggestions" :key="row.category_public_id" class="flex items-start gap-2 text-body">
+                        <input v-model="selectedSuggestion" type="radio" :value="row.category_public_id" class="mt-1" />
+                        <span>{{ categoryLabel(row) }} <span class="text-muted text-sm">({{ formatConfidence(row.confidence) }})</span></span>
+                    </label>
+                </div>
+
+                <textarea
+                    v-if="classification?.needs_more_information || classification?.failed || !classification?.can_confirm"
+                    v-model="additionalDetails"
+                    rows="3"
+                    class="form-input text-body"
+                    :placeholder="t('customerPortal.classify.moreDetails')"
+                />
+
+                <div class="flex flex-wrap gap-3">
+                    <button
+                        v-if="classification?.can_confirm"
+                        type="button"
+                        class="btn btn-primary px-4 py-2 disabled:opacity-50"
+                        :disabled="processing || !(selectedSuggestion || classification.primary?.category_public_id)"
+                        @click="confirmSuggestion(selectedSuggestion || classification.primary?.category_public_id)"
+                    >
+                        {{ t('customerPortal.classify.confirmSend') }}
+                    </button>
+                    <button type="button" class="btn btn-secondary px-4 py-2" :disabled="processing" @click="showManual = !showManual">
+                        {{ t('customerPortal.classify.changeCategory') }}
+                    </button>
+                    <button type="button" class="btn btn-secondary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="retryAnalysis">
+                        {{ retryForm.processing ? t('customerPortal.classify.analyzing') : t('customerPortal.classify.retryAnalysis') }}
+                    </button>
+                </div>
+                <p v-if="confirmForm.errors.category_id" class="form-error">{{ confirmForm.errors.category_id }}</p>
+                <p v-if="retryForm.errors.request_text" class="form-error">{{ retryForm.errors.request_text }}</p>
+                <p v-if="retryForm.errors.additional_details" class="form-error">{{ retryForm.errors.additional_details }}</p>
+
+                <div v-if="showManual" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                    <label class="form-label text-label">
+                        {{ t('customerPortal.create.category') }} <span class="text-red-500">*</span>
+                    </label>
+                    <CategoryTreeSelector
+                        :categories="availableCategories"
+                        :multiple="false"
+                        :selectedId="categoryForm.category_id"
+                        :emptyText="t('customerPortal.create.selectCategory')"
+                        @select="categoryForm.category_id = $event"
+                    />
+                    <p v-if="categoryForm.errors.category_id" class="form-error">{{ categoryForm.errors.category_id }}</p>
+                    <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing || !categoryForm.category_id" @click="submitManualCategory">
+                        {{ t('customerPortal.create.submit') }}
+                    </button>
+                </div>
+            </div>
+
+            <div v-if="!isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
                 <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.show.offersTitle') }}</h2>
                 <p class="text-muted">{{ t('customerPortal.show.offersCount', { count: offers.length }) }}</p>
                 <p v-if="offers.length === 0" class="text-muted">{{ t('customerPortal.show.noOffers') }}</p>
