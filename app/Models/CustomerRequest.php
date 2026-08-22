@@ -129,6 +129,22 @@ class CustomerRequest extends Model
         return $this->hasMany(RequestMatch::class);
     }
 
+    /**
+     * @return HasMany<MerchantOffer, $this>
+     */
+    public function merchantOffers(): HasMany
+    {
+        return $this->hasMany(MerchantOffer::class);
+    }
+
+    /**
+     * @return HasMany<MerchantOffer, $this>
+     */
+    public function submittedOffers(): HasMany
+    {
+        return $this->hasMany(MerchantOffer::class)->submitted();
+    }
+
     public function isMatchable(): bool
     {
         if ($this->category_id === null) {

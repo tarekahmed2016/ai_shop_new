@@ -46,8 +46,8 @@ class CustomerRequestService
         $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'created_at';
 
         return CustomerRequest::query()
-            ->with(['customer:id,public_id,name,phone,email', 'category:id,public_id,name_ar,name_en', 'image'])
-            ->withCount('matches')
+            ->with(['customer:id,public_id,name,phone,email', 'category:id,public_id,name_ar,name_en', 'image', 'merchantOffers.merchant:id,name', 'merchantOffers.images'])
+            ->withCount(['matches', 'submittedOffers'])
             ->when($customerPublicId, function ($q) use ($customerPublicId) {
                 $q->whereHas('customer', fn ($customer) => $customer->where('public_id', $customerPublicId));
             })

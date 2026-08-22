@@ -60,6 +60,7 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString() : 'â€
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.category') }}</th>
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.text') }}</th>
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.status') }}</th>
+                                <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.offers') }}</th>
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.date') }}</th>
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.image') }}</th>
                                 <th class="table-header-cell text-table-header">{{ t('customerPortal.requests.actions') }}</th>
@@ -71,6 +72,7 @@ const formatDate = (value) => value ? new Date(value).toLocaleDateString() : 'â€
                                 <td class="table-cell text-body">{{ categoryName(item.category) }}</td>
                                 <td class="table-cell text-body">{{ item.request_text?.slice(0, 80) }}</td>
                                 <td class="table-cell text-body">{{ item.status_formatted?.label }}</td>
+                                <td class="table-cell text-body">{{ item.submitted_offers_count ?? 0 }}</td>
                                 <td class="table-cell text-body">{{ formatDate(item.created_at) }}</td>
                                 <td class="table-cell text-body">{{ item.image ? t('customerPortal.requests.hasImage') : 'â€”' }}</td>
                                 <td class="table-cell">

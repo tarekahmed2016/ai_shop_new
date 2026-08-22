@@ -351,6 +351,7 @@ class MerchantPermissionService
             'activities' => ['en' => 'Business Activities', 'ar' => 'الأنشطة التجارية'],
             'team' => ['en' => 'Team', 'ar' => 'الفريق'],
             'merchant_profile' => ['en' => 'Merchant Profile', 'ar' => 'ملف التاجر'],
+            'offers' => ['en' => 'Offers', 'ar' => 'العروض'],
         ];
 
         $result = [];

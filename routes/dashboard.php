@@ -12,6 +12,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\HomepagePromoBlockController;
 use App\Http\Controllers\MerchantBusinessActivityController;
+use App\Http\Controllers\MerchantBusinessProfileController;
 use App\Http\Controllers\MerchantCategoryController;
 use App\Http\Controllers\MerchantContextController;
 use App\Http\Controllers\MerchantController;
@@ -45,6 +46,10 @@ Route::middleware(['merchant'])->group(function () {
     Route::get('/merchant/requests/{customerRequest}', [MerchantRequestController::class, 'show'])->name('merchant.requests.show');
     Route::get('/merchant/requests/{customerRequest}/image', [MerchantRequestController::class, 'image'])->name('merchant.requests.image');
     Route::post('/merchant/requests/{customerRequest}/dismiss', [MerchantRequestController::class, 'dismiss'])->name('merchant.requests.dismiss');
+    Route::post('/merchant/requests/{customerRequest}/offers', [MerchantRequestController::class, 'storeOffer'])->name('merchant.requests.offers.store');
+    Route::post('/merchant/requests/{customerRequest}/offers/update', [MerchantRequestController::class, 'updateOffer'])->name('merchant.requests.offers.update');
+    Route::post('/merchant/requests/{customerRequest}/offers/withdraw', [MerchantRequestController::class, 'withdrawOffer'])->name('merchant.requests.offers.withdraw');
+    Route::get('/merchant/offers/{merchantOffer}/images/{offerImage}', [MerchantRequestController::class, 'offerImage'])->name('merchant.offers.images.show');
 
     Route::get('/merchant/activities', [MerchantBusinessActivityController::class, 'index'])->name('merchant.activities.index');
     Route::post('/merchant/activities', [MerchantBusinessActivityController::class, 'store'])->name('merchant.activities.store');
@@ -55,6 +60,8 @@ Route::middleware(['merchant'])->group(function () {
     Route::post('/merchant/team', [MerchantTeamController::class, 'store'])->name('merchant.team.store');
     Route::patch('/merchant/team/{membership}', [MerchantTeamController::class, 'update'])->name('merchant.team.update');
     Route::delete('/merchant/team/{membership}', [MerchantTeamController::class, 'destroy'])->name('merchant.team.destroy');
+    Route::get('/merchant/business-profile', [MerchantBusinessProfileController::class, 'edit'])->name('merchant.business-profile.edit');
+    Route::patch('/merchant/business-profile', [MerchantBusinessProfileController::class, 'update'])->name('merchant.business-profile.update');
 });
 
 Route::middleware(['admin'])->group(function () {
@@ -74,6 +81,7 @@ Route::middleware(['admin'])->group(function () {
     Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::post('/customers/{customer}/portal-access', [CustomerController::class, 'enablePortal'])->name('customers.portal-access');
     Route::get('/customer-requests/{customerRequest}/image', [CustomerRequestController::class, 'image'])->name('customer-requests.image');
+    Route::get('/customer-requests/{customerRequest}/offers/{merchantOffer}/images/{offerImage}', [CustomerRequestController::class, 'offerImage'])->name('customer-requests.offers.images.show');
     Route::post('/customer-requests/{customerRequest}/match', [RequestMatchController::class, 'sync'])->name('customer-requests.match');
     Route::resource('/customer-requests', CustomerRequestController::class)
         ->except(['show', 'create', 'edit', 'destroy'])

@@ -37,10 +37,19 @@ const matchesSummary = computed(() => {
         {{ customerRequest.category ? `${customerRequest.category.name_ar} / ${customerRequest.category.name_en}` : '—' }}
       </p>
       <p><strong>{{ t('customerRequests.table.matches') }}:</strong> {{ matchesSummary }}</p>
+      <p><strong>{{ t('customerRequests.details.offers') }}:</strong> {{ customerRequest.submitted_offers_count ?? customerRequest.merchant_offers?.length ?? 0 }}</p>
       <p class="whitespace-pre-wrap">{{ customerRequest.request_text }}</p>
       <div v-if="customerRequest.image_url">
         <p class="mb-2">{{ t('customerRequests.details.image') }}</p>
         <img :src="customerRequest.image_url" alt="" class="max-h-64 rounded border border-gray-200 dark:border-gray-700" />
+      </div>
+      <div v-if="customerRequest.merchant_offers?.length" class="space-y-3 pt-2">
+        <p class="font-medium">{{ t('customerRequests.details.offersTitle') }}</p>
+        <div v-for="offer in customerRequest.merchant_offers" :key="offer.public_id" class="rounded border border-gray-200 dark:border-gray-700 p-3">
+          <p>{{ offer.merchant?.name }} — {{ offer.price }} {{ offer.currency }}</p>
+          <p class="text-sm">{{ offer.status_formatted?.label }} · {{ offer.availability_status_formatted?.label }}</p>
+          <p v-if="offer.notes" class="text-sm whitespace-pre-wrap">{{ offer.notes }}</p>
+        </div>
       </div>
     </div>
     <div class="flex justify-end gap-2 px-6 py-4">

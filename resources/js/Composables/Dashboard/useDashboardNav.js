@@ -127,6 +127,16 @@ export function useDashboardNav() {
                         route: merchantTeamHref,
                     })
                 }
+
+                const merchantBusinessProfileHref = namedRoute('merchant.business-profile.edit')
+                if (merchantBusinessProfileHref) {
+                    items.push({
+                        id: 'merchant-business-profile',
+                        label: t('sidebar.merchantBusinessProfile'),
+                        icon: faBuilding,
+                        route: merchantBusinessProfileHref,
+                    })
+                }
             } else {
                 items.push({
                     id: 'merchant-workspace',

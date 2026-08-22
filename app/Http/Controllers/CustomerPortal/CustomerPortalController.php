@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerPortalProfileUpdateRequest;
 use App\Http\Requests\CustomerPortalRequestStoreRequest;
 use App\Models\CustomerRequest;
+use App\Models\MerchantOffer;
+use App\Models\MerchantOfferImage;
 use App\Models\RequestImage;
 use App\Services\CategoryService;
 use App\Services\CustomerPortalService;
+use App\Services\MerchantOfferService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +24,7 @@ class CustomerPortalController extends Controller
     public function __construct(
         public CustomerPortalService $customerPortalService,
         public CategoryService $categoryService,
+        public MerchantOfferService $merchantOfferService,
     ) {}
 
     public function home(): Response
@@ -102,8 +106,9 @@ class CustomerPortalController extends Controller
                     'name_en' => $owned->category->name_en,
                 ] : null,
                 'has_image' => $owned->image !== null,
-                'offers_count' => 0,
+                'offers_count' => $owned->submittedOffers()->count(),
             ],
+            'offers' => $this->merchantOfferService->presentSubmittedForCustomer($owned),
         ]);
     }
 
@@ -122,6 +127,23 @@ class CustomerPortalController extends Controller
             $image->original_name,
             [
                 'Content-Type' => $image->mime_type ?: 'application/octet-stream',
+                'X-Content-Type-Options' => 'nosniff',
+            ]
+        );
+    }
+
+    public function offerImage(MerchantOffer $merchantOffer, MerchantOfferImage $offerImage): StreamedResponse
+    {
+        $this->authorize('viewImage', [$merchantOffer, $offerImage]);
+
+        abort_unless(is_string($offerImage->path) && $offerImage->path !== '', 404);
+        abort_unless(Storage::disk(MerchantOfferImage::DISK)->exists($offerImage->path), 404);
+
+        return Storage::disk(MerchantOfferImage::DISK)->response(
+            $offerImage->path,
+            $offerImage->original_name,
+            [
+                'Content-Type' => $offerImage->mime_type ?: 'application/octet-stream',
                 'X-Content-Type-Options' => 'nosniff',
             ]
         );

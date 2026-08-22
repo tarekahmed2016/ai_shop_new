@@ -23,6 +23,11 @@ enum PermissionKey: string
     case MerchantProfileView = 'merchant_profile.view';
     case MerchantProfileUpdate = 'merchant_profile.update';
 
+    case OffersView = 'offers.view';
+    case OffersCreate = 'offers.create';
+    case OffersUpdate = 'offers.update';
+    case OffersWithdraw = 'offers.withdraw';
+
     public function groupKey(): string
     {
         return match ($this) {
@@ -37,6 +42,7 @@ enum PermissionKey: string
             self::TeamRemoveManager,
             self::TeamManagePermissions => 'team',
             self::MerchantProfileView, self::MerchantProfileUpdate => 'merchant_profile',
+            self::OffersView, self::OffersCreate, self::OffersUpdate, self::OffersWithdraw => 'offers',
         };
     }
 
@@ -58,6 +64,10 @@ enum PermissionKey: string
             self::TeamManagePermissions => 'إدارة الصلاحيات',
             self::MerchantProfileView => 'عرض ملف التاجر',
             self::MerchantProfileUpdate => 'تعديل ملف التاجر',
+            self::OffersView => 'عرض العروض',
+            self::OffersCreate => 'إنشاء عرض',
+            self::OffersUpdate => 'تعديل عرض',
+            self::OffersWithdraw => 'سحب عرض',
         };
     }
 
@@ -79,6 +89,10 @@ enum PermissionKey: string
             self::TeamManagePermissions => 'Manage permissions',
             self::MerchantProfileView => 'View merchant profile',
             self::MerchantProfileUpdate => 'Update merchant profile',
+            self::OffersView => 'View offers',
+            self::OffersCreate => 'Create offers',
+            self::OffersUpdate => 'Update offers',
+            self::OffersWithdraw => 'Withdraw offers',
         };
     }
 
@@ -130,6 +144,10 @@ enum PermissionKey: string
             self::TeamEditStaff,
             self::TeamRemoveStaff,
             self::MerchantProfileView,
+            self::OffersView,
+            self::OffersCreate,
+            self::OffersUpdate,
+            self::OffersWithdraw,
         ];
     }
 
@@ -144,6 +162,7 @@ enum PermissionKey: string
             self::ActivitiesView,
             self::TeamView,
             self::MerchantProfileView,
+            self::OffersView,
         ];
     }
 }

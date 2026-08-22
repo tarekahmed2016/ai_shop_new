@@ -112,6 +112,8 @@ class RequestMatchingService
 
         $this->logSyncSummary($customerRequest, $result);
 
+        app(MerchantOfferService::class)->invalidateSubmittedOffersMissingMatch($customerRequest);
+
         if ($strict && $reason !== null) {
             throw ValidationException::withMessages([
                 'category_id' => $reason,
@@ -135,6 +137,13 @@ class RequestMatchingService
         }
 
         RequestMatch::query()->whereIn('id', $matches->pluck('id'))->delete();
+
+        foreach ($matches->pluck('customer_request_id')->unique() as $customerRequestId) {
+            app(MerchantOfferService::class)->invalidateSubmittedOfferIfUnmatched(
+                (int) $customerRequestId,
+                $merchant->id,
+            );
+        }
 
         return $count;
     }

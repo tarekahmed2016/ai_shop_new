@@ -16,6 +16,7 @@ Route::middleware(['customer'])->prefix('customer')->name('customer.')->group(fu
     Route::post('/requests', [CustomerPortalController::class, 'requestsStore'])->name('requests.store');
     Route::get('/requests/{customerRequest}', [CustomerPortalController::class, 'requestsShow'])->name('requests.show');
     Route::get('/requests/{customerRequest}/image', [CustomerPortalController::class, 'requestsImage'])->name('requests.image');
+    Route::get('/offers/{merchantOffer}/images/{offerImage}', [CustomerPortalController::class, 'offerImage'])->name('offers.images.show');
     Route::get('/profile', [CustomerPortalController::class, 'profileEdit'])->name('profile.edit');
     Route::patch('/profile', [CustomerPortalController::class, 'profileUpdate'])->name('profile.update');
 });

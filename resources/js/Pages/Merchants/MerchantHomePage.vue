@@ -28,6 +28,9 @@ const merchant = computed(() => page.props.merchant || page.props.merchantContex
                     <Link :href="route('merchant.team.index')" class="text-blue-600">
                         {{ t('merchantHome.teamMembers') }}
                     </Link>
+                    <Link :href="route('merchant.business-profile.edit')" class="text-blue-600">
+                        {{ t('merchantHome.businessProfile') }}
+                    </Link>
                     <Link :href="route('merchant.select')" class="text-blue-600">
                         {{ t('merchantHome.switchMerchant') }}
                     </Link>

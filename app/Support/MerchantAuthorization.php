@@ -63,6 +63,16 @@ class MerchantAuthorization
         return $this->can(PermissionKey::ActivitiesView->value);
     }
 
+    public function canViewBusinessProfile(): bool
+    {
+        return $this->can(PermissionKey::MerchantProfileView->value);
+    }
+
+    public function canUpdateBusinessProfile(): bool
+    {
+        return $this->can(PermissionKey::MerchantProfileUpdate->value);
+    }
+
     public function canCreateMembers(): bool
     {
         return $this->can(PermissionKey::TeamAddStaff->value)

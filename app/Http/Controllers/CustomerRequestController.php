@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Enums\CustomerRequests\Status;
 use App\Http\Requests\CustomerRequestFormRequest;
 use App\Models\CustomerRequest;
+use App\Models\MerchantOffer;
+use App\Models\MerchantOfferImage;
 use App\Models\RequestImage;
 use App\Services\CategoryService;
 use App\Services\CustomerRequestService;
@@ -85,6 +87,25 @@ class CustomerRequestController extends Controller
             $image->original_name,
             [
                 'Content-Type' => $image->mime_type ?: 'application/octet-stream',
+                'X-Content-Type-Options' => 'nosniff',
+            ]
+        );
+    }
+
+    public function offerImage(CustomerRequest $customerRequest, MerchantOffer $merchantOffer, MerchantOfferImage $offerImage)
+    {
+        $this->authorize('view', $customerRequest);
+        abort_unless((int) $merchantOffer->customer_request_id === (int) $customerRequest->id, 404);
+        $this->authorize('viewImage', [$merchantOffer, $offerImage]);
+
+        abort_unless(is_string($offerImage->path) && $offerImage->path !== '', 404);
+        abort_unless(Storage::disk(MerchantOfferImage::DISK)->exists($offerImage->path), 404);
+
+        return Storage::disk(MerchantOfferImage::DISK)->response(
+            $offerImage->path,
+            $offerImage->original_name,
+            [
+                'Content-Type' => $offerImage->mime_type ?: 'application/octet-stream',
                 'X-Content-Type-Options' => 'nosniff',
             ]
         );

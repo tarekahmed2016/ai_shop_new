@@ -129,4 +129,25 @@ class MerchantService
 
         return $merchant;
     }
+
+    /**
+     * Merchant-workspace update of business contact fields only.
+     * Never updates User records or merchant status.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function updateBusinessProfile(Merchant $merchant, array $data): Merchant
+    {
+        unset(
+            $data['id'],
+            $data['public_id'],
+            $data['status'],
+            $data['merchant_id'],
+            $data['user_id'],
+            $data['role'],
+            $data['permissions'],
+        );
+
+        return $this->update($merchant, Arr::only($data, ['name', 'phone', 'email']));
+    }
 }

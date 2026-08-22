@@ -53,6 +53,7 @@
       "category": "Category",
       "text": "Request",
       "status": "Status",
+      "offers": "Offers",
       "date": "Created",
       "image": "Image",
       "actions": "Actions",
@@ -75,7 +76,12 @@
     "show": {
       "title": "Request details",
       "offersTitle": "Offers",
-      "noOffers": "No offers yet"
+      "noOffers": "No offers yet",
+      "offersCount": "{count} submitted offers",
+      "validUntil": "Valid until",
+      "submittedAt": "Submitted",
+      "contactWhatsApp": "Contact via WhatsApp",
+      "whatsappUnavailable": "WhatsApp unavailable"
     },
     "profile": {
       "title": "Profile",
@@ -123,6 +129,7 @@
     "merchantRequests": "Available Requests",
     "merchantActivities": "Business Activities",
     "merchantTeam": "Team Members",
+    "merchantBusinessProfile": "Business Profile",
     "offers": "Offers",
     "notifications": "Notifications",
     "subscriptions": "Subscriptions",
@@ -1119,7 +1126,9 @@
       "close": "Close",
       "image": "Attached image",
       "matchedMerchants": "Matched merchants: {count}",
-      "noMerchantsMatched": "No merchants matched yet"
+      "noMerchantsMatched": "No merchants matched yet",
+      "offers": "Offers",
+      "offersTitle": "Received offers"
     }
   },
   "merchantMemberships": {
@@ -1171,7 +1180,25 @@
     "switchMerchant": "Switch merchant",
     "availableRequests": "Available Requests",
     "businessActivities": "Business Activities",
-    "teamMembers": "Team Members"
+    "teamMembers": "Team Members",
+    "businessProfile": "Business Profile"
+  },
+  "merchantBusinessProfile": {
+    "pageTitle": "Business Profile",
+    "pageSubtitle": "Merchant entity information for this workspace",
+    "backToHome": "Back to merchant home",
+    "entityHint": "merchant entity information",
+    "myProfile": "My Profile",
+    "userHint": "logged-in User account information",
+    "openMyProfile": "Open My Profile",
+    "name": "Merchant Name",
+    "email": "Business Email",
+    "emailHint": "This is a business contact email, not a login email.",
+    "phone": "Business Phone",
+    "phoneHint": "The business phone is used for customer WhatsApp contact on submitted offers.",
+    "save": "Save",
+    "saving": "Saving...",
+    "readOnly": "You can view this profile but do not have permission to edit it."
   },
   "merchantTeam": {
     "pageTitle": "Team Members",
@@ -1257,6 +1284,26 @@
       "matchStatus": "Status",
       "actions": "Actions"
     }
+  },
+  "merchantOffers": {
+    "sectionTitle": "Offer",
+    "status": "Status",
+    "price": "Price",
+    "availability": "Availability",
+    "selectAvailability": "Select availability",
+    "notes": "Notes",
+    "validUntil": "Valid until",
+    "images": "Images",
+    "imagesHint": "Up to 5 JPEG/PNG/WebP images, 5 MB each, private storage",
+    "existingImages": "Existing images",
+    "removeImage": "Remove",
+    "submit": "Submit Offer",
+    "edit": "Edit Offer",
+    "withdraw": "Withdraw Offer",
+    "resubmit": "Submit Offer",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "none": "No offer yet"
   },
   "public": {
     "home": {

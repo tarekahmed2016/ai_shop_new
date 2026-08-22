@@ -30,4 +30,17 @@ class SafeRasterImage
             'dimensions:max_width=8000,max_height=8000',
         ];
     }
+
+    /**
+     * @return list<string>
+     */
+    public static function offerRules(): array
+    {
+        return [
+            'file',
+            'mimes:jpg,jpeg,png,webp',
+            'max:5120',
+            'dimensions:max_width=8000,max_height=8000',
+        ];
+    }
 }

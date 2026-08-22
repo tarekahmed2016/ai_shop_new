@@ -81,6 +81,7 @@ class CustomerPortalService
         return CustomerRequest::query()
             ->where('customer_id', $customer->id)
             ->with(['category:id,public_id,name_ar,name_en', 'image'])
+            ->withCount('submittedOffers')
             ->when($search, fn ($q) => $q->where('request_text', 'like', "%{$search}%"))
             ->orderBy($sortBy, $sortDir)
             ->paginate($perPage)

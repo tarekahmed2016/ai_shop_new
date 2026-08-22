@@ -53,6 +53,7 @@
       "category": "التصنيف",
       "text": "الطلب",
       "status": "الحالة",
+      "offers": "العروض",
       "date": "التاريخ",
       "image": "صورة",
       "actions": "إجراءات",
@@ -75,7 +76,12 @@
     "show": {
       "title": "تفاصيل الطلب",
       "offersTitle": "العروض",
-      "noOffers": "لا توجد عروض بعد"
+      "noOffers": "لا توجد عروض بعد",
+      "offersCount": "{count} عروض مقدمة",
+      "validUntil": "صالح حتى",
+      "submittedAt": "تاريخ التقديم",
+      "contactWhatsApp": "تواصل عبر واتساب",
+      "whatsappUnavailable": "واتساب غير متاح"
     },
     "profile": {
       "title": "الملف الشخصي",
@@ -123,6 +129,7 @@
     "merchantRequests": "الطلبات المتاحة",
     "merchantActivities": "الأنشطة التجارية",
     "merchantTeam": "أعضاء الفريق",
+    "merchantBusinessProfile": "بيانات المنشأة",
     "offers": "العروض",
     "notifications": "الإشعارات",
     "subscriptions": "الاشتراكات",
@@ -1119,7 +1126,9 @@
       "close": "إغلاق",
       "image": "الصورة المرفقة",
       "matchedMerchants": "التجار المطابقون: {count}",
-      "noMerchantsMatched": "لا يوجد تجار مطابقون بعد"
+      "noMerchantsMatched": "لا يوجد تجار مطابقون بعد",
+      "offers": "العروض",
+      "offersTitle": "العروض المستلمة"
     }
   },
   "merchantMemberships": {
@@ -1171,7 +1180,25 @@
     "switchMerchant": "تبديل التاجر",
     "availableRequests": "الطلبات المتاحة",
     "businessActivities": "الأنشطة التجارية",
-    "teamMembers": "أعضاء الفريق"
+    "teamMembers": "أعضاء الفريق",
+    "businessProfile": "بيانات المنشأة"
+  },
+  "merchantBusinessProfile": {
+    "pageTitle": "بيانات المنشأة",
+    "pageSubtitle": "بيانات منشأة التاجر لمساحة العمل الحالية",
+    "backToHome": "العودة لمساحة التاجر",
+    "entityHint": "بيانات المنشأة التجارية",
+    "myProfile": "ملفي الشخصي",
+    "userHint": "بيانات حساب المستخدم المسجّل",
+    "openMyProfile": "فتح ملفي الشخصي",
+    "name": "اسم المنشأة",
+    "email": "البريد التجاري",
+    "emailHint": "هذا بريد تواصل تجاري وليس بريد تسجيل الدخول.",
+    "phone": "الهاتف التجاري",
+    "phoneHint": "رقم الهاتف التجاري هو الرقم المستخدم لتواصل العملاء معك عبر واتساب على العروض المقدمة.",
+    "save": "حفظ",
+    "saving": "جاري الحفظ...",
+    "readOnly": "يمكنك عرض هذه البيانات دون صلاحية التعديل."
   },
   "merchantTeam": {
     "pageTitle": "أعضاء الفريق",
@@ -1257,6 +1284,26 @@
       "matchStatus": "الحالة",
       "actions": "إجراءات"
     }
+  },
+  "merchantOffers": {
+    "sectionTitle": "العرض",
+    "status": "الحالة",
+    "price": "السعر",
+    "availability": "التوفر",
+    "selectAvailability": "اختر التوفر",
+    "notes": "ملاحظات",
+    "validUntil": "صالح حتى",
+    "images": "الصور",
+    "imagesHint": "حتى 5 صور JPEG/PNG/WebP، 5 ميجابايت لكل صورة، تخزين خاص",
+    "existingImages": "الصور الحالية",
+    "removeImage": "إزالة",
+    "submit": "إرسال العرض",
+    "edit": "تعديل العرض",
+    "withdraw": "سحب العرض",
+    "resubmit": "إرسال العرض",
+    "saving": "جاري الحفظ...",
+    "cancel": "إلغاء",
+    "none": "لا يوجد عرض بعد"
   },
   "public": {
     "home": {

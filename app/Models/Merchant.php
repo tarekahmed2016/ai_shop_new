@@ -101,6 +101,14 @@ class Merchant extends Model
     }
 
     /**
+     * @return HasMany<MerchantOffer, $this>
+     */
+    public function merchantOffers(): HasMany
+    {
+        return $this->hasMany(MerchantOffer::class);
+    }
+
+    /**
      * @return MorphMany<ActivityLog, $this>
      */
     public function activityLogs(): MorphMany
