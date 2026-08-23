@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CustomerPortal\CustomerPortalController;
+use App\Http\Controllers\CustomerPortal\CustomerPushSubscriptionController;
 use App\Http\Controllers\CustomerPortal\CustomerRegisterController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,12 @@ Route::middleware(['customer'])->prefix('customer')->name('customer.')->group(fu
         ->name('requests.category');
     Route::get('/requests/{customerRequest}', [CustomerPortalController::class, 'requestsShow'])->name('requests.show');
     Route::get('/requests/{customerRequest}/image', [CustomerPortalController::class, 'requestsImage'])->name('requests.image');
+    Route::get('/push-subscriptions/config', [CustomerPushSubscriptionController::class, 'config'])
+        ->name('push-subscriptions.config');
+    Route::post('/push-subscriptions', [CustomerPushSubscriptionController::class, 'store'])
+        ->name('push-subscriptions.store');
+    Route::delete('/push-subscriptions', [CustomerPushSubscriptionController::class, 'destroy'])
+        ->name('push-subscriptions.destroy');
     Route::get('/offers/{merchantOffer}/images/{offerImage}', [CustomerPortalController::class, 'offerImage'])->name('offers.images.show');
     Route::get('/profile', [CustomerPortalController::class, 'profileEdit'])->name('profile.edit');
     Route::patch('/profile', [CustomerPortalController::class, 'profileUpdate'])->name('profile.update');

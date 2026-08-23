@@ -5,9 +5,11 @@ import { useSidebar } from '../Composables/Dashboard/useSidebar.js'
 import { useCustomerNav } from '../Composables/Customer/useCustomerNav.js'
 import CustomCursor from '../Components/Common/CustomCursor.vue'
 import FlashMessage from '../Components/Common/FlashMessage.vue'
+import { useCustomerPush } from '../Composables/useCustomerPush.js'
 
 const { isCollapsed, toggle } = useSidebar()
 const { menuItems } = useCustomerNav()
+useCustomerPush()
 </script>
 
 <template>

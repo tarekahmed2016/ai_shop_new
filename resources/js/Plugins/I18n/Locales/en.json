@@ -1226,6 +1226,32 @@
     "teamMembers": "Team Members",
     "businessProfile": "Business Profile"
   },
+  "merchantPush": {
+    "title": "Request notifications",
+    "enable": "Enable Request Notifications",
+    "enabling": "Enabling...",
+    "unsupported": "This browser does not support Web Push notifications.",
+    "iosInstall": "To enable request notifications on iPhone, add the app to the Home Screen, then open it from the icon.",
+    "denied": "Notification permission is blocked. You can re-enable it from the browser or system settings if you want alerts.",
+    "prompt": "Enable notifications to be alerted when a new request matches your activity.",
+    "subscribed": "Request notifications are enabled on this device.",
+    "missingSubscription": "Permission is granted, but this device still needs to finish enabling request notifications.",
+    "missingVapid": "Push is not configured on the server yet.",
+    "error": "Could not enable notifications. Please try again."
+  },
+  "customerPush": {
+    "title": "Offer notifications",
+    "enable": "Enable Offer Notifications",
+    "enabling": "Enabling...",
+    "unsupported": "This browser does not support Web Push notifications.",
+    "iosInstall": "To enable offer notifications on iPhone, add the app to the Home Screen, then open it from the icon.",
+    "denied": "Notification permission is blocked. You can re-enable it from the browser or system settings if you want alerts.",
+    "prompt": "Enable notifications to be alerted when a merchant submits an offer on your request.",
+    "subscribed": "Offer notifications are enabled on this device.",
+    "missingSubscription": "Permission is granted, but this device still needs to finish enabling offer notifications.",
+    "missingVapid": "Push is not configured on the server yet.",
+    "error": "Could not enable notifications. Please try again."
+  },
   "merchantBusinessProfile": {
     "pageTitle": "Business Profile",
     "pageSubtitle": "Merchant entity information for this workspace",

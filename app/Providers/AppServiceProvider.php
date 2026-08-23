@@ -10,6 +10,7 @@ use App\Services\Classification\DeferredRemoteClassificationProvider;
 use App\Services\Classification\FakeClassificationProvider;
 use App\Services\Classification\OpenAIClassificationProvider;
 use App\Services\MerchantPermissionService;
+use App\Services\WebPush\SafeWebPushReportHandler;
 use App\Support\CustomerContext;
 use App\Support\MerchantAuthorization;
 use App\Support\MerchantContext;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use NotificationChannels\WebPush\ReportHandlerInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -31,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(MerchantAuthorization::class);
         $this->app->scoped(MerchantPermissionService::class);
         $this->app->scoped(CustomerContext::class);
+        $this->app->bind(ReportHandlerInterface::class, SafeWebPushReportHandler::class);
         $this->app->singleton(AiClassificationProviderInterface::class, function () {
             return match ((string) config('classification.provider')) {
                 'fake' => new FakeClassificationProvider,
@@ -58,6 +61,8 @@ class AppServiceProvider extends ServiceProvider
         });
 
         Vite::prefetch(concurrency: 3);
+
+        $this->app->bind(ReportHandlerInterface::class, SafeWebPushReportHandler::class);
 
         Route::model('membership', MerchantUser::class);
         Route::model('merchantCategory', MerchantCategory::class);

@@ -42,7 +42,7 @@ class RequestMatchingService
      * Ineligible requests (no category, inactive category, Closed/Cancelled)
      * result in an empty eligible set, so leftover matches are removed.
      *
-     * @return array{eligible: bool, reason: string|null, created: int, removed: int, retained: int}
+     * @return array{eligible: bool, reason: string|null, created: int, created_match_ids: list<int>, removed: int, retained: int}
      */
     public function sync(CustomerRequest $customerRequest, bool $strict = false): array
     {
@@ -86,6 +86,7 @@ class RequestMatchingService
 
             $existingMerchantIds = $existingAfterRemoval->pluck('merchant_id')->all();
             $created = 0;
+            $createdMatchIds = [];
 
             foreach ($eligibleIdList as $merchantId) {
                 if (in_array($merchantId, $existingMerchantIds, true)) {
@@ -99,18 +100,22 @@ class RequestMatchingService
                 $match->matched_at = now();
                 $match->save();
                 $created++;
+                $createdMatchIds[] = (int) $match->id;
             }
 
             return [
                 'eligible' => $reason === null,
                 'reason' => $reason,
                 'created' => $created,
+                'created_match_ids' => $createdMatchIds,
                 'removed' => $removed,
                 'retained' => $existingAfterRemoval->count(),
             ];
         });
 
         $this->logSyncSummary($customerRequest, $result);
+
+        app(MatchedRequestPushDispatcher::class)->dispatchAfterCommit($result['created_match_ids'] ?? []);
 
         app(MerchantOfferService::class)->invalidateSubmittedOffersMissingMatch($customerRequest);
 

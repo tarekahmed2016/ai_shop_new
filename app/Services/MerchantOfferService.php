@@ -74,8 +74,9 @@ class MerchantOfferService
         }
 
         $payload = $this->normalizedPayload($data);
+        $previousStatus = $existing?->status;
 
-        return DB::transaction(function () use ($customerRequest, $payload, $images, $existing) {
+        $offer = DB::transaction(function () use ($customerRequest, $payload, $images, $existing) {
             $offer = $existing ?? new MerchantOffer;
             $isNew = ! $offer->exists;
 
@@ -109,6 +110,12 @@ class MerchantOfferService
 
             return $offer->fresh('images');
         });
+
+        if ($previousStatus !== OfferStatus::Submitted) {
+            app(CustomerOfferPushDispatcher::class)->dispatchAfterCommit((int) $offer->id);
+        }
+
+        return $offer;
     }
 
     /**

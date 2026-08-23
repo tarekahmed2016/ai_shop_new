@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import MerchantPushStatusCard from '../../Components/Features/Merchants/MerchantPushStatusCard.vue'
 
 const { t } = useI18n()
 const page = usePage()
@@ -15,6 +16,8 @@ const merchant = computed(() => page.props.merchant || page.props.merchantContex
                 <h1 class="text-page-title text-gray-900 dark:text-gray-100">{{ t('merchantHome.pageTitle') }}</h1>
                 <p class="mt-2 text-muted muted-color">{{ t('merchantHome.pageSubtitle', { name: merchant.name }) }}</p>
             </div>
+
+            <MerchantPushStatusCard />
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <p class="text-body text-gray-700 dark:text-gray-300">{{ t('merchantHome.contextRole') }}: {{ merchant.role }}</p>

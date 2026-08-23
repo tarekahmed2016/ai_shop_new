@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import CustomerPushStatusCard from '../../Components/Features/CustomerPortal/CustomerPushStatusCard.vue'
 
 const { t } = useI18n()
 const page = usePage()
@@ -22,6 +23,8 @@ const recentRequests = computed(() => page.props.recentRequests || [])
                     {{ t('customerPortal.home.createRequest') }}
                 </Link>
             </div>
+
+            <CustomerPushStatusCard />
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">

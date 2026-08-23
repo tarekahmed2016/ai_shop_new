@@ -16,7 +16,9 @@ use App\Http\Controllers\MerchantBusinessProfileController;
 use App\Http\Controllers\MerchantCategoryController;
 use App\Http\Controllers\MerchantContextController;
 use App\Http\Controllers\MerchantController;
+use App\Http\Controllers\MerchantMatchedRequestOpenController;
 use App\Http\Controllers\MerchantMembershipController;
+use App\Http\Controllers\MerchantPushSubscriptionController;
 use App\Http\Controllers\MerchantRequestController;
 use App\Http\Controllers\MerchantTeamController;
 use App\Http\Controllers\NewsletterSubscriberController;
@@ -38,10 +40,18 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/merchant/select', [MerchantContextController::class, 'select'])->name('merchant.select');
     Route::post('/merchant/context', [MerchantContextController::class, 'store'])->name('merchant.context.store');
+    Route::get('/merchant/open-request/{merchant}/{customerRequest}', MerchantMatchedRequestOpenController::class)
+        ->name('merchant.requests.open');
 });
 
 Route::middleware(['merchant'])->group(function () {
     Route::get('/merchant', [MerchantContextController::class, 'home'])->name('merchant.home');
+    Route::get('/merchant/push-subscriptions/config', [MerchantPushSubscriptionController::class, 'config'])
+        ->name('merchant.push-subscriptions.config');
+    Route::post('/merchant/push-subscriptions', [MerchantPushSubscriptionController::class, 'store'])
+        ->name('merchant.push-subscriptions.store');
+    Route::delete('/merchant/push-subscriptions', [MerchantPushSubscriptionController::class, 'destroy'])
+        ->name('merchant.push-subscriptions.destroy');
     Route::get('/merchant/requests', [MerchantRequestController::class, 'index'])->name('merchant.requests.index');
     Route::get('/merchant/requests/{customerRequest}', [MerchantRequestController::class, 'show'])->name('merchant.requests.show');
     Route::get('/merchant/requests/{customerRequest}/image', [MerchantRequestController::class, 'image'])->name('merchant.requests.image');

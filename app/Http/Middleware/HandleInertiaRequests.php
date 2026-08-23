@@ -68,6 +68,32 @@ class HandleInertiaRequests extends Middleware
             'businessCta' => fn () => app(PublicHomeService::class)->getActiveBusinessCta(),
             'menuPages' => fn () => app(PageService::class)->getPublicMenuPages(),
             'publicNavContext' => fn () => app(PublicNavService::class)->getContext(),
+            'webPush' => fn () => $this->webPushShare($request),
+        ];
+    }
+
+    /**
+     * @return array{vapid_public_key: string, enabled: bool}|null
+     */
+    private function webPushShare(Request $request): ?array
+    {
+        $user = $request->user();
+        if ($user === null) {
+            return null;
+        }
+
+        $merchantActive = app(MerchantContext::class)->isActive();
+        $customerActive = app(CustomerContext::class)->isActive();
+
+        if (! $merchantActive && ! $customerActive) {
+            return null;
+        }
+
+        $publicKey = (string) config('webpush.vapid.public_key', '');
+
+        return [
+            'vapid_public_key' => $publicKey,
+            'enabled' => $publicKey !== '',
         ];
     }
 }
