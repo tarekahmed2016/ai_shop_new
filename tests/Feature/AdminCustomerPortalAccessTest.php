@@ -239,19 +239,19 @@ test('admin-created customer can log in and access customer portal with own requ
         ->assertNotFound();
 });
 
-test('self-registration still works after admin create changes', function () {
+test('legacy self-registration uses unified user registration after admin create changes', function () {
     $this->post(route('customer.register.store'), [
         'name' => 'Self Reg',
         'email' => 'self-reg-still@example.test',
         'phone' => '01000000007',
         'password' => 'password12',
         'password_confirmation' => 'password12',
-    ])->assertRedirect(route('customer.home'));
+    ])->assertRedirect(route('account.get-started'));
 
     $user = User::query()->where('email', 'self-reg-still@example.test')->first();
 
     expect($user)->not->toBeNull()
-        ->and($user->customer)->not->toBeNull()
+        ->and($user->customer)->toBeNull()
         ->and($user->hasRole('admin'))->toBeFalse();
 });
 

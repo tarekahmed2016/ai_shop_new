@@ -82,8 +82,8 @@
       "profile": "Profile"
     },
     "register": {
-      "title": "Create customer account",
-      "subtitle": "Register to submit and track your requests",
+      "title": "Create Account",
+      "subtitle": "Create an account to request products or services, or to start selling later.",
       "name": "Name",
       "email": "Email",
       "phone": "Phone",
