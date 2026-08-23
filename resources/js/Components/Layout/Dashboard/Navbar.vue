@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import AccountWorkspaceSwitcher from '../../Account/AccountWorkspaceSwitcher.vue'
 
 const page = usePage()
 const isAdmin = computed(() => page.props.auth?.isAdmin === true)
@@ -100,7 +101,7 @@ const changeLanguage = (newLocale) => {
 // Close dropdowns when clicking outside
 const handleClickOutside = (event) => {
     const target = event.target
-    if (!target.closest('.language-dropdown') && !target.closest('.user-dropdown')) {
+    if (!target.closest('.language-dropdown') && !target.closest('.user-dropdown') && !target.closest('.workspace-switcher')) {
         isLanguageDropdownOpen.value = false
         isUserDropdownOpen.value = false
     }
@@ -148,7 +149,9 @@ const handleToggleSidebar = () => {
         </div>
 
         <!-- Right Section -->
-        <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2 sm:gap-4">
+            <AccountWorkspaceSwitcher />
+
             <!-- Language Switcher Dropdown -->
             <div class="relative language-dropdown">
                 <button @click="toggleLanguageDropdown"

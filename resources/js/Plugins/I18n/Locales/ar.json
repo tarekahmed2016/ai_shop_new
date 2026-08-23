@@ -30,6 +30,20 @@
       "categories": "تصنيفات النشاط",
       "submit": "إنشاء النشاط",
       "submitting": "جاري الإنشاء..."
+    },
+    "workspace": {
+      "usingAs": "أنت تستخدم المنصة الآن كـ",
+      "myRequests": "طلباتي",
+      "createRequest": "إنشاء طلب",
+      "myBusinesses": "أعمالي",
+      "businessWorkspace": "العمل كنشاط تجاري",
+      "startSelling": "ابدأ البيع",
+      "createAnotherBusiness": "إنشاء نشاط آخر",
+      "switchBusiness": "تغيير النشاط",
+      "currentBusiness": "النشاط الحالي",
+      "noBusinessesYet": "لا توجد أنشطة بعد",
+      "openSwitcher": "تغيير مساحة العمل",
+      "inactiveCustomer": "صلاحية الطلبات غير نشطة حاليًا."
     }
   },
   "auth": {

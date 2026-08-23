@@ -30,6 +30,20 @@
       "categories": "Business categories",
       "submit": "Create business",
       "submitting": "Creating..."
+    },
+    "workspace": {
+      "usingAs": "Currently using",
+      "myRequests": "My Requests",
+      "createRequest": "Create Request",
+      "myBusinesses": "My Businesses",
+      "businessWorkspace": "Business Workspace",
+      "startSelling": "Start Selling",
+      "createAnotherBusiness": "Create Another Business",
+      "switchBusiness": "Switch Business",
+      "currentBusiness": "Current Business",
+      "noBusinessesYet": "No businesses yet",
+      "openSwitcher": "Switch workspace",
+      "inactiveCustomer": "Request access is currently inactive."
     }
   },
   "auth": {
