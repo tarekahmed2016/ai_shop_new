@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Account\EnableCustomerController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificateAwardController;
 use App\Http\Controllers\ClientPartnerController;
@@ -38,6 +39,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::get('/account/customer/enable', [EnableCustomerController::class, 'create'])->name('account.customer.enable');
+    Route::post('/account/customer/enable', [EnableCustomerController::class, 'store'])->name('account.customer.enable.store');
     Route::get('/merchant/select', [MerchantContextController::class, 'select'])->name('merchant.select');
     Route::post('/merchant/context', [MerchantContextController::class, 'store'])->name('merchant.context.store');
     Route::get('/merchant/open-request/{merchant}/{customerRequest}', MerchantMatchedRequestOpenController::class)

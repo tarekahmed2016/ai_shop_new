@@ -95,7 +95,7 @@ test('linked customer can access portal while guest and unlinked user cannot', f
 
     $this->actingAs($plain)
         ->get(route('customer.home'))
-        ->assertForbidden();
+        ->assertRedirect(route('account.customer.enable'));
 
     $this->actingAs($user)
         ->get(route('customer.home'))

@@ -43,7 +43,7 @@ createInertiaApp({
                 page.default.layout = DashboardLayout
             } else if (name.startsWith('Public/')) {
                 page.default.layout = PublicLayout
-            } else if (name.startsWith('Auth/') || name === 'CustomerPortal/RegisterPage') {
+            } else if (name.startsWith('Auth/') || name === 'CustomerPortal/RegisterPage' || name.startsWith('Account/')) {
                 page.default.layout = FrontLayout
             }
         }

@@ -1,4 +1,12 @@
 {
+  "account": {
+    "customerEnable": {
+      "title": "Enable request access",
+      "subtitle": "Use this account to create and follow product or service requests.",
+      "submit": "Continue to My Requests",
+      "submitting": "Enabling..."
+    }
+  },
   "auth": {
     "login": {
       "subtitle": "Sign in to access {company}",

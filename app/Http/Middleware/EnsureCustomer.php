@@ -26,7 +26,15 @@ class EnsureCustomer
 
         $customer = $this->customerContext->resolveFromUser($user);
 
-        if ($customer === null || ! $customer->isActive()) {
+        if ($customer === null) {
+            if ($request->expectsJson()) {
+                abort(403);
+            }
+
+            return redirect()->guest(route('account.customer.enable'));
+        }
+
+        if (! $customer->isActive()) {
             abort(403);
         }
 
