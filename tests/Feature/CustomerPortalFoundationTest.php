@@ -44,23 +44,21 @@ function linkedCustomer(?array $userAttrs = [], ?array $customerAttrs = []): arr
     return compact('user', 'customer');
 }
 
-test('customer can register creating user and linked customer without admin role', function () {
+test('customer public registration is unified and does not create a customer', function () {
     $this->post(route('customer.register.store'), [
         'name' => 'Portal Customer',
         'email' => 'portal-customer@example.com',
         'phone' => '0100111222',
         'password' => 'password12',
         'password_confirmation' => 'password12',
-    ])->assertRedirect(route('customer.home'));
+    ])->assertRedirect(route('account.get-started'));
 
     $user = User::query()->where('email', 'portal-customer@example.com')->first();
 
     expect($user)->not->toBeNull()
         ->and(Hash::check('password12', $user->password))->toBeTrue()
         ->and($user->hasRole('admin'))->toBeFalse()
-        ->and($user->customer)->not->toBeNull()
-        ->and($user->customer->user_id)->toBe($user->id)
-        ->and($user->customer->email)->toBe('portal-customer@example.com')
+        ->and($user->customer)->toBeNull()
         ->and($user->merchantMemberships()->count())->toBe(0);
 });
 
@@ -77,14 +75,9 @@ test('duplicate user email is rejected for customer registration', function () {
     expect(Customer::query()->where('email', 'taken@example.com')->count())->toBe(0);
 });
 
-test('platform registration routes remain unavailable', function () {
-    $this->get('/register')->assertNotFound();
-    $this->post('/register', [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password12',
-        'password_confirmation' => 'password12',
-    ])->assertNotFound();
+test('legacy customer registration redirects to unified register', function () {
+    $this->get(route('customer.register'))->assertRedirect(route('register'));
+    $this->get('/register')->assertOk();
 });
 
 test('linked customer can access portal while guest and unlinked user cannot', function () {
@@ -95,7 +88,7 @@ test('linked customer can access portal while guest and unlinked user cannot', f
 
     $this->actingAs($plain)
         ->get(route('customer.home'))
-        ->assertForbidden();
+        ->assertRedirect(route('account.customer.enable'));
 
     $this->actingAs($user)
         ->get(route('customer.home'))

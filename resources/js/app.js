@@ -14,7 +14,7 @@ createInertiaApp({
         const pages = import.meta.glob('./Pages/**/*.vue', { eager: true })
         const page = pages[`./Pages/${name}.vue`]
         if (!page.default.layout) {
-            if (name.startsWith('CustomerPortal/') && name !== 'CustomerPortal/RegisterPage') {
+            if (name.startsWith('CustomerPortal/')) {
                 page.default.layout = CustomerLayout
             } else if (
                 name.startsWith('Dashboard/')
@@ -43,7 +43,7 @@ createInertiaApp({
                 page.default.layout = DashboardLayout
             } else if (name.startsWith('Public/')) {
                 page.default.layout = PublicLayout
-            } else if (name.startsWith('Auth/') || name === 'CustomerPortal/RegisterPage') {
+            } else if (name.startsWith('Auth/') || name.startsWith('Account/')) {
                 page.default.layout = FrontLayout
             }
         }

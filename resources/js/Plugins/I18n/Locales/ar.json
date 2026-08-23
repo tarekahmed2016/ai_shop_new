@@ -1,4 +1,51 @@
 {
+  "account": {
+    "customerEnable": {
+      "title": "تفعيل حساب الطلبات",
+      "subtitle": "استخدم هذا الحساب لإنشاء طلبات المنتجات أو الخدمات ومتابعتها.",
+      "submit": "المتابعة إلى طلباتي",
+      "submitting": "جاري التفعيل..."
+    },
+    "getStarted": {
+      "title": "ماذا تريد أن تفعل؟",
+      "subtitle": "هذا حساب واحد. يمكنك الطلب أو البيع أو الاثنين لاحقًا.",
+      "requestTitle": "أريد طلب منتج أو خدمة",
+      "requestDescription": "أنشئ طلبك واستقبل عروضًا من التجار المناسبين.",
+      "requestCta": "إنشاء طلب",
+      "requestEnabled": "طلب المنتجات مفعّل",
+      "sellTitle": "أريد استقبال الطلبات وبيع منتجاتي أو خدماتي",
+      "sellDescription": "أنشئ نشاطك التجاري وابدأ استقبال الطلبات المناسبة لنشاطك.",
+      "sellCta": "ابدأ البيع",
+      "sellEnabled": "البيع مفعّل",
+      "myRequests": "طلباتي",
+      "myBusinesses": "أنشطتي التجارية",
+      "inactiveCustomer": "صلاحية الطلبات غير نشطة حاليًا. تواصل مع الدعم."
+    },
+    "merchantStart": {
+      "title": "ابدأ البيع",
+      "subtitle": "أنشئ نشاطًا تجاريًا على هذا الحساب. ستبقى مالك النشاط.",
+      "name": "اسم النشاط",
+      "email": "بريد النشاط",
+      "phone": "هاتف النشاط",
+      "categories": "تصنيفات النشاط",
+      "submit": "إنشاء النشاط",
+      "submitting": "جاري الإنشاء..."
+    },
+    "workspace": {
+      "usingAs": "أنت تستخدم المنصة الآن كـ",
+      "myRequests": "طلباتي",
+      "createRequest": "إنشاء طلب",
+      "myBusinesses": "أعمالي",
+      "businessWorkspace": "العمل كنشاط تجاري",
+      "startSelling": "ابدأ البيع",
+      "createAnotherBusiness": "إنشاء نشاط آخر",
+      "switchBusiness": "تغيير النشاط",
+      "currentBusiness": "النشاط الحالي",
+      "noBusinessesYet": "لا توجد أنشطة بعد",
+      "openSwitcher": "تغيير مساحة العمل",
+      "inactiveCustomer": "صلاحية الطلبات غير نشطة حاليًا."
+    }
+  },
   "auth": {
     "login": {
       "subtitle": "سجل الدخول للوصول إلى {company}",
@@ -11,7 +58,20 @@
       "loginButton": "تسجيل الدخول",
       "title": "تسجيل الدخول",
       "noAccount": "ليس لديك حساب؟",
-      "registerLink": "إنشاء حساب عميل"
+      "registerLink": "إنشاء حساب"
+    },
+    "register": {
+      "title": "إنشاء حساب",
+      "subtitle": "حساب واحد. اطلب أو بِع أو الاثنين عندما تكون جاهزًا.",
+      "name": "الاسم",
+      "email": "البريد الإلكتروني",
+      "phone": "الهاتف",
+      "password": "كلمة المرور",
+      "passwordConfirmation": "تأكيد كلمة المرور",
+      "submit": "إنشاء حساب",
+      "submitting": "جاري إنشاء الحساب...",
+      "haveAccount": "لديك حساب بالفعل؟",
+      "login": "تسجيل الدخول"
     }
   },
   "customerPortal": {
@@ -22,8 +82,8 @@
       "profile": "الملف الشخصي"
     },
     "register": {
-      "title": "إنشاء حساب عميل",
-      "subtitle": "سجّل لإرسال الطلبات ومتابعتها",
+      "title": "إنشاء حساب",
+      "subtitle": "أنشئ حسابًا لطلب منتجات أو خدمات، أو ابدأ البيع لاحقًا.",
       "name": "الاسم",
       "email": "البريد الإلكتروني",
       "phone": "الهاتف",

@@ -4,8 +4,9 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faSignInAlt, faBars, faSignOutAlt } from '@fortawesome/free-solid-svg-icons'
 import { resolveBilingualField } from '../../../Composables/useBilingualContent.js'
+import AccountWorkspaceSwitcher from '../../Account/AccountWorkspaceSwitcher.vue'
 
-const { locale } = useI18n()
+const { locale, t } = useI18n()
 const page = usePage()
 const isAuthenticated = computed(() => page.props.auth?.user)
 const companyName = computed(() =>
@@ -40,10 +41,15 @@ onUnmounted(() => {
                 <span class="text-white text-lg font-semibold">{{ companyName }}</span>
             </Link>
             <div class="flex items-center gap-3">
+                <AccountWorkspaceSwitcher v-if="isAuthenticated" />
                 <Link v-if="!isAuthenticated" :href="route('login')"
                     class="text-menu text-blue-400 hover:text-blue-300 transition-colors">
                     <font-awesome-icon :icon="faSignInAlt" class="me-1" />
-                    Login
+                    {{ t('auth.login.loginButton') }}
+                </Link>
+                <Link v-if="!isAuthenticated" :href="route('register')"
+                    class="text-menu text-blue-400 hover:text-blue-300 transition-colors">
+                    {{ t('auth.login.registerLink') }}
                 </Link>
                 <div v-else class="relative user-menu-dropdown">
                     <button @click="toggleMenu"

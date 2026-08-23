@@ -7,6 +7,7 @@ use App\Enums\Users\Status as UserStatus;
 use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -71,6 +72,68 @@ class CustomerService
             ->orderBy('name')
             ->orderBy('id')
             ->get(['id', 'public_id', 'name', 'phone', 'email', 'status']);
+    }
+
+    /**
+     * Link a Customer to an existing User without creating a User or merging historical rows.
+     * Does not reactivate an inactive Customer.
+     */
+    public function ensureForUser(User $user): Customer
+    {
+        $existing = Customer::query()->where('user_id', $user->id)->first();
+        if ($existing !== null) {
+            $user->setRelation('customer', $existing);
+
+            return $existing;
+        }
+
+        try {
+            return DB::transaction(function () use ($user): Customer {
+                $existing = Customer::query()
+                    ->where('user_id', $user->id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing !== null) {
+                    $user->setRelation('customer', $existing);
+
+                    return $existing;
+                }
+
+                $customer = new Customer;
+                $customer->public_id = (string) Str::ulid();
+                $customer->user_id = $user->id;
+                $customer->name = $user->name;
+                $customer->email = $user->email;
+                $customer->phone = $user->phone;
+                $customer->status = Status::Active;
+                $customer->save();
+
+                $this->activityLogService->recordCreated(
+                    subject: $customer,
+                    allowedFields: self::ACTIVITY_FIELDS,
+                    subjectLabel: $customer->display_name,
+                    metadata: [
+                        'action' => 'customer.capability_ensured',
+                        'user_id' => $user->id,
+                    ],
+                    actor: $user,
+                );
+
+                $user->setRelation('customer', $customer);
+
+                return $customer;
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            $customer = Customer::query()->where('user_id', $user->id)->first();
+            if ($customer === null) {
+                throw $exception;
+            }
+
+            $user->setRelation('customer', $customer);
+
+            return $customer;
+        }
     }
 
     /**

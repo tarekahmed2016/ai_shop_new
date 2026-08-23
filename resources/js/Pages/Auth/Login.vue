@@ -77,7 +77,7 @@ const handleLogin = () => {
                 </form>
                 <p class="text-center text-small text-lighter mt-6">
                     {{ t('auth.login.noAccount') }}
-                    <Link :href="route('customer.register')" class="text-blue-400 hover:text-blue-300">{{ t('auth.login.registerLink') }}</Link>
+                    <Link :href="route('register')" class="text-blue-400 hover:text-blue-300">{{ t('auth.login.registerLink') }}</Link>
                 </p>
             </div>
         </div>

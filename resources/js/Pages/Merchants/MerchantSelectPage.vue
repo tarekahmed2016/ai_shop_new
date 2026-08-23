@@ -36,6 +36,7 @@ const selectMerchant = (publicId) => {
                     @click="selectMerchant(merchant.public_id)"
                 >
                     <p class="text-card-title text-gray-900 dark:text-gray-100">{{ merchant.name }}</p>
+                    <p v-if="merchant.current" class="text-sm text-blue-600 mt-1">{{ t('account.workspace.currentBusiness') }}</p>
                     <p class="text-muted muted-color mt-1">{{ merchant.role }}</p>
                 </button>
             </div>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use App\Support\UserCapabilities;
 use Illuminate\Database\Eloquent\Builder;
 
 function target(): string
@@ -15,11 +16,17 @@ function target(): string
         return route('dashboard', absolute: false);
     }
 
-    if ($user->customer) {
+    $capabilities = UserCapabilities::for($user);
+
+    if ($capabilities['hasActiveMerchantMemberships']) {
+        return route('dashboard', absolute: false);
+    }
+
+    if ($capabilities['hasActiveCustomer']) {
         return route('customer.home', absolute: false);
     }
 
-    return route('dashboard', absolute: false);
+    return route('account.get-started', absolute: false);
 }
 
 /**

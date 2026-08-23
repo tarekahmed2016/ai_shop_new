@@ -10,6 +10,7 @@ use App\Services\PublicNavService;
 use App\Support\CustomerContext;
 use App\Support\MerchantContext;
 use App\Support\ThemeColor;
+use App\Support\UserCapabilities;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Middleware;
@@ -49,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 'role' => $request->user()?->getRoleNames()->first(),
                 'isAdmin' => (bool) $request->user()?->hasRole('admin'),
                 'isCustomer' => (bool) $request->user()?->customer,
+                'capabilities' => $request->user() ? UserCapabilities::for($request->user()) : null,
             ],
             'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
             'customerContext' => fn () => app(CustomerContext::class)->toArray(),

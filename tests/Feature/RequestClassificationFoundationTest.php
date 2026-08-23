@@ -53,7 +53,7 @@ test('guest and unlinked user cannot classify', function () {
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Need ABS sensor',
         ])
-        ->assertForbidden();
+        ->assertRedirect(route('account.customer.enable'));
 });
 
 test('manual category flow still becomes ready and matches without ai', function () {

@@ -1,4 +1,51 @@
 {
+  "account": {
+    "customerEnable": {
+      "title": "Enable request access",
+      "subtitle": "Use this account to create and follow product or service requests.",
+      "submit": "Continue to My Requests",
+      "submitting": "Enabling..."
+    },
+    "getStarted": {
+      "title": "What would you like to do?",
+      "subtitle": "This is one account. You can request, sell, or do both later.",
+      "requestTitle": "I want to request a product or service",
+      "requestDescription": "Create your request and receive offers from matching merchants.",
+      "requestCta": "Create a request",
+      "requestEnabled": "Requesting is enabled",
+      "sellTitle": "I want to receive requests and sell my products or services",
+      "sellDescription": "Create your business and start receiving matching requests.",
+      "sellCta": "Start selling",
+      "sellEnabled": "Selling is enabled",
+      "myRequests": "My Requests",
+      "myBusinesses": "My Businesses",
+      "inactiveCustomer": "Request access is currently inactive. Contact support."
+    },
+    "merchantStart": {
+      "title": "Start selling",
+      "subtitle": "Create a business on this account. You stay signed in as the owner.",
+      "name": "Business name",
+      "email": "Business email",
+      "phone": "Business phone",
+      "categories": "Business categories",
+      "submit": "Create business",
+      "submitting": "Creating..."
+    },
+    "workspace": {
+      "usingAs": "Currently using",
+      "myRequests": "My Requests",
+      "createRequest": "Create Request",
+      "myBusinesses": "My Businesses",
+      "businessWorkspace": "Business Workspace",
+      "startSelling": "Start Selling",
+      "createAnotherBusiness": "Create Another Business",
+      "switchBusiness": "Switch Business",
+      "currentBusiness": "Current Business",
+      "noBusinessesYet": "No businesses yet",
+      "openSwitcher": "Switch workspace",
+      "inactiveCustomer": "Request access is currently inactive."
+    }
+  },
   "auth": {
     "login": {
       "subtitle": "Sign in to access {company}",
@@ -11,7 +58,20 @@
       "loginButton": "Login",
       "title": "Login",
       "noAccount": "Don't have an account?",
-      "registerLink": "Create a customer account"
+      "registerLink": "Create Account"
+    },
+    "register": {
+      "title": "Create Account",
+      "subtitle": "One account. Request, sell, or both whenever you are ready.",
+      "name": "Name",
+      "email": "Email",
+      "phone": "Phone",
+      "password": "Password",
+      "passwordConfirmation": "Confirm password",
+      "submit": "Create Account",
+      "submitting": "Creating account...",
+      "haveAccount": "Already have an account?",
+      "login": "Login"
     }
   },
   "customerPortal": {
@@ -22,8 +82,8 @@
       "profile": "Profile"
     },
     "register": {
-      "title": "Create customer account",
-      "subtitle": "Register to submit and track your requests",
+      "title": "Create Account",
+      "subtitle": "Create an account to request products or services, or to start selling later.",
       "name": "Name",
       "email": "Email",
       "phone": "Phone",

@@ -1,16 +1,22 @@
 <?php
 
 use App\Models\User;
+use Inertia\Testing\AssertableInertia as Assert;
 
-test('registration routes are unavailable', function () {
-    $this->get('/register')->assertNotFound();
+test('registration screen can be rendered', function () {
+    $this->get('/register')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->component('Auth/RegisterPage', false));
+});
 
+test('new users can register', function () {
     $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
-        'password' => 'password',
-        'password_confirmation' => 'password',
-    ])->assertNotFound();
+        'password' => 'password12',
+        'password_confirmation' => 'password12',
+    ])->assertRedirect(route('account.get-started'));
 
-    expect(User::where('email', 'test@example.com')->exists())->toBeFalse();
+    $this->assertAuthenticated();
+    expect(User::query()->where('email', 'test@example.com')->exists())->toBeTrue();
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\RequestMatches\Status as MatchStatus;
 use App\Models\RequestMatch;
 use App\Support\MerchantContext;
+use App\Support\UserCapabilities;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,10 +21,15 @@ class DashboardController extends Controller
     {
         $user = $request->user();
         $isAdmin = (bool) $user?->hasRole('admin');
-        $hasMerchantMemberships = (bool) $user?->merchantMemberships()->exists();
+        $capabilities = $user ? UserCapabilities::for($user) : null;
+        $hasMerchantMemberships = (bool) ($capabilities['hasMerchantMemberships'] ?? false);
 
-        // Customer-only accounts use the dedicated portal, not the admin/merchant dashboard.
-        if ($user && ! $isAdmin && ! $hasMerchantMemberships && $user->customer) {
+        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ! ($capabilities['hasActiveCustomer'] ?? false)) {
+            return redirect()->route('account.get-started');
+        }
+
+        // Customer-only users (no merchant capability) use the customer portal.
+        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ($capabilities['hasActiveCustomer'] ?? false)) {
             return redirect()->route('customer.home');
         }
 

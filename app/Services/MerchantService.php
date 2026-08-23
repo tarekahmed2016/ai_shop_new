@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\MerchantMemberships\Role;
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
+use App\Enums\Merchants\Status as MerchantStatus;
 use App\Enums\Users\Status as UserStatus;
 use App\Models\Merchant;
 use App\Models\User;
@@ -11,6 +12,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MerchantService
 {
@@ -95,6 +97,61 @@ class MerchantService
                 subject: $owner,
                 allowedFields: self::OWNER_ACTIVITY_FIELDS,
                 subjectLabel: $owner->name,
+            );
+
+            $this->merchantMembershipService->store($merchant, [
+                'user_id' => $owner->id,
+                'role' => Role::Owner,
+                'status' => MembershipStatus::Active,
+            ]);
+
+            foreach ($categoryPublicIds as $categoryPublicId) {
+                $this->merchantCategoryService->attach($merchant, $categoryPublicId);
+            }
+
+            return $merchant->fresh(['memberships', 'categories']);
+        });
+    }
+
+    /**
+     * Create a Merchant owned by an existing User. Never creates or mutates the User.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function createForUser(User $owner, array $data): Merchant
+    {
+        $categoryPublicIds = array_values(array_unique($data['category_ids'] ?? []));
+
+        if ($categoryPublicIds === []) {
+            throw ValidationException::withMessages([
+                'category_ids' => 'Select at least one business category.',
+            ]);
+        }
+
+        if (! isset($data['name']) || trim((string) $data['name']) === '') {
+            throw ValidationException::withMessages([
+                'name' => 'The name field is required.',
+            ]);
+        }
+
+        return DB::transaction(function () use ($owner, $data, $categoryPublicIds) {
+            $merchant = new Merchant;
+            $merchant->public_id = (string) Str::ulid();
+            $merchant->fill(Arr::only($data, self::ACTIVITY_FIELDS));
+            if (! array_key_exists('status', $data) || $data['status'] === null) {
+                $merchant->status = MerchantStatus::Active;
+            }
+            $merchant->save();
+
+            $this->activityLogService->recordCreated(
+                subject: $merchant,
+                allowedFields: self::ACTIVITY_FIELDS,
+                subjectLabel: $merchant->name,
+                metadata: [
+                    'action' => 'merchant.created_for_existing_user',
+                    'owner_user_id' => $owner->id,
+                ],
+                actor: $owner,
             );
 
             $this->merchantMembershipService->store($merchant, [

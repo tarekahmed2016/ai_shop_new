@@ -19,7 +19,7 @@ class MerchantContextService
     ) {}
 
     /**
-     * @return list<array{public_id: string, name: string, role: string}>
+     * @return list<array{public_id: string, name: string, role: string, current: bool}>
      */
     public function availableMerchantsFor(User $user): array
     {
@@ -33,6 +33,8 @@ class MerchantContextService
                 'public_id' => $membership->merchant->public_id,
                 'name' => $membership->merchant->name,
                 'role' => $membership->role->value,
+                'current' => $this->merchantContext->isActive()
+                    && $this->merchantContext->publicId() === $membership->merchant->public_id,
             ])
             ->values()
             ->all();
