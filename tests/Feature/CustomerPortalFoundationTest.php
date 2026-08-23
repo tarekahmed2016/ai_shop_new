@@ -77,14 +77,9 @@ test('duplicate user email is rejected for customer registration', function () {
     expect(Customer::query()->where('email', 'taken@example.com')->count())->toBe(0);
 });
 
-test('platform registration routes remain unavailable', function () {
-    $this->get('/register')->assertNotFound();
-    $this->post('/register', [
-        'name' => 'Test User',
-        'email' => 'test@example.com',
-        'password' => 'password12',
-        'password_confirmation' => 'password12',
-    ])->assertNotFound();
+test('legacy customer registration remains available alongside unified register', function () {
+    $this->get(route('customer.register'))->assertOk();
+    $this->get('/register')->assertOk();
 });
 
 test('linked customer can access portal while guest and unlinked user cannot', function () {

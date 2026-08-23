@@ -23,7 +23,7 @@ class EnableCustomerController extends Controller
         $customer = $user?->customer;
 
         if ($customer?->isActive()) {
-            return redirect()->intended(route('customer.home'));
+            return redirect()->intended(route('customer.requests.create'));
         }
 
         if ($customer !== null && ! $customer->isActive()) {
@@ -46,6 +46,6 @@ class EnableCustomerController extends Controller
 
         $this->customerContext->set($customer);
 
-        return redirect()->intended(route('customer.home'));
+        return redirect()->intended(route('customer.requests.create'));
     }
 }

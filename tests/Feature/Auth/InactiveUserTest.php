@@ -26,7 +26,7 @@ test('active users can authenticate', function () {
     $this->post('/login', [
         'email' => 'active@example.com',
         'password' => 'password',
-    ])->assertRedirect(route('dashboard', absolute: false));
+    ])->assertRedirect(route('account.get-started', absolute: false));
 
     $this->assertAuthenticatedAs($user);
 });

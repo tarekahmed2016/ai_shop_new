@@ -297,7 +297,7 @@ test('enable customer ignores forged customer and user ids', function () {
             'customer_id' => $other->id,
             'user_id' => 999999,
         ])
-        ->assertRedirect(route('customer.home'));
+        ->assertRedirect(route('customer.requests.create'));
 
     expect($other->fresh()->user_id)->toBeNull()
         ->and($user->fresh()->customer?->id)->not->toBe($other->id)

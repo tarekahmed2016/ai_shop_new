@@ -26,7 +26,7 @@ function target(): string
         return route('customer.home', absolute: false);
     }
 
-    return route('dashboard', absolute: false);
+    return route('account.get-started', absolute: false);
 }
 
 /**

@@ -24,6 +24,10 @@ class DashboardController extends Controller
         $capabilities = $user ? UserCapabilities::for($user) : null;
         $hasMerchantMemberships = (bool) ($capabilities['hasMerchantMemberships'] ?? false);
 
+        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ! ($capabilities['hasActiveCustomer'] ?? false)) {
+            return redirect()->route('account.get-started');
+        }
+
         // Customer-only users (no merchant capability) use the customer portal.
         if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ($capabilities['hasActiveCustomer'] ?? false)) {
             return redirect()->route('customer.home');
