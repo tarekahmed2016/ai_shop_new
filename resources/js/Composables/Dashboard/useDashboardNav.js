@@ -13,11 +13,9 @@ import {
     faFileLines,
     faFolderOpen,
     faHandshake,
-    faHome,
     faImages,
     faInbox,
     faBell,
-    faClipboardList,
     faNewspaper,
     faPalette,
     faShuffle,
@@ -27,6 +25,7 @@ import {
     faUserShield,
     faUsers,
 } from '@fortawesome/free-solid-svg-icons'
+import { useAccountNav } from '../useAccountNav.js'
 
 function namedRoute(name) {
     if (!name || typeof route !== 'function') {
@@ -49,15 +48,12 @@ export function useDashboardNav() {
     const { t } = useI18n()
     const page = usePage()
     const isAdmin = computed(() => page.props.auth?.isAdmin === true)
+    const { accountSections, merchantToolItems } = useAccountNav()
 
     const menuItems = computed(() => {
         const items = [
-            {
-                id: 'dashboard',
-                label: t('sidebar.dashboard'),
-                icon: faHome,
-                route: namedRoute('dashboard'),
-            },
+            ...accountSections.value,
+            ...merchantToolItems.value,
         ]
 
         // Marketplace modules stay top-level. Only modules with a real Ziggy route are shown.
@@ -86,65 +82,6 @@ export function useDashboardNav() {
                     route: href,
                 })
             })
-        }
-
-        const availableMerchants = page.props.availableMerchants || []
-        if (availableMerchants.length > 0) {
-            if (page.props.merchantContext) {
-                items.push({
-                    id: 'merchant-home',
-                    label: t('sidebar.merchantHome'),
-                    icon: faStore,
-                    route: namedRoute('merchant.home'),
-                })
-
-                const merchantRequestsHref = namedRoute('merchant.requests.index')
-                if (merchantRequestsHref) {
-                    items.push({
-                        id: 'merchant-requests',
-                        label: t('sidebar.merchantRequests'),
-                        icon: faClipboardList,
-                        route: merchantRequestsHref,
-                    })
-                }
-
-                const merchantActivitiesHref = namedRoute('merchant.activities.index')
-                if (merchantActivitiesHref) {
-                    items.push({
-                        id: 'merchant-activities',
-                        label: t('sidebar.merchantActivities'),
-                        icon: faTags,
-                        route: merchantActivitiesHref,
-                    })
-                }
-
-                const merchantTeamHref = namedRoute('merchant.team.index')
-                if (merchantTeamHref) {
-                    items.push({
-                        id: 'merchant-team',
-                        label: t('sidebar.merchantTeam'),
-                        icon: faUsers,
-                        route: merchantTeamHref,
-                    })
-                }
-
-                const merchantBusinessProfileHref = namedRoute('merchant.business-profile.edit')
-                if (merchantBusinessProfileHref) {
-                    items.push({
-                        id: 'merchant-business-profile',
-                        label: t('sidebar.merchantBusinessProfile'),
-                        icon: faBuilding,
-                        route: merchantBusinessProfileHref,
-                    })
-                }
-            } else {
-                items.push({
-                    id: 'merchant-workspace',
-                    label: t('sidebar.merchantWorkspace'),
-                    icon: faStore,
-                    route: namedRoute('merchant.select'),
-                })
-            }
         }
 
         if (isAdmin.value) {

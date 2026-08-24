@@ -31,6 +31,14 @@
       "submit": "إنشاء النشاط",
       "submitting": "جاري الإنشاء..."
     },
+    "nav": {
+      "customerAccount": "حساب عميل",
+      "merchantAccount": "حساب تاجر",
+      "myRequests": "طلباتي",
+      "createRequest": "طلب جديد",
+      "startSelling": "ابدأ البيع",
+      "createAnotherBusiness": "إنشاء نشاط جديد"
+    },
     "workspace": {
       "usingAs": "أنت تستخدم المنصة الآن كـ",
       "myRequests": "طلباتي",
@@ -204,7 +212,8 @@
     "userMenu": "قائمة المستخدم",
     "profile": "الملف الشخصي",
     "settings": "إعدادات النظام",
-    "logout": "تسجيل الخروج"
+    "logout": "تسجيل الخروج",
+    "returnToDashboard": "العودة إلى لوحة التحكم"
   },
   "sidebar": {
     "users": "المستخدمون",

@@ -36,7 +36,7 @@ const handleLogin = () => {
                     </h1>
                 </div>
                 <div class="mb-6">
-                    <p class="text-small text-lighter text-center mt-2">
+                    <p class="text-small text-slate-300 text-center mt-2">
                         {{ t('auth.login.subtitle', { company: companyName }) }}
                     </p>
                 </div>
@@ -63,7 +63,7 @@ const handleLogin = () => {
                                 :class="{ 'border-red-500 focus:ring-red-500': form.errors.password }"
                                 :placeholder="t('auth.login.passwordPlaceholder')" required />
                             <button type="button" @click="showPassword = !showPassword"
-                                class="absolute top-1/2 cursor-pointer -translate-y-1/2 end-3 text-blue-400 hover:text-blue-300 transition-colors">
+                                class="absolute top-1/2 cursor-pointer -translate-y-1/2 end-3 text-gray-300 hover:text-white transition-colors">
                                 <font-awesome-icon :icon="showPassword ? faEyeSlash : faEye" />
                             </button>
                         </div>
@@ -75,9 +75,9 @@ const handleLogin = () => {
                         {{ form.processing ? t('auth.login.loggingIn') : t('auth.login.loginButton') }}
                     </button>
                 </form>
-                <p class="text-center text-small text-lighter mt-6">
+                <p class="text-center text-small text-slate-300 mt-6">
                     {{ t('auth.login.noAccount') }}
-                    <Link :href="route('register')" class="text-blue-400 hover:text-blue-300">{{ t('auth.login.registerLink') }}</Link>
+                    <Link :href="route('register')" class="text-white font-semibold underline underline-offset-2 decoration-yellow-400 hover:text-yellow-300">{{ t('auth.login.registerLink') }}</Link>
                 </p>
             </div>
         </div>

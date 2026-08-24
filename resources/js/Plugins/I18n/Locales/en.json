@@ -31,6 +31,14 @@
       "submit": "Create business",
       "submitting": "Creating..."
     },
+    "nav": {
+      "customerAccount": "Customer Account",
+      "merchantAccount": "Merchant Account",
+      "myRequests": "My Requests",
+      "createRequest": "Create Request",
+      "startSelling": "Start Selling",
+      "createAnotherBusiness": "Create Another Business"
+    },
     "workspace": {
       "usingAs": "Currently using",
       "myRequests": "My Requests",
@@ -204,7 +212,8 @@
     "userMenu": "User menu",
     "profile": "Profile",
     "settings": "CMS Settings",
-    "logout": "Logout"
+    "logout": "Logout",
+    "returnToDashboard": "Return to Dashboard"
   },
   "sidebar": {
     "users": "Users",

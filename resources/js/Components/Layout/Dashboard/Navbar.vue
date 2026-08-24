@@ -2,7 +2,6 @@
 import { useI18n } from 'vue-i18n'
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import AccountWorkspaceSwitcher from '../../Account/AccountWorkspaceSwitcher.vue'
 
 const page = usePage()
 const isAdmin = computed(() => page.props.auth?.isAdmin === true)
@@ -101,7 +100,7 @@ const changeLanguage = (newLocale) => {
 // Close dropdowns when clicking outside
 const handleClickOutside = (event) => {
     const target = event.target
-    if (!target.closest('.language-dropdown') && !target.closest('.user-dropdown') && !target.closest('.workspace-switcher')) {
+    if (!target.closest('.language-dropdown') && !target.closest('.user-dropdown')) {
         isLanguageDropdownOpen.value = false
         isUserDropdownOpen.value = false
     }
@@ -128,76 +127,7 @@ const handleToggleSidebar = () => {
         // Desktop: adjust based on sidebar state
         sidebarCollapsed ? 'md:start-20' : 'md:start-64'
     ]">
-        <!-- Left Section -->
-        <div class="flex items-center gap-4">
-            <!-- Mobile Menu Toggle Button (visible only on mobile) -->
-            <button @click="handleToggleSidebar"
-                class="md:hidden text-gray-300 hover:text-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-2 cursor-pointer"
-                :aria-label="t('navbar.toggleMenu')">
-                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="3" y1="12" x2="21" y2="12"></line>
-                    <line x1="3" y1="6" x2="21" y2="6"></line>
-                    <line x1="3" y1="18" x2="21" y2="18"></line>
-                </svg>
-            </button>
-
-            <!-- Page Title -->
-            <h1 class="text-card-title text-gray-100">
-                {{ t('navbar.title') }}
-            </h1>
-        </div>
-
-        <!-- Right Section -->
-        <div class="flex items-center gap-2 sm:gap-4">
-            <AccountWorkspaceSwitcher />
-
-            <!-- Language Switcher Dropdown -->
-            <div class="relative language-dropdown">
-                <button @click="toggleLanguageDropdown"
-                    class="flex items-center gap-2 px-3 py-2 text-button text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                    :aria-label="t('navbar.language')">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="2" y1="12" x2="22" y2="12"></line>
-                        <path
-                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
-                        </path>
-                    </svg>
-                    <span>{{ currentLanguage?.code.toUpperCase() }}</span>
-                    <svg xmlns="http://www.w3.org/2000/svg"
-                        :class="['w-4 h-4 transition-transform duration-200', isLanguageDropdownOpen ? 'rotate-180' : '']"
-                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                        stroke-linejoin="round">
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                </button>
-
-                <!-- Language Dropdown Menu -->
-                <transition enter-active-class="transition ease-out duration-100"
-                    enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100"
-                    leave-active-class="transition ease-in duration-75"
-                    leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
-                    <div v-if="isLanguageDropdownOpen"
-                        class="absolute end-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-1 z-50">
-                        <button v-for="lang in languages" :key="lang.code" @click="changeLanguage(lang.code)" :class="[
-                            'w-full flex items-center gap-3 px-4 py-2 text-body transition-colors cursor-pointer',
-                            currentLocale === lang.code
-                                ? 'bg-blue-600 text-white'
-                                : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
-                        ]">
-                            <span>{{ lang.name }}</span>
-                            <svg v-if="currentLocale === lang.code" xmlns="http://www.w3.org/2000/svg"
-                                class="w-4 h-4 ms-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"
-                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="20 6 9 17 4 12"></polyline>
-                            </svg>
-                        </button>
-                    </div>
-                </transition>
-            </div>
-
+        <div class="flex w-full items-center justify-end gap-2 sm:gap-3">
             <!-- User Avatar Dropdown -->
             <div class="relative user-dropdown">
                 <button @click="toggleUserDropdown"
@@ -279,6 +209,65 @@ const handleToggleSidebar = () => {
                     </div>
                 </transition>
             </div>
+
+            <!-- Language Switcher Dropdown -->
+            <div class="relative language-dropdown">
+                <button @click="toggleLanguageDropdown"
+                    class="flex items-center gap-2 px-3 py-2 text-button text-gray-300 hover:text-gray-100 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                    :aria-label="t('navbar.language')">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="2" y1="12" x2="22" y2="12"></line>
+                        <path
+                            d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z">
+                        </path>
+                    </svg>
+                    <span>{{ currentLanguage?.code.toUpperCase() }}</span>
+                    <svg xmlns="http://www.w3.org/2000/svg"
+                        :class="['w-4 h-4 transition-transform duration-200', isLanguageDropdownOpen ? 'rotate-180' : '']"
+                        fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                </button>
+
+                <transition enter-active-class="transition ease-out duration-100"
+                    enter-from-class="transform opacity-0 scale-95" enter-to-class="transform opacity-100 scale-100"
+                    leave-active-class="transition ease-in duration-75"
+                    leave-from-class="transform opacity-100 scale-100" leave-to-class="transform opacity-0 scale-95">
+                    <div v-if="isLanguageDropdownOpen"
+                        class="absolute end-0 mt-2 w-48 bg-gray-800 rounded-lg shadow-lg border border-gray-700 py-1 z-50">
+                        <button v-for="lang in languages" :key="lang.code" @click="changeLanguage(lang.code)" :class="[
+                            'w-full flex items-center gap-3 px-4 py-2 text-body transition-colors cursor-pointer',
+                            currentLocale === lang.code
+                                ? 'bg-blue-600 text-white'
+                                : 'text-gray-300 hover:bg-gray-700 hover:text-gray-100'
+                        ]">
+                            <span>{{ lang.name }}</span>
+                            <svg v-if="currentLocale === lang.code" xmlns="http://www.w3.org/2000/svg"
+                                class="w-4 h-4 ms-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <polyline points="20 6 9 17 4 12"></polyline>
+                            </svg>
+                        </button>
+                    </div>
+                </transition>
+            </div>
+
+            <button
+                type="button"
+                @click="handleToggleSidebar"
+                class="md:hidden text-gray-300 hover:text-gray-100 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-2 cursor-pointer"
+                :aria-label="t('navbar.toggleMenu')"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg>
+            </button>
         </div>
     </nav>
 </template>

@@ -16,6 +16,7 @@ const { t, locale } = useI18n()
 const page = usePage()
 const { navLinks, isHomePage } = usePublicNavLinks()
 
+const isAuthenticated = computed(() => Boolean(page.props.auth?.user))
 const companyInfo = computed(() => page.props.companyInfo || {})
 const businessCta = computed(() => page.props.businessCta || null)
 
@@ -51,6 +52,7 @@ const setLanguage = (code) => {
 }
 
 const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
+const dashboardHref = computed(() => page.props.auth?.home || (typeof route === 'function' ? route('dashboard') : '/dashboard'))
 </script>
 
 <template>
@@ -145,6 +147,20 @@ const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
             </button>
           </div>
         </div>
+
+        <div class="public-nav-auth">
+          <template v-if="!isAuthenticated">
+            <Link :href="route('login')" class="public-nav-login">
+              {{ t('auth.login.loginButton') }}
+            </Link>
+            <Link :href="route('register')" class="public-nav-register">
+              {{ t('auth.login.registerLink') }}
+            </Link>
+          </template>
+          <Link v-else :href="dashboardHref" class="public-nav-dashboard">
+            {{ t('navbar.returnToDashboard') }}
+          </Link>
+        </div>
       </div>
 
       <Transition
@@ -165,6 +181,19 @@ const homeHref = computed(() => (isHomePage.value ? '#home' : route('home')))
             >
               {{ link.label }}
             </a>
+            <div class="public-mobile-auth">
+              <template v-if="!isAuthenticated">
+                <Link :href="route('login')" class="public-nav-login" @click="closeMenu">
+                  {{ t('auth.login.loginButton') }}
+                </Link>
+                <Link :href="route('register')" class="public-nav-register" @click="closeMenu">
+                  {{ t('auth.login.registerLink') }}
+                </Link>
+              </template>
+              <Link v-else :href="dashboardHref" class="public-nav-dashboard" @click="closeMenu">
+                {{ t('navbar.returnToDashboard') }}
+              </Link>
+            </div>
             <a
               v-if="SHOW_PUBLIC_BUSINESS_CTA"
               :href="businessCtaUrl"

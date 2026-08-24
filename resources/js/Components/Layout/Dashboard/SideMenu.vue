@@ -34,9 +34,21 @@ const isCollapsed = computed(() => props.collapsed)
 
 const expandedItems = ref(new Set())
 
-const itemKey = (item) => item.id || item.route || item.label
+const itemKey = (item) => item.id || item.route || item.route || item.label || item.label
+
+const isAlwaysOpenSection = (item) => (
+  item?.alwaysOpen === true || item?.type === 'section' || item?.type === 'section'
+)
+
+const itemLabel = (item) => item?.label || item?.label || ''
+
+const itemHref = (item) => item?.route || item?.route || null
 
 const toggleExpand = (item) => {
+  if (isAlwaysOpenSection(item)) {
+    return
+  }
+
   const key = itemKey(item)
   if (expandedItems.value.has(key)) {
     expandedItems.value.delete(key)
@@ -45,7 +57,7 @@ const toggleExpand = (item) => {
   }
 }
 
-const isExpanded = (item) => expandedItems.value.has(itemKey(item))
+const isExpanded = (item) => isAlwaysOpenSection(item) || expandedItems.value.has(itemKey(item))
 
 const handleToggle = () => {
   emit('toggle')
@@ -65,7 +77,7 @@ const getRoutePath = (routeUrl) => {
 
 const isActiveRoute = (item) => {
   const currentPath = getRoutePath(currentRoute.value)
-  const itemPath = getRoutePath(item.route)
+  const itemPath = getRoutePath(itemHref(item))
 
   if (itemPath && (currentPath === itemPath || (itemPath !== '/' && currentPath.startsWith(`${itemPath}/`)))) return true
 
@@ -81,15 +93,39 @@ const navigateTo = (path) => {
 }
 
 const handleItemClick = (item) => {
+  if (item.disabled || item.disabled || isAlwaysOpenSection(item)) {
+    return
+  }
+
+  const clickHandler = item.onClick || item.onClick
+  if (typeof clickHandler === 'function') {
+    clickHandler()
+    if (window.innerWidth < 768) {
+      emit('toggle')
+    }
+    return
+  }
+
   if (item.children && item.children.length > 0) {
     toggleExpand(item)
-  } else if (item.route) {
-    navigateTo(item.route)
+    return
+  }
+
+  const href = itemHref(item)
+  if (href) {
+    navigateTo(href)
+    if (window.innerWidth < 768) {
+      emit('toggle')
+    }
   }
 }
 
 const collectActiveParentKeys = (items, currentPath, keys) => {
   items.forEach((item) => {
+    if (isAlwaysOpenSection(item)) {
+      return
+    }
+
     if (item.children && item.children.length > 0) {
       const hasActiveChild = item.children.some(child => isActiveRoute(child))
       if (hasActiveChild) {
@@ -151,7 +187,7 @@ watch(
       </div>
       <button
         @click="handleToggle"
-        class="text-gray-400 hover:text-gray-100 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
+        class="text-gray-300 hover:text-white cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-lg p-1"
         :aria-label="isCollapsed ? t('sidebar.expandSidebar') : t('sidebar.collapseSidebar')"
         :aria-expanded="!isCollapsed"
       >
@@ -164,8 +200,53 @@ watch(
 
     <!-- Navigation Menu -->
     <nav class="flex-1 px-3 py-4 overflow-y-auto">
-      <ul class="space-y-2">
-        <li v-for="item in items" :key="item.id || item.route" class="relative">
+      <ul class="space-y-4">
+        <li v-for="item in items" :key="item.id || item.route || item.route" class="relative">
+          <div v-if="isAlwaysOpenSection(item)" class="space-y-1.5">
+            <p
+              v-if="!isCollapsed"
+              class="px-3 py-2.5 mt-2 mb-2 text-base font-bold tracking-wide text-white pointer-events-none rounded-lg bg-gray-800 ring-1 ring-gray-600"
+            >
+              {{ itemLabel(item) }}
+            </p>
+            <ul class="space-y-1 ms-2 ps-2 border-s border-gray-800">
+              <li v-for="child in item.children" :key="child.id || child.route || child.route">
+                <button
+                  type="button"
+                  :disabled="child.disabled || child.disabled"
+                  @click="handleItemClick(child)"
+                  :class="[
+                    'w-full group relative flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-all duration-200 text-start min-h-11',
+                    (child.disabled || child.disabled)
+                      ? 'text-amber-400 cursor-default'
+                      : 'cursor-pointer hover:scale-[1.01] active:scale-[0.99]',
+                    !(child.disabled || child.disabled) && (isActiveRoute(child) || child.current)
+                      ? 'bg-blue-900 text-white shadow-md'
+                      : !(child.disabled || child.disabled)
+                        ? 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'
+                        : ''
+                  ]"
+                  :aria-label="itemLabel(child)"
+                  :title="isCollapsed ? itemLabel(child) : ''"
+                >
+                  <span v-if="child.current && !isCollapsed" class="shrink-0 text-sm">✓</span>
+                  <span
+                    v-if="child.icon"
+                    class="shrink-0 w-4 flex justify-center"
+                  >
+                    <font-awesome-icon :icon="child.icon" class="w-4 h-4" />
+                  </span>
+                  <span
+                    v-if="!isCollapsed"
+                    class="flex-1 text-sm whitespace-nowrap overflow-hidden font-normal truncate"
+                  >
+                    {{ itemLabel(child) }}
+                  </span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          <template v-else>
           <!-- Parent Item -->
           <div
             @click="handleItemClick(item)"
@@ -174,7 +255,7 @@ watch(
               'hover:scale-[1.02] active:scale-[0.98]',
               isActiveRoute(item)
                 ? 'bg-blue-900 text-white shadow-md'
-                : 'text-gray-400 hover:bg-gray-800 hover:text-gray-100'
+                : 'text-gray-300 hover:bg-gray-800 hover:text-gray-100'
             ]"
             :aria-label="item.label"
             :aria-expanded="item.children ? isExpanded(item) : undefined"
@@ -252,7 +333,7 @@ watch(
                     'hover:scale-[1.01] active:scale-[0.99] ms-3',
                     isActiveRoute(child)
                       ? 'bg-blue-900 text-white'
-                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200  border-transparent hover:border-gray-600'
+                      : 'text-gray-300 hover:bg-gray-800/50 hover:text-gray-100  border-transparent hover:border-gray-600'
                   ]"
                   :aria-label="child.label"
                   :aria-expanded="isExpanded(child)"
@@ -277,7 +358,7 @@ watch(
                     'hover:scale-[1.01] active:scale-[0.99] ms-3',
                     isActiveRoute(child)
                       ? 'bg-blue-900 text-white'
-                      : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200  border-transparent hover:border-gray-600'
+                      : 'text-gray-300 hover:bg-gray-800/50 hover:text-gray-100  border-transparent hover:border-gray-600'
                   ]"
                   :aria-label="child.label"
                 >
@@ -327,7 +408,7 @@ watch(
                         'group relative flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer transition-all duration-200 ms-3',
                         isActiveRoute(grandchild)
                           ? 'bg-blue-900 text-white'
-                          : 'text-gray-400 hover:bg-gray-800/50 hover:text-gray-200'
+                          : 'text-gray-300 hover:bg-gray-800/50 hover:text-gray-100'
                       ]"
                       :aria-label="grandchild.label"
                     >
@@ -341,6 +422,7 @@ watch(
               </li>
             </ul>
           </transition>
+          </template>
         </li>
       </ul>
     </nav>
@@ -349,7 +431,7 @@ watch(
     <div class="px-3 py-4 border-t border-gray-800">
       <div
         :class="[
-          'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400',
+          'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300',
           !isCollapsed ? '' : 'justify-center'
         ]"
       >

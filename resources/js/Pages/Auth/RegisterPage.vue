@@ -28,7 +28,7 @@ const submit = () => {
             <div class="glass-card p-6 sm:p-8 shadow-xl">
                 <div class="text-center mb-6">
                     <h1 class="text-hero text-white">{{ t('auth.register.title') }}</h1>
-                    <p class="text-small text-lighter mt-2">{{ t('auth.register.subtitle') }}</p>
+                    <p class="text-small text-slate-300 mt-2">{{ t('auth.register.subtitle') }}</p>
                 </div>
 
                 <form class="space-y-4" @submit.prevent="submit">
@@ -63,7 +63,7 @@ const submit = () => {
                         </label>
                         <div class="relative">
                             <input v-model="form.password" :type="showPassword ? 'text' : 'password'" required class="w-full px-4 py-3 rounded-xl border border-slate-600 bg-slate-800/50 text-white" />
-                            <button type="button" class="absolute end-3 top-1/2 -translate-y-1/2 text-blue-400" @click="showPassword = !showPassword">
+                            <button type="button" class="absolute end-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white" @click="showPassword = !showPassword">
                                 <font-awesome-icon :icon="showPassword ? faEyeSlash : faEye" />
                             </button>
                         </div>
@@ -78,9 +78,9 @@ const submit = () => {
                         {{ form.processing ? t('auth.register.submitting') : t('auth.register.submit') }}
                     </button>
                 </form>
-                <p class="text-center text-small text-lighter mt-6">
+                <p class="text-center text-small text-slate-300 mt-6">
                     {{ t('auth.register.haveAccount') }}
-                    <Link :href="route('login')" class="text-blue-400 hover:text-blue-300">{{ t('auth.register.login') }}</Link>
+                    <Link :href="route('login')" class="text-white font-semibold underline underline-offset-2 decoration-yellow-400 hover:text-yellow-300">{{ t('auth.register.login') }}</Link>
                 </p>
             </div>
         </div>
