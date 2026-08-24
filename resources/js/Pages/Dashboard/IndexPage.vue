@@ -9,6 +9,7 @@ import {
     faClipboardList,
     faEnvelope,
     faEye,
+    faPaperPlane,
     faStore,
     faTags,
 } from '@fortawesome/free-solid-svg-icons'
@@ -51,6 +52,18 @@ const merchantStats = computed(() => {
 
     return [
         {
+            label: t('dashboard.merchant.requestsReceived'),
+            value: merchantWorkspace.value.requests_received ?? 0,
+            icon: faClipboardList,
+            prominent: true,
+        },
+        {
+            label: t('dashboard.merchant.offersSubmitted'),
+            value: merchantWorkspace.value.offers_submitted ?? 0,
+            icon: faPaperPlane,
+            prominent: true,
+        },
+        {
             label: t('dashboard.merchant.categoriesCount'),
             value: merchantWorkspace.value.categories_count ?? 0,
             icon: faTags,
@@ -67,6 +80,9 @@ const merchantStats = computed(() => {
         },
     ]
 })
+
+const prominentStats = computed(() => merchantStats.value.filter((stat) => stat.prominent))
+const operationalStats = computed(() => merchantStats.value.filter((stat) => !stat.prominent))
 </script>
 
 <template>
@@ -119,9 +135,27 @@ const merchantStats = computed(() => {
                     </div>
                 </div>
 
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div
+                        v-for="stat in prominentStats"
+                        :key="stat.label"
+                        class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm"
+                    >
+                        <div class="flex items-start gap-4">
+                            <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                                <font-awesome-icon :icon="stat.icon" class="h-5 w-5" />
+                            </span>
+                            <div>
+                                <p class="text-muted muted-color">{{ stat.label }}</p>
+                                <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ stat.value }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div
-                        v-for="stat in merchantStats"
+                        v-for="stat in operationalStats"
                         :key="stat.label"
                         class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm"
                     >

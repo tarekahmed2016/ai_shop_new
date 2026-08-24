@@ -181,6 +181,16 @@ class CustomerRequest extends Model
     }
 
     /**
+     * Permanent merchant eligibility history for this request.
+     *
+     * @return HasMany<MerchantRequestMatch, $this>
+     */
+    public function merchantMatches(): HasMany
+    {
+        return $this->hasMany(MerchantRequestMatch::class);
+    }
+
+    /**
      * @return HasMany<MerchantOffer, $this>
      */
     public function merchantOffers(): HasMany

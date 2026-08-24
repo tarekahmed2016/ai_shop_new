@@ -28,6 +28,7 @@ class RequestMatchingService
     public function __construct(
         public ActivityLogService $activityLogService,
         public MerchantContext $merchantContext,
+        public MerchantRequestMatchService $merchantRequestMatchService,
     ) {}
 
     /**
@@ -54,6 +55,11 @@ class RequestMatchingService
             : collect();
 
         $result = DB::transaction(function () use ($customerRequest, $eligibleMerchantIds, $reason) {
+            $this->merchantRequestMatchService->recordEligibleMerchants(
+                $customerRequest,
+                $eligibleMerchantIds,
+            );
+
             $existing = RequestMatch::query()
                 ->where('customer_request_id', $customerRequest->id)
                 ->get();

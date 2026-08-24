@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RequestMatches\Status as MatchStatus;
 use App\Models\RequestMatch;
+use App\Services\MerchantRequestMatchService;
 use App\Support\MerchantContext;
 use App\Support\UserCapabilities;
 use Illuminate\Http\RedirectResponse;
@@ -15,6 +16,7 @@ class DashboardController extends Controller
 {
     public function __construct(
         public MerchantContext $merchantContext,
+        public MerchantRequestMatchService $merchantRequestMatchService,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -43,6 +45,8 @@ class DashboardController extends Controller
             $merchant = $this->merchantContext->merchant();
             $merchantId = (int) $this->merchantContext->merchantId();
 
+            $usage = $this->merchantRequestMatchService->usageCounters($merchantId);
+
             $merchantWorkspace = [
                 'name' => $merchant?->name,
                 'public_id' => $merchant?->public_id,
@@ -56,6 +60,8 @@ class DashboardController extends Controller
                     ->where('merchant_id', $merchantId)
                     ->where('status', MatchStatus::Viewed)
                     ->count(),
+                'requests_received' => $usage['requests_received'],
+                'offers_submitted' => $usage['offers_submitted'],
             ];
         }
 

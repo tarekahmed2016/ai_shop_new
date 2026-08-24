@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\Merchants\Status;
 use Database\Factories\MerchantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -102,11 +103,48 @@ class Merchant extends Model
     }
 
     /**
+     * Permanent eligibility history. Not deleted when live matches are removed.
+     *
+     * @return HasMany<MerchantRequestMatch, $this>
+     */
+    public function receivedRequestMatches(): HasMany
+    {
+        return $this->hasMany(MerchantRequestMatch::class);
+    }
+
+    /**
      * @return HasMany<MerchantOffer, $this>
      */
     public function merchantOffers(): HasMany
     {
         return $this->hasMany(MerchantOffer::class);
+    }
+
+    /**
+     * Database-side usage totals for the admin merchants index.
+     *
+     * @param  Builder<Merchant>  $query
+     * @return Builder<Merchant>
+     */
+    public function scopeWithUsageCounts(Builder $query): Builder
+    {
+        return $query->withCount([
+            'receivedRequestMatches as requests_received_count',
+            'merchantOffers as offers_submitted_count' => fn (Builder $offers) => $offers->whereNotNull('submitted_at'),
+        ]);
+    }
+
+    /**
+     * Whole-number percentage from already-loaded usage counts. Not capped at 100.
+     */
+    public function offerSubmissionRate(): int
+    {
+        $received = (int) ($this->requests_received_count ?? 0);
+        if ($received === 0) {
+            return 0;
+        }
+
+        return (int) round(((int) ($this->offers_submitted_count ?? 0)) / $received * 100);
     }
 
     /**

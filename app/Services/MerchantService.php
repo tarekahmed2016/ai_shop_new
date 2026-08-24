@@ -51,8 +51,9 @@ class MerchantService
         $allowedSorts = ['id', 'name', 'email', 'created_at', 'status'];
         $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'created_at';
 
-        return Merchant::query()
+        $paginator = Merchant::query()
             ->withCount('memberships')
+            ->withUsageCounts()
             ->when($search, fn ($q) => $q->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -61,6 +62,14 @@ class MerchantService
             ->orderBy($sortBy, $sortDir)
             ->paginate($perPage)
             ->withQueryString();
+
+        $paginator->getCollection()->transform(function (Merchant $merchant) {
+            $merchant->setAttribute('offer_submission_rate', $merchant->offerSubmissionRate());
+
+            return $merchant;
+        });
+
+        return $paginator;
     }
 
     /**

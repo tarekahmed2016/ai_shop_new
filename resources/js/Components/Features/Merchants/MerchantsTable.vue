@@ -33,6 +33,9 @@
                             {{ merchant.status_formatted.label }}
                         </span>
                     </td>
+                    <td class="table-cell table-cell-secondary text-body">{{ merchant.requests_received_count ?? 0 }}</td>
+                    <td class="table-cell table-cell-secondary text-body">{{ merchant.offers_submitted_count ?? 0 }}</td>
+                    <td class="table-cell table-cell-secondary text-body">{{ merchant.offer_submission_rate ?? 0 }}%</td>
                     <td class="table-cell table-cell-actions">
                         <button @click="$emit('members', merchant)" class="btn btn-secondary me-2">
                             {{ t('merchants.table.members') }}
@@ -82,6 +85,9 @@ const columns = computed(() => [
     { key: 'email', label: t('merchants.table.email'), sortable: true },
     { key: 'phone', label: t('merchants.table.phone'), sortable: false },
     { key: 'status', label: t('merchants.table.status'), sortable: true },
+    { key: 'requests_received_count', label: t('merchants.table.requestsReceived'), sortable: false },
+    { key: 'offers_submitted_count', label: t('merchants.table.offersSubmitted'), sortable: false },
+    { key: 'offer_submission_rate', label: t('merchants.table.offerSubmissionRate'), sortable: false },
 ])
 
 const handleSort = (column) => {
