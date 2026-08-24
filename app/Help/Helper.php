@@ -26,6 +26,10 @@ function target(): string
         return route('customer.home', absolute: false);
     }
 
+    if ($capabilities['hasActiveMarketer']) {
+        return route('marketer.home', absolute: false);
+    }
+
     return route('account.get-started', absolute: false);
 }
 

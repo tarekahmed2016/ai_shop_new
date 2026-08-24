@@ -61,6 +61,7 @@ export function useDashboardNav() {
             { id: 'merchants', label: t('sidebar.merchants'), icon: faStore, routeName: 'merchants.index' },
             { id: 'categories', label: t('sidebar.categories'), icon: faTags, routeName: 'categories.index' },
             { id: 'customers', label: t('sidebar.customers'), icon: faUserGroup, routeName: 'customers.index' },
+            { id: 'marketers', label: t('sidebar.marketers'), icon: faBullhorn, routeName: 'marketers.index' },
             { id: 'customer-requests', label: t('sidebar.customerRequests'), icon: faInbox, routeName: 'customer-requests.index' },
             { id: 'matching', label: t('sidebar.matching'), icon: faShuffle, routeName: 'matching.index' },
             { id: 'offers', label: t('sidebar.offers'), icon: faHandshake, routeName: 'offers.index' },

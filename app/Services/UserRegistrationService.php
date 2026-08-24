@@ -8,6 +8,10 @@ use Illuminate\Support\Facades\DB;
 
 class UserRegistrationService
 {
+    public function __construct(
+        public ReferralAttributionService $referralAttributionService,
+    ) {}
+
     /**
      * @param  array{name: string, email: string, phone?: string|null, password: string}  $data
      */
@@ -21,6 +25,8 @@ class UserRegistrationService
             $user->password = (string) $data['password'];
             $user->status = UserStatus::Active;
             $user->save();
+
+            $this->referralAttributionService->attributeNewUser($user);
 
             return $user;
         });

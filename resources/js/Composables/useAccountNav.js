@@ -6,6 +6,7 @@ import {
     faClipboardList,
     faPlus,
     faStore,
+    faBullhorn,
     faTags,
     faUsers,
 } from '@fortawesome/free-solid-svg-icons'
@@ -90,6 +91,58 @@ export function useAccountNav() {
             onClick: goToStartMerchant,
         })
 
+        const marketerStatus = page.props.auth?.capabilities?.marketerStatus || null
+        const marketerChildren = []
+
+        if (!marketerStatus) {
+            marketerChildren.push({
+                id: 'marketer-apply',
+                label: t('account.nav.becomeMarketer'),
+                icon: faBullhorn,
+                route: namedRoute('marketer.application.create'),
+            })
+        } else if (marketerStatus === 'Pending') {
+            marketerChildren.push({
+                id: 'marketer-pending',
+                label: t('account.nav.marketerPending'),
+                icon: faBullhorn,
+                route: namedRoute('marketer.application.status'),
+            })
+        } else if (marketerStatus === 'Rejected') {
+            marketerChildren.push({
+                id: 'marketer-rejected',
+                label: t('account.nav.marketerRejected'),
+                icon: faBullhorn,
+                route: namedRoute('marketer.application.status'),
+            })
+            marketerChildren.push({
+                id: 'marketer-reapply',
+                label: t('account.nav.marketerReapply'),
+                icon: faPlus,
+                route: namedRoute('marketer.application.create'),
+            })
+        } else if (marketerStatus === 'Inactive') {
+            marketerChildren.push({
+                id: 'marketer-inactive',
+                label: t('account.nav.marketerInactive'),
+                icon: faBullhorn,
+                route: namedRoute('marketer.application.status'),
+            })
+        } else {
+            marketerChildren.push({
+                id: 'marketer-overview',
+                label: t('account.nav.marketerOverview'),
+                icon: faBullhorn,
+                route: namedRoute('marketer.home'),
+            })
+            marketerChildren.push({
+                id: 'marketer-referrals',
+                label: t('account.nav.marketerReferrals'),
+                icon: faClipboardList,
+                route: namedRoute('marketer.referrals'),
+            })
+        }
+
         return [
             {
                 id: 'customer-account',
@@ -104,6 +157,13 @@ export function useAccountNav() {
                 alwaysOpen: true,
                 label: t('account.nav.merchantAccount'),
                 children: merchantChildren,
+            },
+            {
+                id: 'marketer-account',
+                type: 'section',
+                alwaysOpen: true,
+                label: t('account.nav.marketerAccount'),
+                children: marketerChildren,
             },
         ]
     })

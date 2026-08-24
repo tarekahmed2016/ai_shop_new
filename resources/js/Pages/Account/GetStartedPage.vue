@@ -11,6 +11,8 @@ const capabilities = computed(() => page.props.auth?.capabilities || page.props.
 const hasActiveCustomer = computed(() => Boolean(capabilities.value.hasActiveCustomer))
 const hasCustomer = computed(() => Boolean(capabilities.value.hasCustomer))
 const hasActiveMerchantMemberships = computed(() => Boolean(capabilities.value.hasActiveMerchantMemberships))
+const hasActiveMarketer = computed(() => Boolean(capabilities.value.hasActiveMarketer))
+const marketerStatus = computed(() => capabilities.value.marketerStatus || null)
 const inactiveCustomer = computed(() => hasCustomer.value && !hasActiveCustomer.value)
 
 const enableCustomer = () => {
@@ -26,7 +28,7 @@ const enableCustomer = () => {
                 <p class="text-small text-lighter mt-3">{{ t('account.getStarted.subtitle') }}</p>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-2">
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div class="glass-card p-6 shadow-xl flex flex-col">
                     <h2 class="text-lg font-semibold text-white mb-2">{{ t('account.getStarted.requestTitle') }}</h2>
                     <p class="text-small text-lighter mb-6 flex-1">{{ t('account.getStarted.requestDescription') }}</p>
@@ -56,6 +58,34 @@ const enableCustomer = () => {
                     <p v-if="hasActiveMerchantMemberships" class="text-sm text-emerald-400 mb-3">{{ t('account.getStarted.sellEnabled') }}</p>
                     <Link :href="route('account.merchant.start')" class="w-full btn-primary text-center">
                         {{ t('account.getStarted.sellCta') }}
+                    </Link>
+                </div>
+
+                <div class="glass-card p-6 shadow-xl flex flex-col">
+                    <h2 class="text-lg font-semibold text-white mb-2">{{ t('account.getStarted.marketerTitle') }}</h2>
+                    <p class="text-small text-lighter mb-6 flex-1">{{ t('account.getStarted.marketerDescription') }}</p>
+                    <p v-if="hasActiveMarketer" class="text-sm text-emerald-400 mb-3">{{ t('account.getStarted.marketerEnabled') }}</p>
+                    <p v-else-if="marketerStatus === 'Pending'" class="text-sm text-amber-400 mb-3">{{ t('account.getStarted.marketerPending') }}</p>
+                    <Link
+                        v-if="hasActiveMarketer"
+                        :href="route('marketer.home')"
+                        class="w-full btn-primary text-center"
+                    >
+                        {{ t('account.getStarted.marketerOpen') }}
+                    </Link>
+                    <Link
+                        v-else-if="marketerStatus === 'Pending' || marketerStatus === 'Inactive'"
+                        :href="route('marketer.application.status')"
+                        class="w-full btn-primary text-center"
+                    >
+                        {{ t('account.getStarted.marketerStatusCta') }}
+                    </Link>
+                    <Link
+                        v-else
+                        :href="route('marketer.application.create')"
+                        class="w-full btn-primary text-center"
+                    >
+                        {{ t('account.getStarted.marketerCta') }}
                     </Link>
                 </div>
             </div>

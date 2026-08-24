@@ -19,7 +19,14 @@
       "sellEnabled": "البيع مفعّل",
       "myRequests": "طلباتي",
       "myBusinesses": "أنشطتي التجارية",
-      "inactiveCustomer": "صلاحية الطلبات غير نشطة حاليًا. تواصل مع الدعم."
+      "inactiveCustomer": "صلاحية الطلبات غير نشطة حاليًا. تواصل مع الدعم.",
+      "marketerTitle": "أريد إحالة العملاء والتجار",
+      "marketerDescription": "احصل على رابط إحالة خاص بك، ادعُ العملاء والتجار للتسجيل، وتابع الإحالات من حسابك. العمولات والمدفوعات ستظهر لاحقًا حسب سياسة المنصة.",
+      "marketerCta": "انضم كمسوق",
+      "marketerOpen": "فتح لوحة المسوق",
+      "marketerStatusCta": "عرض حالة الطلب",
+      "marketerEnabled": "حساب المسوق نشط",
+      "marketerPending": "طلب الانضمام قيد المراجعة"
     },
     "merchantStart": {
       "title": "ابدأ البيع",
@@ -31,13 +38,41 @@
       "submit": "إنشاء النشاط",
       "submitting": "جاري الإنشاء..."
     },
+    "marketerApply": {
+      "title": "انضم كمسوق",
+      "subtitle": "قدّم طلبًا للحصول على رابط إحالة خاص بك. يلزم موافقة الإدارة قبل استخدام الرابط.",
+      "benefitLink": "احصل على رابط إحالة خاص بك",
+      "benefitInvite": "ادعُ العملاء والتجار للتسجيل",
+      "benefitTrack": "تابع الإحالات من حسابك",
+      "benefitLater": "العمولات والمدفوعات ستظهر لاحقًا حسب سياسة المنصة",
+      "submit": "إرسال طلب الانضمام",
+      "reapply": "إعادة التقديم",
+      "viewStatus": "عرض الحالة",
+      "pending": "طلبك قيد المراجعة.",
+      "rejected": "تم رفض طلب الانضمام كمسوق.",
+      "inactive": "حساب المسوق غير نشط. تواصل مع الدعم."
+    },
+    "marketerStatus": {
+      "title": "طلب المسوق",
+      "pending": "طلبك قيد المراجعة.",
+      "rejected": "تم رفض طلب الانضمام كمسوق.",
+      "inactive": "حساب المسوق غير نشط."
+    },
     "nav": {
       "customerAccount": "حساب عميل",
       "merchantAccount": "حساب تاجر",
       "myRequests": "طلباتي",
       "createRequest": "طلب جديد",
       "startSelling": "ابدأ البيع",
-      "createAnotherBusiness": "إنشاء نشاط جديد"
+      "createAnotherBusiness": "إنشاء نشاط جديد",
+      "marketerAccount": "حساب مسوق",
+      "becomeMarketer": "انضم كمسوق",
+      "marketerPending": "الطلب قيد المراجعة",
+      "marketerRejected": "تم رفض الطلب",
+      "marketerReapply": "إعادة التقديم",
+      "marketerInactive": "الحساب غير نشط",
+      "marketerOverview": "نظرة عامة",
+      "marketerReferrals": "الإحالات"
     },
     "workspace": {
       "usingAs": "أنت تستخدم المنصة الآن كـ",
@@ -193,12 +228,84 @@
   },
   "common": {
     "close": "إغلاق",
+    "save": "حفظ",
+    "cancel": "إلغاء",
     "validationErrorsExtra": "و {count} أخطاء إضافية"
   },
   "pagination": {
     "summary": "عرض {from} إلى {to} من {total} نتيجة",
     "previous": "السابق",
     "next": "التالي"
+  },
+  "marketers": {
+    "pageTitle": "المسوقون",
+    "pageSubtitle": "مراجعة الطلبات وإدارة حسابات المسوقين.",
+    "addNew": "إضافة مسوق",
+    "search": "بحث بالاسم أو البريد أو الرمز",
+    "allStatuses": "كل الحالات",
+    "pendingCount": "قيد المراجعة: {count}",
+    "approve": "قبول",
+    "reject": "رفض",
+    "deactivate": "إيقاف",
+    "reactivate": "إعادة تفعيل",
+    "modeLabel": "نوع الحساب",
+    "statusLabel": "الحالة",
+    "attachExisting": "ربط بمستخدم موجود",
+    "createUser": "إنشاء مستخدم جديد",
+    "statusPending": "قيد المراجعة",
+    "statusActive": "نشط",
+    "statusInactive": "غير نشط",
+    "statusRejected": "مرفوض",
+    "userEmail": "بريد المستخدم الحالي",
+    "name": "الاسم",
+    "email": "البريد الإلكتروني",
+    "phone": "الهاتف",
+    "password": "كلمة المرور",
+    "passwordConfirmation": "تأكيد كلمة المرور",
+    "referralCode": "كود الإحالة",
+    "referralCodeHint": "يتم إنشاء كود إحالة فريد تلقائيًا بعد الحفظ.",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "table": {
+      "name": "الاسم",
+      "email": "البريد",
+      "code": "الرمز",
+      "status": "الحالة",
+      "referrals": "الإحالات",
+      "customers": "العملاء",
+      "merchants": "التجار",
+      "appliedAt": "تاريخ التقديم",
+      "actions": "إجراءات"
+    }
+  },
+  "marketerPortal": {
+    "yes": "نعم",
+    "no": "لا",
+    "home": {
+      "title": "نظرة عامة للمسوق",
+      "subtitle": "تابع إحالاتك. العمولات والمدفوعات ستظهر لاحقًا.",
+      "total": "إجمالي المستخدمين المحالين",
+      "customers": "العملاء",
+      "merchants": "التجار",
+      "dual": "عميل وتاجر معًا",
+      "thisMonth": "تسجيلات هذا الشهر",
+      "referralCard": "رابط الإحالة",
+      "copyCode": "نسخ الرمز",
+      "copyLink": "نسخ الرابط",
+      "copied": "تم النسخ",
+      "viewReferrals": "عرض الإحالات"
+    },
+    "referrals": {
+      "title": "إحالاتي",
+      "search": "بحث بالاسم أو البريد",
+      "name": "الاسم",
+      "email": "البريد",
+      "registeredAt": "تاريخ التسجيل",
+      "customer": "عميل",
+      "merchant": "تاجر",
+      "dual": "الاثنان",
+      "empty": "لا توجد إحالات بعد."
+    }
   },
   "bilingual": {
     "arabic": "العربية",
@@ -220,6 +327,7 @@
     "merchants": "التجار",
     "categories": "التصنيفات",
     "customers": "العملاء",
+    "marketers": "المسوقون",
     "customerRequests": "طلبات العملاء",
     "matching": "المطابقات",
     "merchantHome": "مساحة التاجر",

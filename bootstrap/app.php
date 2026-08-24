@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\CaptureReferralCode;
 use App\Http\Middleware\CheckAdmin;
 use App\Http\Middleware\EnsureCustomer;
+use App\Http\Middleware\EnsureMarketer;
 use App\Http\Middleware\EnsureMerchantContext;
 use App\Http\Middleware\HandleInertiaRequests;
 use Illuminate\Auth\Middleware\Authenticate;
@@ -25,6 +27,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
+            CaptureReferralCode::class,
             HandleInertiaRequests::class,
         ]);
         $middleware->redirectUsersTo(fn () => target());
@@ -39,6 +42,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->appendToGroup('customer', [
             Authenticate::class,
             EnsureCustomer::class,
+        ]);
+        $middleware->appendToGroup('marketer', [
+            Authenticate::class,
+            EnsureMarketer::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

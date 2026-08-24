@@ -23,6 +23,8 @@ createInertiaApp({
                 || name.startsWith('Merchants/')
                 || name.startsWith('Categories/')
                 || name.startsWith('Customers/')
+                || name.startsWith('Marketers/')
+                || name.startsWith('MarketerPortal/')
                 || name.startsWith('CustomerRequests/')
                 || name.startsWith('Matching/')
                 || name.startsWith('Profile/')

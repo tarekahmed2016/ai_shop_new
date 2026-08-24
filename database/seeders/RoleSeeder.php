@@ -53,6 +53,12 @@ class RoleSeeder extends Seeder
             'pages.create',
             'pages.update',
             'pages.delete',
+            'marketers.view',
+            'marketers.create',
+            'marketers.update',
+            'marketers.approve',
+            'marketers.reject',
+            'marketers.activate',
         ];
 
         foreach ($permissions as $permission) {

@@ -25,6 +25,10 @@ class DashboardController extends Controller
         $hasMerchantMemberships = (bool) ($capabilities['hasMerchantMemberships'] ?? false);
 
         if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ! ($capabilities['hasActiveCustomer'] ?? false)) {
+            if ($capabilities['hasActiveMarketer'] ?? false) {
+                return redirect()->route('marketer.home');
+            }
+
             return redirect()->route('account.get-started');
         }
 

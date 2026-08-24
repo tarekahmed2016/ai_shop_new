@@ -38,6 +38,11 @@ class RegisterRequest extends FormRequest
             'user_id' => ['prohibited'],
             'customer_id' => ['prohibited'],
             'merchant_id' => ['prohibited'],
+            'marketer_id' => ['prohibited'],
+            'referrer_id' => ['prohibited'],
+            'referred_by' => ['prohibited'],
+            'referred_by_user_id' => ['prohibited'],
+            'referral_user_id' => ['prohibited'],
         ];
     }
 }

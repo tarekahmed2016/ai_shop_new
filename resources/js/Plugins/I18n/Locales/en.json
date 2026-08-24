@@ -19,7 +19,14 @@
       "sellEnabled": "Selling is enabled",
       "myRequests": "My Requests",
       "myBusinesses": "My Businesses",
-      "inactiveCustomer": "Request access is currently inactive. Contact support."
+      "inactiveCustomer": "Request access is currently inactive. Contact support.",
+      "marketerTitle": "I want to refer customers and merchants",
+      "marketerDescription": "Get a referral link, invite people to register, and track referrals from your account. Commissions and payouts will appear later according to platform policy.",
+      "marketerCta": "Become a Marketer",
+      "marketerOpen": "Open marketer dashboard",
+      "marketerStatusCta": "View application status",
+      "marketerEnabled": "Marketer account is active",
+      "marketerPending": "Your marketer application is under review"
     },
     "merchantStart": {
       "title": "Start selling",
@@ -31,13 +38,41 @@
       "submit": "Create business",
       "submitting": "Creating..."
     },
+    "marketerApply": {
+      "title": "Become a Marketer",
+      "subtitle": "Apply to receive a personal referral link. Approval is required before the link can be used.",
+      "benefitLink": "Get your own referral link",
+      "benefitInvite": "Invite customers and merchants to register",
+      "benefitTrack": "Track referrals from your account",
+      "benefitLater": "Commissions and payouts will appear later according to platform policy",
+      "submit": "Submit Application",
+      "reapply": "Apply Again",
+      "viewStatus": "View status",
+      "pending": "Your application is under review.",
+      "rejected": "Your marketer application was not approved.",
+      "inactive": "Your marketer account is inactive. Contact support."
+    },
+    "marketerStatus": {
+      "title": "Marketer application",
+      "pending": "Your application is under review.",
+      "rejected": "Your marketer application was not approved.",
+      "inactive": "Your marketer account is inactive."
+    },
     "nav": {
       "customerAccount": "Customer Account",
       "merchantAccount": "Merchant Account",
       "myRequests": "My Requests",
       "createRequest": "Create Request",
       "startSelling": "Start Selling",
-      "createAnotherBusiness": "Create Another Business"
+      "createAnotherBusiness": "Create Another Business",
+      "marketerAccount": "Marketer Account",
+      "becomeMarketer": "Become a Marketer",
+      "marketerPending": "Application Under Review",
+      "marketerRejected": "Application Rejected",
+      "marketerReapply": "Apply Again",
+      "marketerInactive": "Account Inactive",
+      "marketerOverview": "Overview",
+      "marketerReferrals": "Referrals"
     },
     "workspace": {
       "usingAs": "Currently using",
@@ -193,12 +228,84 @@
   },
   "common": {
     "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
     "validationErrorsExtra": "and {count} more errors"
   },
   "pagination": {
     "summary": "Showing {from} to {to} of {total} results",
     "previous": "Previous",
     "next": "Next"
+  },
+  "marketers": {
+    "pageTitle": "Marketers",
+    "pageSubtitle": "Review applications and manage marketer accounts.",
+    "addNew": "Add Marketer",
+    "search": "Search name, email, or code",
+    "allStatuses": "All statuses",
+    "pendingCount": "Pending: {count}",
+    "approve": "Approve",
+    "reject": "Reject",
+    "deactivate": "Deactivate",
+    "reactivate": "Reactivate",
+    "modeLabel": "Account type",
+    "statusLabel": "Status",
+    "attachExisting": "Attach Existing User",
+    "createUser": "Create New User",
+    "statusPending": "Pending",
+    "statusActive": "Active",
+    "statusInactive": "Inactive",
+    "statusRejected": "Rejected",
+    "userEmail": "Existing user email",
+    "name": "Name",
+    "email": "Email",
+    "phone": "Phone",
+    "password": "Password",
+    "passwordConfirmation": "Confirm Password",
+    "referralCode": "Referral Code",
+    "referralCodeHint": "A unique referral code is generated automatically after save.",
+    "cancel": "Cancel",
+    "save": "Save",
+    "table": {
+      "name": "Name",
+      "email": "Email",
+      "code": "Code",
+      "status": "Status",
+      "referrals": "Referrals",
+      "customers": "Customers",
+      "merchants": "Merchants",
+      "appliedAt": "Applied",
+      "actions": "Actions"
+    }
+  },
+  "marketerPortal": {
+    "yes": "Yes",
+    "no": "No",
+    "home": {
+      "title": "Marketer overview",
+      "subtitle": "Track your referrals. Commission and payouts will appear later.",
+      "total": "Total referred users",
+      "customers": "Customers",
+      "merchants": "Merchants",
+      "dual": "Customer + Merchant",
+      "thisMonth": "Registrations this month",
+      "referralCard": "Your referral link",
+      "copyCode": "Copy code",
+      "copyLink": "Copy link",
+      "copied": "Copied",
+      "viewReferrals": "View referrals"
+    },
+    "referrals": {
+      "title": "My referrals",
+      "search": "Search name or email",
+      "name": "Name",
+      "email": "Email",
+      "registeredAt": "Registered",
+      "customer": "Customer",
+      "merchant": "Merchant",
+      "dual": "Dual",
+      "empty": "No referrals yet."
+    }
   },
   "bilingual": {
     "arabic": "Arabic",
@@ -220,6 +327,7 @@
     "merchants": "Merchants",
     "categories": "Categories",
     "customers": "Customers",
+    "marketers": "Marketers",
     "customerRequests": "Customer Requests",
     "matching": "Matching",
     "merchantHome": "Merchant Home",

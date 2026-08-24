@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Account\EnableCustomerController;
 use App\Http\Controllers\Account\GetStartedController;
+use App\Http\Controllers\Account\MarketerApplicationController;
 use App\Http\Controllers\Account\StartMerchantController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CertificateAwardController;
@@ -14,6 +15,8 @@ use App\Http\Controllers\CustomerRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\HomepagePromoBlockController;
+use App\Http\Controllers\MarketerController;
+use App\Http\Controllers\MarketerPortal\MarketerPortalController;
 use App\Http\Controllers\MerchantBusinessActivityController;
 use App\Http\Controllers\MerchantBusinessProfileController;
 use App\Http\Controllers\MerchantCategoryController;
@@ -46,6 +49,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/account/customer/enable', [EnableCustomerController::class, 'store'])->name('account.customer.enable.store');
     Route::get('/account/merchant/start', [StartMerchantController::class, 'create'])->name('account.merchant.start');
     Route::post('/account/merchant/start', [StartMerchantController::class, 'store'])->name('account.merchant.start.store');
+    Route::get('/account/marketer/apply', [MarketerApplicationController::class, 'create'])->name('marketer.application.create');
+    Route::post('/account/marketer/apply', [MarketerApplicationController::class, 'store'])->name('marketer.application.store');
+    Route::get('/account/marketer/status', [MarketerApplicationController::class, 'status'])->name('marketer.application.status');
+    Route::post('/account/marketer/reapply', [MarketerApplicationController::class, 'reapply'])->name('marketer.application.reapply');
     Route::get('/merchant/select', [MerchantContextController::class, 'select'])->name('merchant.select');
     Route::post('/merchant/context', [MerchantContextController::class, 'store'])->name('merchant.context.store');
     Route::get('/merchant/open-request/{merchant}/{customerRequest}', MerchantMatchedRequestOpenController::class)
@@ -83,6 +90,11 @@ Route::middleware(['merchant'])->group(function () {
     Route::patch('/merchant/business-profile', [MerchantBusinessProfileController::class, 'update'])->name('merchant.business-profile.update');
 });
 
+Route::middleware(['marketer'])->group(function () {
+    Route::get('/marketer', [MarketerPortalController::class, 'home'])->name('marketer.home');
+    Route::get('/marketer/referrals', [MarketerPortalController::class, 'referrals'])->name('marketer.referrals');
+});
+
 Route::middleware(['admin'])->group(function () {
     Route::get('/company-info', [CompanyInfoController::class, 'index'])->name('company-info.index');
     Route::put('/company-info', [CompanyInfoController::class, 'update'])->name('company-info.update');
@@ -99,6 +111,12 @@ Route::middleware(['admin'])->group(function () {
     Route::delete('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'destroy'])->name('merchants.categories.destroy');
     Route::resource('/categories', CategoryController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::get('/marketers', [MarketerController::class, 'index'])->name('marketers.index');
+    Route::post('/marketers', [MarketerController::class, 'store'])->name('marketers.store');
+    Route::post('/marketers/{marketer}/approve', [MarketerController::class, 'approve'])->name('marketers.approve');
+    Route::post('/marketers/{marketer}/reject', [MarketerController::class, 'reject'])->name('marketers.reject');
+    Route::post('/marketers/{marketer}/deactivate', [MarketerController::class, 'deactivate'])->name('marketers.deactivate');
+    Route::post('/marketers/{marketer}/reactivate', [MarketerController::class, 'reactivate'])->name('marketers.reactivate');
     Route::post('/customers/{customer}/portal-access', [CustomerController::class, 'enablePortal'])->name('customers.portal-access');
     Route::get('/customer-requests/{customerRequest}/image', [CustomerRequestController::class, 'image'])->name('customer-requests.image');
     Route::get('/customer-requests/{customerRequest}/offers/{merchantOffer}/images/{offerImage}', [CustomerRequestController::class, 'offerImage'])->name('customer-requests.offers.images.show');

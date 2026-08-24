@@ -72,6 +72,22 @@ class User extends Authenticatable
     }
 
     /**
+     * @return HasOne<Marketer, $this>
+     */
+    public function marketer(): HasOne
+    {
+        return $this->hasOne(Marketer::class);
+    }
+
+    /**
+     * @return HasOne<MarketerReferral, $this>
+     */
+    public function marketerReferral(): HasOne
+    {
+        return $this->hasOne(MarketerReferral::class, 'referred_user_id');
+    }
+
+    /**
      * @return HasMany<MerchantUser, $this>
      */
     public function merchantMemberships(): HasMany

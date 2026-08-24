@@ -52,6 +52,7 @@ class HandleInertiaRequests extends Middleware
                 'isCustomer' => (bool) $request->user()?->customer,
                 'capabilities' => $request->user() ? UserCapabilities::for($request->user()) : null,
                 'home' => $request->user() ? target() : null,
+                'home' => $request->user() ? target() : null,
             ],
             'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
             'customerContext' => fn () => app(CustomerContext::class)->toArray(),
