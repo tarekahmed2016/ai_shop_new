@@ -51,7 +51,7 @@ class MerchantRequestMatchService
     {
         return MerchantOffer::query()
             ->where('merchant_id', $merchantId)
-            ->whereNotNull('submitted_at')
+            ->forTrackedSubmittedResponse()
             ->count();
     }
 

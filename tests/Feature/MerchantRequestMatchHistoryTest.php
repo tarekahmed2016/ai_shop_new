@@ -265,14 +265,22 @@ test('merchant home and dashboard counters use active merchant context only', fu
     app(RequestMatchingService::class)->sync(historyRequest($categoryA));
     app(RequestMatchingService::class)->sync(historyRequest($categoryB));
 
-    historyOffer($merchantA);
-    historyOffer($merchantA);
-    historyOffer($merchantA);
-    historyOffer($merchantA);
-    historyOffer($merchantA);
-    historyOffer($merchantB);
-    historyOffer($merchantB);
-    historyOffer($merchantB);
+    MerchantRequestMatch::query()->where('merchant_id', $merchantA->id)->get()->each(function (MerchantRequestMatch $match) use ($merchantA) {
+        MerchantOffer::factory()->create([
+            'merchant_id' => $merchantA->id,
+            'customer_request_id' => $match->customer_request_id,
+            'status' => OfferStatus::Submitted,
+            'submitted_at' => now(),
+        ]);
+    });
+    MerchantRequestMatch::query()->where('merchant_id', $merchantB->id)->get()->each(function (MerchantRequestMatch $match) use ($merchantB) {
+        MerchantOffer::factory()->create([
+            'merchant_id' => $merchantB->id,
+            'customer_request_id' => $match->customer_request_id,
+            'status' => OfferStatus::Submitted,
+            'submitted_at' => now(),
+        ]);
+    });
 
     Customer::factory()->create(['user_id' => $user->id, 'status' => CustomerStatus::Active]);
     Marketer::factory()->create(['user_id' => $user->id, 'status' => MarketerStatus::Active]);
@@ -289,7 +297,7 @@ test('merchant home and dashboard counters use active merchant context only', fu
         ->assertInertia(fn (Assert $page) => $page
             ->component('Merchants/MerchantHomePage', false)
             ->where('usage.requests_received', 2)
-            ->where('usage.offers_submitted', 5)
+            ->where('usage.offers_submitted', 2)
             ->missing('usage.0.merchant_id'));
 
     $this->actingAs($user)
@@ -299,7 +307,7 @@ test('merchant home and dashboard counters use active merchant context only', fu
         ->assertInertia(fn (Assert $page) => $page
             ->component('Dashboard/IndexPage', false)
             ->where('merchantWorkspace.requests_received', 2)
-            ->where('merchantWorkspace.offers_submitted', 5));
+            ->where('merchantWorkspace.offers_submitted', 2));
 
     $this->actingAs($user)
         ->withSession(historySession($merchantB))
@@ -307,7 +315,7 @@ test('merchant home and dashboard counters use active merchant context only', fu
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('usage.requests_received', 1)
-            ->where('usage.offers_submitted', 3));
+            ->where('usage.offers_submitted', 1));
 
     $this->actingAs($user)
         ->withSession(historySession($merchantB))
@@ -315,17 +323,23 @@ test('merchant home and dashboard counters use active merchant context only', fu
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('merchantWorkspace.requests_received', 1)
-            ->where('merchantWorkspace.offers_submitted', 3));
+            ->where('merchantWorkspace.offers_submitted', 1));
 });
 
-test('withdrawn and invalidated offers remain in offers submitted history', function () {
+test('withdrawn and untracked offers are excluded from current offers submitted', function () {
     $merchant = Merchant::factory()->create();
-    historyOffer($merchant, OfferStatus::Submitted);
+    $tracked = MerchantRequestMatch::factory()->create(['merchant_id' => $merchant->id]);
+    MerchantOffer::factory()->create([
+        'merchant_id' => $merchant->id,
+        'customer_request_id' => $tracked->customer_request_id,
+        'status' => OfferStatus::Submitted,
+        'submitted_at' => now(),
+    ]);
     historyOffer($merchant, OfferStatus::Submitted);
     historyOffer($merchant, OfferStatus::Withdrawn);
     historyOffer($merchant, OfferStatus::Invalidated);
 
-    expect(app(MerchantRequestMatchService::class)->offersSubmittedCount($merchant->id))->toBe(4);
+    expect(app(MerchantRequestMatchService::class)->offersSubmittedCount($merchant->id))->toBe(1);
 });
 
 test('another merchants matches and offers are excluded from counters', function () {
@@ -335,7 +349,13 @@ test('another merchants matches and offers are excluded from counters', function
     historyAssign($merchantA, $category);
     historyAssign($merchantB, $category);
     app(RequestMatchingService::class)->sync(historyRequest($category));
-    historyOffer($merchantB);
+    $matchB = MerchantRequestMatch::query()->where('merchant_id', $merchantB->id)->first();
+    MerchantOffer::factory()->create([
+        'merchant_id' => $merchantB->id,
+        'customer_request_id' => $matchB->customer_request_id,
+        'status' => OfferStatus::Submitted,
+        'submitted_at' => now(),
+    ]);
 
     expect(app(MerchantRequestMatchService::class)->requestsReceivedCount($merchantA->id))->toBe(1)
         ->and(app(MerchantRequestMatchService::class)->offersSubmittedCount($merchantA->id))->toBe(0)

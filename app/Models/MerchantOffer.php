@@ -87,6 +87,24 @@ class MerchantOffer extends Model
     }
 
     /**
+     * Current submitted responses on requests historically matched to the same merchant.
+     *
+     * @param  Builder<MerchantOffer>  $query
+     * @return Builder<MerchantOffer>
+     */
+    public function scopeForTrackedSubmittedResponse(Builder $query): Builder
+    {
+        return $query
+            ->where('status', Status::Submitted)
+            ->whereExists(function ($exists) {
+                $exists->selectRaw('1')
+                    ->from('merchant_request_matches')
+                    ->whereColumn('merchant_request_matches.merchant_id', 'merchant_offers.merchant_id')
+                    ->whereColumn('merchant_request_matches.customer_request_id', 'merchant_offers.customer_request_id');
+            });
+    }
+
+    /**
      * @return BelongsTo<CustomerRequest, $this>
      */
     public function customerRequest(): BelongsTo

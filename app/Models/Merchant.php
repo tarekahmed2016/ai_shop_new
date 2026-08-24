@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MerchantMemberships\Role;
 use App\Enums\Merchants\Status;
 use Database\Factories\MerchantFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 #[Fillable(['name', 'phone', 'email', 'status'])]
@@ -64,6 +66,21 @@ class Merchant extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(MerchantUser::class);
+    }
+
+    /**
+     * First owner membership for display fallback. Staff is never used.
+     *
+     * @return HasOne<MerchantUser, $this>
+     */
+    public function ownerMembership(): HasOne
+    {
+        return $this->hasOne(MerchantUser::class)->ofMany(
+            ['id' => 'min'],
+            function (Builder $query) {
+                $query->where('role', Role::Owner);
+            }
+        );
     }
 
     /**
@@ -130,7 +147,7 @@ class Merchant extends Model
     {
         return $query->withCount([
             'receivedRequestMatches as requests_received_count',
-            'merchantOffers as offers_submitted_count' => fn (Builder $offers) => $offers->whereNotNull('submitted_at'),
+            'merchantOffers as offers_submitted_count' => fn (Builder $offers) => $offers->forTrackedSubmittedResponse(),
         ]);
     }
 

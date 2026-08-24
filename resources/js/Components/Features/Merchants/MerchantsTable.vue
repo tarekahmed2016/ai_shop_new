@@ -24,7 +24,7 @@
                 <tr v-for="merchant in merchants" :key="merchant.id" class="table-row">
                     <td class="table-cell table-cell-primary text-body">{{ merchant.id }}</td>
                     <td class="table-cell table-cell-primary text-body">{{ merchant.name }}</td>
-                    <td class="table-cell table-cell-secondary text-body">{{ merchant.email || '—' }}</td>
+                    <td class="table-cell table-cell-secondary text-body">{{ merchant.display_email || merchant.email || '—' }}</td>
                     <td class="table-cell table-cell-secondary text-body">
                         <span dir="ltr">{{ merchant.phone || '—' }}</span>
                     </td>

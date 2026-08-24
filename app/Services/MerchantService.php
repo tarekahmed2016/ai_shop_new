@@ -52,6 +52,7 @@ class MerchantService
         $sortBy = in_array($sortBy, $allowedSorts, true) ? $sortBy : 'created_at';
 
         $paginator = Merchant::query()
+            ->with(['ownerMembership.user:id,email'])
             ->withCount('memberships')
             ->withUsageCounts()
             ->when($search, fn ($q) => $q->where(function ($query) use ($search) {
@@ -65,6 +66,8 @@ class MerchantService
 
         $paginator->getCollection()->transform(function (Merchant $merchant) {
             $merchant->setAttribute('offer_submission_rate', $merchant->offerSubmissionRate());
+            $merchant->setAttribute('display_email', $this->displayEmailFor($merchant));
+            $merchant->unsetRelation('ownerMembership');
 
             return $merchant;
         });
@@ -215,5 +218,17 @@ class MerchantService
         );
 
         return $this->update($merchant, Arr::only($data, ['name', 'phone', 'email']));
+    }
+
+    private function displayEmailFor(Merchant $merchant): ?string
+    {
+        $businessEmail = is_string($merchant->email) ? trim($merchant->email) : '';
+        if ($businessEmail !== '') {
+            return $merchant->email;
+        }
+
+        $ownerEmail = $merchant->ownerMembership?->user?->email;
+
+        return is_string($ownerEmail) && trim($ownerEmail) !== '' ? $ownerEmail : null;
     }
 }
