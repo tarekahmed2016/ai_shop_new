@@ -148,6 +148,13 @@
       "recent": "Recent requests",
       "viewAll": "View all"
     },
+    "quota": {
+      "today": "Requests today: {used} · Daily limit: {limit} · Remaining: {remaining}",
+      "reached": "You have reached your daily request limit."
+    },
+    "suspended": {
+      "message": "Your customer account has been suspended because direct contact information was detected in the request. Please contact platform support for review."
+    },
     "requests": {
       "title": "My Requests",
       "subtitle": "Requests you submitted",
@@ -168,7 +175,7 @@
     },
     "create": {
       "title": "New Request",
-      "subtitle": "Choose a category and describe what you need",
+      "subtitle": "Describe what you need. You may attach an optional image.",
       "category": "Category",
       "selectCategory": "Select an active category",
       "requestText": "Request details",
@@ -182,7 +189,7 @@
       "helpMe": "Help me choose the category",
       "chooseManually": "Choose category manually",
       "analyzing": "Analyzing...",
-      "failed": "We couldn't determine the category automatically. You can choose it manually.",
+      "failed": "We couldn't determine the category automatically. Add more details and try again.",
       "highIntro": "We think you're looking for:",
       "detectedItem": "Detected item",
       "suggestedCategory": "Suggested category",
@@ -197,7 +204,7 @@
       "confidence": "Confidence",
       "reason": "Reason",
       "alternatives": "Alternatives",
-      "inactiveSuggestion": "The suggested category is no longer available. Choose another category or retry analysis.",
+      "inactiveSuggestion": "The suggested category is no longer available. Retry analysis with more details.",
       "mediumIntro": "We are not completely sure. Which category best matches your request?",
       "continue": "Continue",
       "lowIntro": "We need more information to identify the correct category.",
@@ -325,6 +332,7 @@
   "sidebar": {
     "users": "Users",
     "merchants": "Merchants",
+    "merchantCreditHistory": "Merchant Credit History",
     "categories": "Categories",
     "customers": "Customers",
     "marketers": "Marketers",
@@ -374,6 +382,9 @@
       "roleLabel": "Membership role",
       "requestsReceived": "Requests Received",
       "offersSubmitted": "Offers Submitted",
+      "offerCredits": "Offer Credits",
+      "remainingOfferCredits": "Remaining Offer Credits",
+      "freeSubmission": "Free offer submission is currently enabled",
       "categoriesCount": "Active categories",
       "availableRequestsCount": "Available requests",
       "viewedRequestsCount": "Viewed requests",
@@ -1162,10 +1173,75 @@
       "requestsReceived": "Requests Received",
       "offersSubmitted": "Offers Submitted",
       "offerSubmissionRate": "Offer Submission Rate",
+      "offerCredits": "Offer Credits",
       "actions": "Actions",
       "members": "Members",
       "categories": "Categories",
+      "credits": "Credits",
       "edit": "Edit"
+    },
+    "credits": {
+      "pageTitle": "Offer Credits",
+      "pageSubtitle": "Offer credit balance and ledger for {name}",
+      "backToMerchants": "Back to merchants",
+      "balanceLabel": "Offer Credit Balance",
+      "addButton": "Add Credits",
+      "deductButton": "Deduct Credits",
+      "addTitle": "Add Credits",
+      "deductTitle": "Deduct Credits",
+      "bulkTitle": "Add Offer Credits",
+      "bulkButton": "Add Offer Credits",
+      "bulkSubmit": "Add Credits",
+      "bulkSelected": "{count} merchants selected on this page",
+      "amountLabel": "Number of Credits",
+      "sourceLabel": "Source / Reason",
+      "selectSource": "Select source",
+      "referenceLabel": "Reference",
+      "notesLabel": "Notes",
+      "enforcementToggle": "Enable Offer Credit Enforcement",
+      "enforcementOn": "Offer credit enforcement is enabled",
+      "enforcementOff": "Free offer submission is currently enabled",
+      "enforcementOnHint": "Merchants need available credits to submit a new offer.",
+      "enforcementOffHint": "Merchants may submit offers without consuming credits.",
+      "empty": "No credit movements yet",
+      "globalPageTitle": "Merchant Credit History",
+      "globalPageSubtitle": "All merchant offer-credit transactions",
+      "paidAmountLabel": "Paid Amount (OMR)",
+      "paidAmountHint": "Optional. Leave blank for promotional or unpaid credit additions.",
+      "paidAmountPerMerchantLabel": "Paid Amount per Merchant",
+      "paidAmountPerMerchantHint": "This amount is recorded on each selected merchant, not as a batch total.",
+      "summary": {
+        "totalPaid": "Total Paid Amount (OMR)",
+        "creditsAdded": "Credits Added"
+      },
+      "filters": {
+        "type": "Transaction Type",
+        "source": "Source",
+        "merchant": "Merchant",
+        "dateFrom": "From",
+        "dateTo": "To",
+        "allTypes": "All types",
+        "allSources": "All sources",
+        "allMerchants": "All merchants",
+        "paidOnly": "Paid only",
+        "apply": "Filter",
+        "reset": "Reset"
+      },
+      "table": {
+        "date": "Date",
+        "merchant": "Merchant",
+        "type": "Transaction Type",
+        "amount": "Amount",
+        "offerCredits": "Offer Credits",
+        "paidAmount": "Paid Amount",
+        "balanceAfter": "Balance After",
+        "effect": "Balance effect",
+        "source": "Source",
+        "reference": "Reference",
+        "notes": "Notes",
+        "createdBy": "Created by",
+        "performedBy": "Performed By"
+      }
     },
     "form": {
       "addTitle": "Add Merchant",
@@ -1274,7 +1350,11 @@
       "portal": "Portal Access",
       "actions": "Actions",
       "edit": "Edit",
-      "requests": "Requests"
+      "requests": "Requests",
+      "dailyLimitHistory": "Daily Limit History",
+      "requestsToday": "Requests Today",
+      "dailyLimit": "Daily Limit",
+      "remainingToday": "Remaining Today"
     },
     "form": {
       "addTitle": "Add Customer",
@@ -1288,9 +1368,57 @@
       "portalAlwaysEnabled": "New customers always receive Customer Portal login access.",
       "statusLabel": "Status",
       "selectStatus": "Select status",
+      "overrideLabel": "Customer Daily Limit Override",
+      "overridePlaceholder": "Leave empty to use the global limit",
+      "overrideHint": "Global Limit: {global} · Customer Override: {override} · Effective Limit: {effective}",
+      "overrideNone": "None (global)",
+      "overrideNotesLabel": "Override change notes",
+      "overrideNotesPlaceholder": "Optional, e.g. VIP customer",
       "cancel": "Cancel",
       "save": "Save",
       "saving": "Saving..."
+    },
+    "settings": {
+      "dailyLimit": "Daily Customer Request Limit",
+      "saveLimit": "Save limit",
+      "dailyLimitHint": "Applies to all customers unless a customer has an explicit override.",
+      "globalHistoryTitle": "Global Daily Limit History",
+      "globalHistoryEmpty": "No global limit changes yet",
+      "globalHistory": {
+        "date": "Date",
+        "oldValue": "Previous Limit",
+        "newValue": "New Limit",
+        "changedBy": "Changed By"
+      }
+    },
+    "limitHistory": {
+      "pageTitle": "Daily Limit Change History",
+      "pageSubtitle": "Daily request limit override history for {name}",
+      "backToCustomers": "Back to customers",
+      "empty": "No daily limit changes yet",
+      "global": "Global",
+      "changeTypes": {
+        "set_override": "Set override",
+        "update_override": "Update override",
+        "clear_override": "Clear override"
+      },
+      "table": {
+        "date": "Date",
+        "oldOverride": "Previous Override",
+        "newOverride": "New Override",
+        "oldEffective": "Previous Effective Limit",
+        "newEffective": "New Effective Limit",
+        "changeType": "Change Type",
+        "changedBy": "Changed By",
+        "notes": "Notes"
+      }
+    },
+    "reactivate": "Reactivate Customer",
+    "suspension": {
+      "title": "Customer capability suspended",
+      "reason": "Reason",
+      "date": "Suspension date",
+      "types": "Violation types"
     },
     "portal": {
       "enabled": "Portal Access: Enabled",
@@ -1404,6 +1532,9 @@
     "contextRole": "Membership role",
     "requestsReceived": "Requests Received",
     "offersSubmitted": "Offers Submitted",
+    "offerCredits": "Offer Credits",
+    "remainingOfferCredits": "Remaining Offer Credits",
+    "freeSubmission": "Free offer submission is currently enabled",
     "switchMerchant": "Switch merchant",
     "availableRequests": "Available Requests",
     "businessActivities": "Business Activities",
@@ -1556,7 +1687,10 @@
     "resubmit": "Submit Offer",
     "saving": "Saving...",
     "cancel": "Cancel",
-    "none": "No offer yet"
+    "none": "No offer yet",
+    "freeSubmission": "Free offer submission is currently enabled",
+    "remainingCredits": "Remaining Offer Credits: {count}",
+    "insufficientCredits": "You do not have enough offer credits to submit an offer."
   },
   "public": {
     "home": {

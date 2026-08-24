@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\RequestMatches\Status as MatchStatus;
 use App\Models\RequestMatch;
+use App\Services\MerchantOfferCreditService;
 use App\Services\MerchantRequestMatchService;
 use App\Support\MerchantContext;
 use App\Support\UserCapabilities;
@@ -17,6 +18,7 @@ class DashboardController extends Controller
     public function __construct(
         public MerchantContext $merchantContext,
         public MerchantRequestMatchService $merchantRequestMatchService,
+        public MerchantOfferCreditService $merchantOfferCreditService,
     ) {}
 
     public function index(Request $request): Response|RedirectResponse
@@ -26,7 +28,7 @@ class DashboardController extends Controller
         $capabilities = $user ? UserCapabilities::for($user) : null;
         $hasMerchantMemberships = (bool) ($capabilities['hasMerchantMemberships'] ?? false);
 
-        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ! ($capabilities['hasActiveCustomer'] ?? false)) {
+        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ! ($capabilities['hasCustomerPortalAccess'] ?? $capabilities['hasActiveCustomer'] ?? false)) {
             if ($capabilities['hasActiveMarketer'] ?? false) {
                 return redirect()->route('marketer.home');
             }
@@ -35,7 +37,7 @@ class DashboardController extends Controller
         }
 
         // Customer-only users (no merchant capability) use the customer portal.
-        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ($capabilities['hasActiveCustomer'] ?? false)) {
+        if ($user && ! $isAdmin && ! ($capabilities['hasActiveMerchantMemberships'] ?? false) && ($capabilities['hasCustomerPortalAccess'] ?? $capabilities['hasActiveCustomer'] ?? false)) {
             return redirect()->route('customer.home');
         }
 
@@ -62,6 +64,7 @@ class DashboardController extends Controller
                     ->count(),
                 'requests_received' => $usage['requests_received'],
                 'offers_submitted' => $usage['offers_submitted'],
+                'offer_credits' => $this->merchantOfferCreditService->presentForMerchant($merchantId),
             ];
         }
 

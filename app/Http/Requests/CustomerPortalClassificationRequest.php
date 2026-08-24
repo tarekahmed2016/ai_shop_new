@@ -12,7 +12,7 @@ class CustomerPortalClassificationRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->customer?->isActive() === true;
+        return $this->user()?->customer?->canUsePortal() === true;
     }
 
     /**
@@ -37,6 +37,7 @@ class CustomerPortalClassificationRequest extends FormRequest
             'category_id' => ['prohibited'],
             'status' => ['prohibited'],
             'customer_request_id' => ['prohibited'],
+            'daily_request_limit_override' => ['prohibited'],
         ];
     }
 

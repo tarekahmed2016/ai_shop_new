@@ -6,12 +6,14 @@ enum Status: int
 {
     case Active = 1;
     case Inactive = 2;
+    case Suspended = 3;
 
     public function label(): string
     {
         return match ($this) {
             self::Active => 'نشط',
             self::Inactive => 'غير نشط',
+            self::Suspended => 'موقوف',
         };
     }
 

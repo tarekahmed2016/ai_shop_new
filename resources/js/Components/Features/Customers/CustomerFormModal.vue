@@ -9,7 +9,8 @@ const { t } = useI18n()
 const props = defineProps({
   isOpen: { type: Boolean, default: false },
   customer: { type: Object, default: null },
-  statuses: { type: Array, default: () => [] }
+  statuses: { type: Array, default: () => [] },
+  globalLimit: { type: Number, default: 5 },
 })
 
 const emit = defineEmits(['close'])
@@ -23,6 +24,8 @@ const form = useForm({
   email: '',
   whatsapp_id: '',
   status: '',
+  daily_request_limit_override: '',
+  daily_request_limit_notes: '',
   password: '',
   password_confirmation: '',
 })
@@ -36,11 +39,14 @@ watch(() => props.isOpen, (isOpen) => {
     form.email = props.customer.email || ''
     form.whatsapp_id = props.customer.whatsapp_id || ''
     form.status = props.customer.status || ''
+    form.daily_request_limit_override = props.customer.daily_limit_override ?? props.customer.daily_request_limit_override ?? ''
+    form.daily_request_limit_notes = ''
     form.password = ''
     form.password_confirmation = ''
   } else {
     form.reset()
     form.status = props.statuses?.[0]?.value ?? 1
+    form.daily_request_limit_override = ''
   }
 
   form.clearErrors()
@@ -65,6 +71,10 @@ const submit = () => {
       email: data.email,
       whatsapp_id: data.whatsapp_id,
       status: data.status,
+      daily_request_limit_override: data.daily_request_limit_override === '' || data.daily_request_limit_override === null
+        ? null
+        : data.daily_request_limit_override,
+      daily_request_limit_notes: data.daily_request_limit_notes || null,
     })).put(route('customers.update', props.customer.public_id), options)
     return
   }
@@ -155,6 +165,32 @@ const handleClose = () => {
           <input v-model="form.password_confirmation" type="password" required autocomplete="new-password" class="form-input text-body" />
         </div>
       </template>
+
+      <div>
+        <label class="form-label text-label">{{ t('customers.form.overrideLabel') }}</label>
+        <input v-model="form.daily_request_limit_override" type="number" min="1" max="100" class="form-input text-body" :placeholder="t('customers.form.overridePlaceholder')" />
+        <p class="text-muted text-sm mt-1">
+          {{ t('customers.form.overrideHint', {
+            global: props.globalLimit,
+            override: form.daily_request_limit_override || t('customers.form.overrideNone'),
+            effective: form.daily_request_limit_override || props.globalLimit,
+          }) }}
+        </p>
+        <p v-if="form.errors.daily_request_limit_override" class="form-error">{{ form.errors.daily_request_limit_override }}</p>
+      </div>
+
+      <div>
+        <label class="form-label text-label">{{ t('customers.form.overrideNotesLabel') }}</label>
+        <input v-model="form.daily_request_limit_notes" type="text" maxlength="500" class="form-input text-body" :placeholder="t('customers.form.overrideNotesPlaceholder')" />
+        <p v-if="form.errors.daily_request_limit_notes" class="form-error">{{ form.errors.daily_request_limit_notes }}</p>
+      </div>
+
+      <div v-if="isEdit && props.customer?.status === 3" class="rounded-md border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/30 p-3 space-y-1">
+        <p class="text-body font-medium text-red-800 dark:text-red-200">{{ t('customers.suspension.title') }}</p>
+        <p class="text-muted text-sm">{{ t('customers.suspension.reason') }}: {{ props.customer.suspension_reason || '—' }}</p>
+        <p class="text-muted text-sm">{{ t('customers.suspension.date') }}: {{ props.customer.suspended_at || '—' }}</p>
+        <p class="text-muted text-sm">{{ t('customers.suspension.types') }}: {{ (props.customer.suspension_types || []).join(', ') || '—' }}</p>
+      </div>
 
       <div>
         <label class="form-label text-label">

@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MerchantOfferCredits\AdminPermission;
+use App\Enums\MerchantOfferCredits\TransactionSource;
 use App\Enums\Merchants\Status;
 use App\Http\Requests\MerchantRequest;
 use App\Models\Merchant;
 use App\Services\CategoryService;
+use App\Services\MerchantOfferCreditService;
 use App\Services\MerchantService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -15,6 +18,7 @@ class MerchantController extends Controller
     public function __construct(
         public MerchantService $merchantService,
         public CategoryService $categoryService,
+        public MerchantOfferCreditService $merchantOfferCreditService,
     ) {}
 
     public function index(Request $request)
@@ -31,6 +35,8 @@ class MerchantController extends Controller
             sortDir: $sortDir,
         );
 
+        $user = $request->user();
+
         return Inertia::render('Merchants/MerchantsPage', [
             'merchants' => $merchants,
             'filters' => [
@@ -40,6 +46,14 @@ class MerchantController extends Controller
             ],
             'statuses' => Status::toArray(),
             'availableCategories' => $this->categoryService->activeCategoriesForAssignment(),
+            'offerCreditEnforcement' => $this->merchantOfferCreditService->isEnforcementEnabled(),
+            'creditSources' => TransactionSource::manualChoicesToArray(),
+            'creditPermissions' => [
+                'view' => $user?->can(AdminPermission::View->value) === true,
+                'add' => $user?->can(AdminPermission::Add->value) === true,
+                'deduct' => $user?->can(AdminPermission::Deduct->value) === true,
+                'manageSettings' => $user?->can(AdminPermission::ManageSettings->value) === true,
+            ],
         ]);
     }
 

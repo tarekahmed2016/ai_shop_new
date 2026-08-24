@@ -42,6 +42,10 @@ function openaiStructuredBody(array $overrides = []): array
         'needs_more_information' => false,
         'question' => null,
         'reason' => 'clear spare part',
+        'contact_information_detected' => false,
+        'contact_information_types' => [],
+        'contact_detection_confidence' => 0.05,
+        'contact_evidence_summary' => null,
     ], $overrides), JSON_UNESCAPED_UNICODE);
 
     return [
@@ -99,6 +103,7 @@ test('text-only request uses gpt-5.6-sol high reasoning and structured schema wi
             && ($body['text']['format']['type'] ?? null) === 'json_schema'
             && ($body['text']['format']['strict'] ?? null) === true
             && ($body['text']['format']['name'] ?? null) === 'request_classification'
+            && str_contains((string) $encoded, 'contact_information_detected')
             && str_contains((string) $encoded, 'Need an ABS sensor for a Honda')
             && str_contains((string) $encoded, '01TAXONOMYSPAREPARTS00001')
             && ! str_contains((string) $encoded, 'classify-user@example.com')
@@ -167,6 +172,10 @@ test('missing usage subfields stay null and do not break parsing', function () {
                 'needs_more_information' => false,
                 'question' => null,
                 'reason' => 'ok',
+                'contact_information_detected' => false,
+                'contact_information_types' => [],
+                'contact_detection_confidence' => null,
+                'contact_evidence_summary' => null,
             ]),
         ], 200),
     ]);

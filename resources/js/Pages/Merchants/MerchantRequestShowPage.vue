@@ -9,6 +9,7 @@ const page = usePage()
 const requestItem = computed(() => page.props.request || {})
 const offer = computed(() => page.props.offer || null)
 const permissions = computed(() => page.props.offerPermissions || {})
+const offerCredits = computed(() => page.props.offerCredits || {})
 const availabilityStatuses = computed(() => page.props.availabilityStatuses || [])
 const { dismissRequest } = useMerchantRequests()
 
@@ -43,7 +44,8 @@ const createdAt = computed(() => {
 })
 
 const isSubmitted = computed(() => offer.value?.status_formatted?.name === 'Submitted')
-const canSubmit = computed(() => permissions.value.create && !offer.value)
+const hasSubmitCredits = computed(() => offerCredits.value.can_consume_new !== false)
+const canSubmit = computed(() => permissions.value.create && !offer.value && hasSubmitCredits.value)
 const canResubmit = computed(() => permissions.value.create && offer.value && !isSubmitted.value)
 const canEdit = computed(() => permissions.value.update && isSubmitted.value)
 const canWithdraw = computed(() => permissions.value.withdraw && isSubmitted.value)
@@ -124,6 +126,12 @@ const withdrawOffer = () => {
 
       <div v-if="permissions.view" class="bg-white dark:bg-gray-800 rounded-lg shadow p-6 space-y-4 text-body text-gray-800 dark:text-gray-200">
         <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('merchantOffers.sectionTitle') }}</h2>
+        <p class="text-muted muted-color">
+          {{ offerCredits.enforcement_enabled ? t('merchantOffers.remainingCredits', { count: offerCredits.balance ?? 0 }) : t('merchantOffers.freeSubmission') }}
+        </p>
+        <p v-if="offerCredits.enforcement_enabled && !hasSubmitCredits && !offer" class="form-error">
+          {{ t('merchantOffers.insufficientCredits') }}
+        </p>
 
         <div v-if="offer && !editing">
           <p><strong>{{ t('merchantOffers.status') }}:</strong> {{ offer.status_formatted?.label }}</p>
@@ -147,9 +155,10 @@ const withdrawOffer = () => {
           </div>
         </div>
 
-        <p v-else-if="!offer && !canSubmit" class="text-muted">{{ t('merchantOffers.none') }}</p>
+        <p v-else-if="!offer && !canSubmit && hasSubmitCredits" class="text-muted">{{ t('merchantOffers.none') }}</p>
 
         <form v-if="canSubmit || (editing && (canEdit || canResubmit))" class="space-y-4" @submit.prevent="submitOffer">
+          <p v-if="form.errors.credits" class="form-error">{{ form.errors.credits }}</p>
           <div>
             <label class="form-label text-label">{{ t('merchantOffers.price') }} <span class="text-red-500">*</span></label>
             <div class="flex items-center gap-2">

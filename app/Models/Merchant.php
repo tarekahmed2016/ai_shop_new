@@ -138,6 +138,14 @@ class Merchant extends Model
     }
 
     /**
+     * @return HasMany<MerchantOfferCreditTransaction, $this>
+     */
+    public function offerCreditTransactions(): HasMany
+    {
+        return $this->hasMany(MerchantOfferCreditTransaction::class);
+    }
+
+    /**
      * Database-side usage totals for the admin merchants index.
      *
      * @param  Builder<Merchant>  $query
@@ -149,6 +157,17 @@ class Merchant extends Model
             'receivedRequestMatches as requests_received_count',
             'merchantOffers as offers_submitted_count' => fn (Builder $offers) => $offers->forTrackedSubmittedResponse(),
         ]);
+    }
+
+    /**
+     * Ledger-derived remaining credits. Null sum becomes 0 for merchants with no rows.
+     *
+     * @param  Builder<Merchant>  $query
+     * @return Builder<Merchant>
+     */
+    public function scopeWithCreditBalance(Builder $query): Builder
+    {
+        return $query->withSum('offerCreditTransactions as offer_credit_balance', 'amount');
     }
 
     /**

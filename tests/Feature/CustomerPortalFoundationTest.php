@@ -12,6 +12,7 @@ use App\Models\CustomerRequest;
 use App\Models\Merchant;
 use App\Models\MerchantCategory;
 use App\Models\MerchantUser;
+use App\Models\RequestClassification;
 use App\Models\RequestMatch;
 use App\Models\User;
 use App\Services\MerchantContextService;
@@ -97,8 +98,8 @@ test('linked customer can access portal while guest and unlinked user cannot', f
 });
 
 test('customer can create web request that becomes ready and matches eligible merchants', function () {
-    $category = Category::factory()->create(['status' => CategoryStatus::Active]);
-    $otherCategory = Category::factory()->create(['status' => CategoryStatus::Active]);
+    $category = Category::factory()->create(['status' => CategoryStatus::Active, 'name_en' => 'Auto Spare Parts']);
+    $otherCategory = Category::factory()->create(['status' => CategoryStatus::Active, 'name_en' => 'Plumbing']);
     $merchantA = Merchant::factory()->create();
     $merchantB = Merchant::factory()->create();
     MerchantCategory::factory()->create(['merchant_id' => $merchantA->id, 'category_id' => $category->id]);
@@ -107,10 +108,17 @@ test('customer can create web request that becomes ready and matches eligible me
     ['user' => $user, 'customer' => $customer] = linkedCustomer();
 
     $this->actingAs($user)
-        ->post(route('customer.requests.store'), [
-            'category_id' => $category->public_id,
-            'request_text' => 'Need plumbing help',
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor for my car',
             'image' => UploadedFile::fake()->image('need.jpg'),
+        ])
+        ->assertOk();
+
+    $classification = RequestClassification::query()->latest('id')->first();
+
+    $this->actingAs($user)
+        ->post(route('customer.requests.classifications.confirm', $classification), [
+            'category_id' => $classification->suggestedCategory->public_id,
         ])
         ->assertRedirect();
 
@@ -133,10 +141,10 @@ test('customer can create web request that becomes ready and matches eligible me
             'source' => Source::WhatsApp->value,
             'status' => RequestStatus::New->value,
         ])
-        ->assertSessionHasErrors(['customer_id', 'source', 'status']);
+        ->assertSessionHasErrors(['category_id', 'customer_id', 'source', 'status']);
 });
 
-test('inactive category is rejected for customer request creation', function () {
+test('customer submitted category_id is prohibited on create', function () {
     $category = Category::factory()->create(['status' => CategoryStatus::Inactive]);
     ['user' => $user] = linkedCustomer();
 
@@ -161,13 +169,20 @@ test('customer ownership isolation for requests and images', function () {
     ]);
 
     $this->actingAs($userA)
-        ->post(route('customer.requests.store'), [
-            'category_id' => $category->public_id,
-            'request_text' => 'with image',
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor with image',
             'image' => UploadedFile::fake()->image('own.jpg'),
-        ]);
+        ])
+        ->assertOk();
 
-    $withImage = CustomerRequest::query()->where('customer_id', $customerA->id)->where('request_text', 'with image')->first();
+    $classification = RequestClassification::query()->latest('id')->first();
+    $this->actingAs($userA)
+        ->post(route('customer.requests.classifications.confirm', $classification), [
+            'category_id' => $classification->suggestedCategory->public_id,
+        ])
+        ->assertRedirect();
+
+    $withImage = CustomerRequest::query()->where('customer_id', $customerA->id)->where('request_text', 'ABS Sensor with image')->first();
 
     $this->actingAs($userA)
         ->get(route('customer.requests.index'))
@@ -260,14 +275,20 @@ test('merchant matched image access still works for customer-created request', f
     ['user' => $customerUser] = linkedCustomer();
 
     $this->actingAs($customerUser)
-        ->post(route('customer.requests.store'), [
-            'category_id' => $category->public_id,
-            'request_text' => 'Merchant visible',
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor Merchant visible',
             'image' => UploadedFile::fake()->image('shared.jpg'),
+        ])
+        ->assertOk();
+
+    $classification = RequestClassification::query()->latest('id')->first();
+    $this->actingAs($customerUser)
+        ->post(route('customer.requests.classifications.confirm', $classification), [
+            'category_id' => $classification->suggestedCategory->public_id,
         ])
         ->assertRedirect();
 
-    $request = CustomerRequest::query()->where('request_text', 'Merchant visible')->first();
+    $request = CustomerRequest::query()->where('request_text', 'ABS Sensor Merchant visible')->first();
 
     $this->actingAs($merchantUser)
         ->withSession([MerchantContextService::SESSION_KEY => $merchant->id])
@@ -286,7 +307,7 @@ test('forged customer_id and source are rejected on portal create', function () 
             'customer_id' => (string) Str::ulid(),
             'source' => 'whatsapp',
         ])
-        ->assertSessionHasErrors(['customer_id', 'source']);
+        ->assertSessionHasErrors(['category_id', 'customer_id', 'source']);
 
     expect(CustomerRequest::query()->where('customer_id', $customer->id)->where('request_text', 'Forged fields')->count())->toBe(0);
 });

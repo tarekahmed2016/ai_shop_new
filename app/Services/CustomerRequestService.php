@@ -9,6 +9,7 @@ use App\Enums\Customers\Status as CustomerStatus;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
+use App\Support\CustomerRequests\CustomerRequestMessages;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -33,6 +34,8 @@ class CustomerRequestService
         public ActivityLogService $activityLogService,
         public RequestImageService $requestImageService,
         public RequestMatchingService $requestMatchingService,
+        public CustomerRequestLimitService $customerRequestLimitService,
+        public CustomerContactAbuseService $customerContactAbuseService,
     ) {}
 
     public function getPaginatedRequests(
@@ -110,54 +113,17 @@ class CustomerRequestService
      */
     public function storeForCustomer(Customer $customer, array $data, ?UploadedFile $image = null): CustomerRequest
     {
-        if (! $customer->isActive()) {
+        $this->customerContactAbuseService->assertCanCreate($customer);
+
+        if (array_key_exists('category_id', $data) && $data['category_id'] !== null && $data['category_id'] !== '') {
             throw ValidationException::withMessages([
-                'customer' => 'Inactive customers cannot create requests.',
+                'category_id' => CustomerRequestMessages::categoryManualProhibited(),
             ]);
         }
 
-        $categoryId = $this->resolveCategoryId($data['category_id'] ?? null);
-
-        if ($categoryId === null) {
-            throw ValidationException::withMessages([
-                'category_id' => 'An active category is required.',
-            ]);
-        }
-
-        return DB::transaction(function () use ($customer, $data, $image, $categoryId) {
-            $request = new CustomerRequest;
-            $request->public_id = (string) Str::ulid();
-            $request->customer_id = $customer->id;
-            $request->source = Source::Web;
-            $request->status = RequestStatus::Ready;
-            $request->request_text = (string) $data['request_text'];
-            $request->category_id = $categoryId;
-            $request->save();
-
-            $this->activityLogService->recordCreated(
-                subject: $request,
-                allowedFields: self::ACTIVITY_FIELDS,
-                subjectLabel: $customer->display_name,
-                metadata: [
-                    'action' => 'customer.request_created',
-                    'customer_id' => $customer->id,
-                    'user_id' => $customer->user_id,
-                ],
-            );
-
-            if ($image) {
-                $this->requestImageService->store($request, $image);
-                $this->activityLogService->recordCreated(
-                    subject: $request->fresh()->image,
-                    allowedFields: ['original_name', 'mime_type', 'size'],
-                    subjectLabel: $customer->display_name,
-                );
-            }
-
-            $this->requestMatchingService->sync($request);
-
-            return $request->fresh(['customer', 'category', 'image']);
-        });
+        throw ValidationException::withMessages([
+            'request_text' => CustomerRequestMessages::categoryManualProhibited(),
+        ]);
     }
 
     /**
@@ -167,16 +133,20 @@ class CustomerRequestService
      */
     public function storePendingForCustomer(Customer $customer, array $data, ?UploadedFile $image = null): CustomerRequest
     {
-        if (! $customer->isActive()) {
-            throw ValidationException::withMessages([
-                'customer' => 'Inactive customers cannot create requests.',
-            ]);
-        }
+        $this->customerContactAbuseService->assertCanCreate($customer);
 
         return DB::transaction(function () use ($customer, $data, $image) {
+            $locked = Customer::query()->whereKey($customer->id)->lockForUpdate()->first();
+            if ($locked === null) {
+                abort(404);
+            }
+
+            $this->customerContactAbuseService->assertCanCreate($locked);
+            $this->customerRequestLimitService->assertWithinLimit($locked);
+
             $request = new CustomerRequest;
             $request->public_id = (string) Str::ulid();
-            $request->customer_id = $customer->id;
+            $request->customer_id = $locked->id;
             $request->source = Source::Web;
             $request->status = RequestStatus::PendingClassification;
             $request->request_text = (string) $data['request_text'];

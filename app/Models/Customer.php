@@ -12,7 +12,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 
-#[Fillable(['user_id', 'name', 'phone', 'whatsapp_id', 'email', 'status'])]
+#[Fillable([
+    'user_id',
+    'name',
+    'phone',
+    'whatsapp_id',
+    'email',
+    'status',
+    'daily_request_limit_override',
+    'suspended_at',
+    'suspension_reason',
+    'suspension_types',
+])]
 class Customer extends Model
 {
     /** @use HasFactory<CustomerFactory> */
@@ -30,6 +41,8 @@ class Customer extends Model
     {
         return [
             'status' => Status::class,
+            'suspended_at' => 'datetime',
+            'suspension_types' => 'array',
         ];
     }
 
@@ -62,6 +75,21 @@ class Customer extends Model
         return $this->status === Status::Active;
     }
 
+    public function isSuspended(): bool
+    {
+        return $this->status === Status::Suspended;
+    }
+
+    public function canUsePortal(): bool
+    {
+        return $this->isActive() || $this->isSuspended();
+    }
+
+    public function canCreateRequests(): bool
+    {
+        return $this->isActive();
+    }
+
     public function getRouteKeyName(): string
     {
         return 'public_id';
@@ -89,5 +117,13 @@ class Customer extends Model
     public function activityLogs(): MorphMany
     {
         return $this->morphMany(ActivityLog::class, 'subject');
+    }
+
+    /**
+     * @return HasMany<CustomerDailyRequestLimitChange, $this>
+     */
+    public function dailyRequestLimitChanges(): HasMany
+    {
+        return $this->hasMany(CustomerDailyRequestLimitChange::class);
     }
 }

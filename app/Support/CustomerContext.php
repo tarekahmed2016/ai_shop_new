@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Customer;
 use App\Models\User;
+use App\Services\CustomerRequestLimitService;
 
 class CustomerContext
 {
@@ -34,13 +35,29 @@ class CustomerContext
         return $this->has() && $this->customer->isActive();
     }
 
+    public function canUsePortal(): bool
+    {
+        return $this->has() && $this->customer->canUsePortal();
+    }
+
     public function customerId(): ?int
     {
         return $this->customer?->id;
     }
 
     /**
-     * @return array{public_id: string, name: string|null, email: string|null, phone: string|null}|null
+     * @return array{
+     *     public_id: string,
+     *     name: string|null,
+     *     email: string|null,
+     *     phone: string|null,
+     *     status: string|null,
+     *     is_suspended: bool,
+     *     suspension_reason: string|null,
+     *     suspended_at: mixed,
+     *     suspension_types: list<string>,
+     *     request_quota: array<string, mixed>
+     * }|null
      */
     public function toArray(): ?array
     {
@@ -53,6 +70,12 @@ class CustomerContext
             'name' => $this->customer->name,
             'email' => $this->customer->email,
             'phone' => $this->customer->phone,
+            'status' => $this->customer->status?->name,
+            'is_suspended' => $this->customer->isSuspended(),
+            'suspension_reason' => $this->customer->suspension_reason,
+            'suspended_at' => $this->customer->suspended_at,
+            'suspension_types' => $this->customer->suspension_types ?? [],
+            'request_quota' => app(CustomerRequestLimitService::class)->snapshot($this->customer),
         ];
     }
 
@@ -64,6 +87,7 @@ class CustomerContext
             return null;
         }
 
+        $user->unsetRelation('customer');
         $customer = $user->customer;
 
         if ($customer === null) {

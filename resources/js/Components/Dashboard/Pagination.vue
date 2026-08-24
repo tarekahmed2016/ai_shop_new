@@ -18,6 +18,14 @@ const props = defineProps({
     routeParams: {
         type: Object,
         default: () => ({})
+    },
+    query: {
+        type: Object,
+        default: () => ({})
+    },
+    pageParam: {
+        type: String,
+        default: 'page'
     }
 })
 
@@ -51,7 +59,10 @@ const visiblePageNumbers = computed(() => {
 
 const goToPage = (pageNum) => {
     emit('paginating', true)
-    router.get(route(props.routeName, { ...props.routeParams, page: pageNum }), {}, {
+    router.get(route(props.routeName, props.routeParams), {
+        ...props.query,
+        [props.pageParam]: pageNum,
+    }, {
         preserveState: true,
         preserveScroll: true,
         onFinish: () => {

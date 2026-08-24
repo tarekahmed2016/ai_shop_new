@@ -34,6 +34,13 @@ class MerchantOfferStoreRequest extends FormRequest
             'currency' => ['prohibited'],
             'public_id' => ['prohibited'],
             'status' => ['prohibited'],
+            'amount' => ['prohibited'],
+            'balance' => ['prohibited'],
+            'type' => ['prohibited'],
+            'source' => ['prohibited'],
+            'enforcement' => ['prohibited'],
+            'offer_credits' => ['prohibited'],
+            'created_by_user_id' => ['prohibited'],
         ];
     }
 

@@ -7,6 +7,7 @@ import {
     faBriefcase,
     faBuilding,
     faClipboardList,
+    faCoins,
     faEnvelope,
     faEye,
     faPaperPlane,
@@ -149,6 +150,28 @@ const operationalStats = computed(() => merchantStats.value.filter((stat) => !st
                                 <p class="text-muted muted-color">{{ stat.label }}</p>
                                 <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ stat.value }}</p>
                             </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div
+                    v-if="merchantWorkspace.offer_credits"
+                    class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm"
+                >
+                    <div class="flex items-start gap-4">
+                        <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                            <font-awesome-icon :icon="faCoins" class="h-5 w-5" />
+                        </span>
+                        <div>
+                            <p class="text-muted muted-color">
+                                {{ merchantWorkspace.offer_credits.enforcement_enabled ? t('dashboard.merchant.remainingOfferCredits') : t('dashboard.merchant.offerCredits') }}
+                            </p>
+                            <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">
+                                {{ merchantWorkspace.offer_credits.balance ?? 0 }}
+                            </p>
+                            <p v-if="!merchantWorkspace.offer_credits.enforcement_enabled" class="mt-2 text-muted muted-color">
+                                {{ t('dashboard.merchant.freeSubmission') }}
+                            </p>
                         </div>
                     </div>
                 </div>

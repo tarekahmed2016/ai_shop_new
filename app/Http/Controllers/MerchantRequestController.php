@@ -10,10 +10,12 @@ use App\Models\CustomerRequest;
 use App\Models\MerchantOffer;
 use App\Models\MerchantOfferImage;
 use App\Models\RequestImage;
+use App\Services\MerchantOfferCreditService;
 use App\Services\MerchantOfferService;
 use App\Services\MerchantPermissionService;
 use App\Services\RequestMatchingService;
 use App\Services\RequestMatchService;
+use App\Support\MerchantContext;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -27,6 +29,8 @@ class MerchantRequestController extends Controller
         public RequestMatchingService $requestMatchingService,
         public MerchantOfferService $merchantOfferService,
         public MerchantPermissionService $merchantPermissionService,
+        public MerchantOfferCreditService $merchantOfferCreditService,
+        public MerchantContext $merchantContext,
     ) {}
 
     public function index(Request $request)
@@ -70,6 +74,10 @@ class MerchantRequestController extends Controller
                 'update' => $this->merchantPermissionService->currentCan(PermissionKey::OffersUpdate->value),
                 'withdraw' => $this->merchantPermissionService->currentCan(PermissionKey::OffersWithdraw->value),
             ],
+            'offerCredits' => $this->merchantOfferCreditService->presentForMerchant(
+                $this->merchantContext->merchantId(),
+                $customerRequest->id,
+            ),
         ]);
     }
 

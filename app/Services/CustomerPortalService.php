@@ -19,15 +19,25 @@ class CustomerPortalService
         public CustomerRequestService $customerRequestService,
         public CategoryService $categoryService,
         public ActivityLogService $activityLogService,
+        public CustomerContactAbuseService $customerContactAbuseService,
+        public CustomerRequestLimitService $customerRequestLimitService,
     ) {}
 
     public function requireCustomer(): Customer
     {
         $customer = $this->customerContext->customer();
 
-        if ($customer === null || ! $customer->isActive()) {
+        if ($customer === null || ! $customer->canUsePortal()) {
             abort(403);
         }
+
+        return $customer;
+    }
+
+    public function requireActiveCustomer(): Customer
+    {
+        $customer = $this->requireCustomer();
+        $this->customerContactAbuseService->assertCanCreate($customer);
 
         return $customer;
     }

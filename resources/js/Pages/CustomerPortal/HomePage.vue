@@ -19,12 +19,30 @@ const recentRequests = computed(() => page.props.recentRequests || [])
                     <h1 class="text-page-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.home.title') }}</h1>
                     <p class="mt-2 text-muted muted-color">{{ t('customerPortal.home.subtitle', { name: customer.name }) }}</p>
                 </div>
-                <Link :href="route('customer.requests.create')" class="inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <Link
+                    v-if="!page.props.customerContext?.is_suspended && (page.props.requestQuota?.remaining ?? page.props.customerContext?.request_quota?.remaining ?? 1) > 0"
+                    :href="route('customer.requests.create')"
+                    class="inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                >
                     {{ t('customerPortal.home.createRequest') }}
                 </Link>
             </div>
 
             <CustomerPushStatusCard />
+
+            <div v-if="page.props.customerContext?.is_suspended" class="rounded-md border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40 p-4">
+                <p class="text-body text-red-800 dark:text-red-200">{{ t('customerPortal.suspended.message') }}</p>
+            </div>
+
+            <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <p class="text-body text-gray-900 dark:text-gray-100">
+                    {{ t('customerPortal.quota.today', {
+                        used: page.props.requestQuota?.used ?? page.props.customerContext?.request_quota?.used ?? 0,
+                        limit: page.props.requestQuota?.daily_limit ?? page.props.customerContext?.request_quota?.daily_limit ?? 0,
+                        remaining: page.props.requestQuota?.remaining ?? page.props.customerContext?.request_quota?.remaining ?? 0,
+                    }) }}
+                </p>
+            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">

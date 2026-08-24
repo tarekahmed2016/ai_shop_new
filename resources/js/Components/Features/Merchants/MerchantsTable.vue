@@ -3,6 +3,13 @@
         <table class="w-full border-collapse">
             <thead>
                 <tr class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <th v-if="showSelection" class="table-header-cell text-table-header w-10">
+                        <input
+                            type="checkbox"
+                            :checked="allSelected"
+                            @change="$emit('toggle-select-all', !allSelected)"
+                        />
+                    </th>
                     <th v-for="column in columns" :key="column.key"
                         @click="column.sortable ? handleSort(column.key) : null" :class="[
                             'table-header-cell text-table-header',
@@ -22,6 +29,13 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="merchant in merchants" :key="merchant.id" class="table-row">
+                    <td v-if="showSelection" class="table-cell table-cell-secondary text-body">
+                        <input
+                            type="checkbox"
+                            :checked="selectedPublicIds.includes(merchant.public_id)"
+                            @change="$emit('toggle-select', merchant.public_id)"
+                        />
+                    </td>
                     <td class="table-cell table-cell-primary text-body">{{ merchant.id }}</td>
                     <td class="table-cell table-cell-primary text-body">{{ merchant.name }}</td>
                     <td class="table-cell table-cell-secondary text-body">{{ merchant.display_email || merchant.email || '—' }}</td>
@@ -36,7 +50,11 @@
                     <td class="table-cell table-cell-secondary text-body">{{ merchant.requests_received_count ?? 0 }}</td>
                     <td class="table-cell table-cell-secondary text-body">{{ merchant.offers_submitted_count ?? 0 }}</td>
                     <td class="table-cell table-cell-secondary text-body">{{ merchant.offer_submission_rate ?? 0 }}%</td>
+                    <td class="table-cell table-cell-secondary text-body">{{ merchant.offer_credit_balance ?? 0 }}</td>
                     <td class="table-cell table-cell-actions">
+                        <button v-if="creditPermissions.view" @click="$emit('credits', merchant)" class="btn btn-secondary me-2">
+                            {{ t('merchants.table.credits') }}
+                        </button>
                         <button @click="$emit('members', merchant)" class="btn btn-secondary me-2">
                             {{ t('merchants.table.members') }}
                         </button>
@@ -74,10 +92,21 @@ const props = defineProps({
     sortDirection: {
         type: String,
         default: 'desc'
+    },
+    selectedPublicIds: {
+        type: Array,
+        default: () => []
+    },
+    creditPermissions: {
+        type: Object,
+        default: () => ({})
     }
 })
 
-const emit = defineEmits(['edit', 'members', 'categories', 'sort'])
+const emit = defineEmits(['edit', 'members', 'categories', 'credits', 'sort', 'toggle-select', 'toggle-select-all'])
+
+const showSelection = computed(() => props.creditPermissions.add === true)
+const allSelected = computed(() => props.merchants.length > 0 && props.merchants.every((merchant) => props.selectedPublicIds.includes(merchant.public_id)))
 
 const columns = computed(() => [
     { key: 'id', label: t('merchants.table.id'), sortable: true },
@@ -88,6 +117,7 @@ const columns = computed(() => [
     { key: 'requests_received_count', label: t('merchants.table.requestsReceived'), sortable: false },
     { key: 'offers_submitted_count', label: t('merchants.table.offersSubmitted'), sortable: false },
     { key: 'offer_submission_rate', label: t('merchants.table.offerSubmissionRate'), sortable: false },
+    { key: 'offer_credit_balance', label: t('merchants.table.offerCredits'), sortable: false },
 ])
 
 const handleSort = (column) => {

@@ -34,7 +34,7 @@ class MerchantOfferPolicy
     private function customerMayView(User $user, MerchantOffer $offer): bool
     {
         $customer = $user->customer;
-        if ($customer === null || ! $customer->isActive()) {
+        if ($customer === null || ! $customer->canUsePortal()) {
             return false;
         }
 

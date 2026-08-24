@@ -55,6 +55,7 @@ class MerchantService
             ->with(['ownerMembership.user:id,email'])
             ->withCount('memberships')
             ->withUsageCounts()
+            ->withCreditBalance()
             ->when($search, fn ($q) => $q->where(function ($query) use ($search) {
                 $query->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
@@ -66,6 +67,7 @@ class MerchantService
 
         $paginator->getCollection()->transform(function (Merchant $merchant) {
             $merchant->setAttribute('offer_submission_rate', $merchant->offerSubmissionRate());
+            $merchant->setAttribute('offer_credit_balance', (int) ($merchant->offer_credit_balance ?? 0));
             $merchant->setAttribute('display_email', $this->displayEmailFor($merchant));
             $merchant->unsetRelation('ownerMembership');
 

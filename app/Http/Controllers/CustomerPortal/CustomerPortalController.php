@@ -45,6 +45,7 @@ class CustomerPortalController extends Controller
             ],
             'stats' => $this->customerPortalService->dashboardStats($customer),
             'recentRequests' => $this->customerPortalService->recentRequests($customer),
+            'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
         ]);
     }
 
@@ -72,13 +73,13 @@ class CustomerPortalController extends Controller
 
     public function requestsCreate(): Response
     {
-        $this->customerPortalService->requireCustomer();
+        $customer = $this->customerPortalService->requireCustomer();
 
         return Inertia::render('CustomerPortal/RequestCreatePage', [
-            'availableCategories' => $this->categoryService->activeCategoriesForAssignment(),
             'classification' => null,
             'pendingRequest' => null,
             'classificationError' => null,
+            'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
         ]);
     }
 
@@ -86,14 +87,14 @@ class CustomerPortalController extends Controller
     {
         $customer = $this->customerPortalService->requireCustomer();
 
-        $created = $this->customerPortalService->createRequest(
+        $this->customerPortalService->createRequest(
             customer: $customer,
             data: $request->validated(),
             image: $request->file('image'),
         );
 
         return redirect()
-            ->route('customer.requests.show', $created)
+            ->route('customer.requests.create')
             ->with('success', 'تم إنشاء الطلب بنجاح');
     }
 
@@ -108,11 +109,10 @@ class CustomerPortalController extends Controller
         );
 
         $message = $classification->status?->name === 'Failed'
-            ? __('We couldn\'t determine the category automatically. You can choose it manually.')
+            ? __('We couldn\'t determine the category automatically. Add more details and try again.')
             : null;
 
         return Inertia::render('CustomerPortal/RequestCreatePage', [
-            'availableCategories' => $this->categoryService->activeCategoriesForAssignment(),
             'classification' => $this->requestClassificationService->presentForCustomer($classification),
             'pendingRequest' => [
                 'public_id' => $classification->customerRequest?->public_id,
@@ -120,6 +120,7 @@ class CustomerPortalController extends Controller
                 'has_image' => $classification->customerRequest?->image !== null,
             ],
             'classificationError' => $message,
+            'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
         ]);
     }
 
@@ -201,9 +202,6 @@ class CustomerPortalController extends Controller
                 'can_resume_classification' => $classification !== null,
             ],
             'classification' => $classification,
-            'availableCategories' => $classification !== null
-                ? $this->categoryService->activeCategoriesForAssignment()
-                : [],
             'offers' => $classification !== null
                 ? []
                 : $this->merchantOfferService->presentSubmittedForCustomer($owned),

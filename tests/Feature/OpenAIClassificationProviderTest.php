@@ -55,6 +55,10 @@ test('openai classification persists usage and rejects invented categories', fun
                 'needs_more_information' => false,
                 'question' => null,
                 'reason' => 'vision guess',
+                'contact_information_detected' => false,
+                'contact_information_types' => [],
+                'contact_detection_confidence' => 0.1,
+                'contact_evidence_summary' => null,
             ]),
             'usage' => [
                 'input_tokens' => 88,

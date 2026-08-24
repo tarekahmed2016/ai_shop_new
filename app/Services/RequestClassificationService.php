@@ -14,6 +14,7 @@ use App\Models\RequestImage;
 use App\Support\Classification\ClassificationCandidate;
 use App\Support\Classification\ClassificationInput;
 use App\Support\Classification\ClassificationResult;
+use App\Support\CustomerRequests\CustomerRequestMessages;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,6 +27,9 @@ class RequestClassificationService
         public AiClassificationProviderInterface $provider,
         public CustomerRequestService $customerRequestService,
         public CategoryService $categoryService,
+        public ContactInformationScanner $contactInformationScanner,
+        public CustomerContactAbuseService $customerContactAbuseService,
+        public CustomerRequestLimitService $customerRequestLimitService,
     ) {}
 
     /**
@@ -33,17 +37,45 @@ class RequestClassificationService
      */
     public function classify(Customer $customer, array $data, ?UploadedFile $image = null): RequestClassification
     {
-        $request = $this->resolvePendingRequest($customer, $data, $image);
-        $input = $this->buildInput($request);
+        $this->customerContactAbuseService->assertCanCreate($customer);
+
+        $pending = $this->existingPendingRequest($customer, $data['pending_request_id'] ?? null);
+        $text = $this->classificationText($pending, $data);
+
+        $layerOne = $this->contactInformationScanner->scanText($text);
+        if ($layerOne->detected) {
+            $this->customerContactAbuseService->blockAndSuspend($customer, $layerOne->types);
+        }
+
+        if ($pending === null) {
+            $this->customerRequestLimitService->assertWithinLimit($customer);
+        }
+
+        $input = $this->buildInputFromParts($text, $image, $pending);
 
         try {
             $raw = $this->provider->classify($input);
             $sanitized = $this->sanitizeResult($raw);
+
+            if ($this->contactInformationScanner->confirmedFromAi($sanitized)) {
+                $this->customerContactAbuseService->blockAndSuspend(
+                    $customer,
+                    $sanitized->contactInformationTypes !== []
+                        ? $sanitized->contactInformationTypes
+                        : ['phone'],
+                );
+            }
+
             $status = $this->statusFor($sanitized);
+            $request = $this->persistAfterScan($customer, $pending, $data, $image);
 
             return $this->storeAttempt($request, $sanitized, $status, $input->hasImage);
+        } catch (ValidationException $exception) {
+            throw $exception;
         } catch (Throwable $exception) {
             report($exception);
+
+            $request = $this->persistAfterScan($customer, $pending, $data, $image);
 
             return $this->storeAttempt(
                 $request,
@@ -64,6 +96,7 @@ class RequestClassificationService
 
     public function confirm(Customer $customer, RequestClassification $classification, string $categoryPublicId, ?CustomerRequest $boundRequest = null): CustomerRequest
     {
+        $this->customerContactAbuseService->assertCanCreate($customer);
         $request = $classification->customerRequest()->first();
 
         if ($request === null || (int) $request->customer_id !== (int) $customer->id) {
@@ -76,7 +109,7 @@ class RequestClassificationService
 
         $this->assertPendingClassification($request);
 
-        $category = $this->requireActiveCategory($categoryPublicId);
+        $category = $this->assertConfirmableCategory($classification, $categoryPublicId);
 
         $classification->status = ClassificationStatus::Confirmed;
         $classification->customer_confirmed_category_id = $category->id;
@@ -88,21 +121,26 @@ class RequestClassificationService
 
     public function finalizeWithCategory(Customer $customer, CustomerRequest $request, string $categoryPublicId): CustomerRequest
     {
+        $this->customerContactAbuseService->assertCanCreate($customer);
         if ((int) $request->customer_id !== (int) $customer->id) {
             abort(404);
         }
 
         $this->assertPendingClassification($request);
 
-        $category = $this->requireActiveCategory($categoryPublicId);
-
         $latest = $request->latestClassification()->first();
-        if ($latest instanceof RequestClassification) {
-            $latest->status = ClassificationStatus::Confirmed;
-            $latest->customer_confirmed_category_id = $category->id;
-            $latest->confirmed_at = now();
-            $latest->save();
+        if (! $latest instanceof RequestClassification) {
+            throw ValidationException::withMessages([
+                'category_id' => CustomerRequestMessages::confirmSuggestedOnly(),
+            ]);
         }
+
+        $category = $this->assertConfirmableCategory($latest, $categoryPublicId);
+
+        $latest->status = ClassificationStatus::Confirmed;
+        $latest->customer_confirmed_category_id = $category->id;
+        $latest->confirmed_at = now();
+        $latest->save();
 
         return $this->customerRequestService->finalizeReady($request, $category->id);
     }
@@ -244,31 +282,95 @@ class RequestClassificationService
     /**
      * @param  array<string, mixed>  $data
      */
-    private function resolvePendingRequest(Customer $customer, array $data, ?UploadedFile $image): CustomerRequest
-    {
-        $pendingPublicId = $data['pending_request_id'] ?? null;
-
-        if (is_string($pendingPublicId) && $pendingPublicId !== '') {
-            $existing = CustomerRequest::query()->where('public_id', $pendingPublicId)->first();
-
-            if ($existing === null || (int) $existing->customer_id !== (int) $customer->id) {
-                abort(404);
-            }
-
-            if ($existing->status !== RequestStatus::PendingClassification) {
-                throw ValidationException::withMessages([
-                    'request_text' => 'This request can no longer be classified.',
-                ]);
-            }
-
+    private function persistAfterScan(
+        Customer $customer,
+        ?CustomerRequest $pending,
+        array $data,
+        ?UploadedFile $image
+    ): CustomerRequest {
+        if ($pending instanceof CustomerRequest) {
             return $this->customerRequestService->appendDetailsAndMaybeReplaceImage(
-                $existing,
+                $pending,
                 isset($data['additional_details']) ? (string) $data['additional_details'] : null,
                 $image,
             );
         }
 
         return $this->customerRequestService->storePendingForCustomer($customer, $data, $image);
+    }
+
+    private function existingPendingRequest(Customer $customer, mixed $pendingPublicId): ?CustomerRequest
+    {
+        if (! is_string($pendingPublicId) || $pendingPublicId === '') {
+            return null;
+        }
+
+        $existing = CustomerRequest::query()->where('public_id', $pendingPublicId)->first();
+
+        if ($existing === null || (int) $existing->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        if ($existing->status !== RequestStatus::PendingClassification) {
+            throw ValidationException::withMessages([
+                'request_text' => 'This request can no longer be classified.',
+            ]);
+        }
+
+        return $existing;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function classificationText(?CustomerRequest $pending, array $data): string
+    {
+        $text = $pending instanceof CustomerRequest
+            ? (string) $pending->request_text
+            : (string) ($data['request_text'] ?? '');
+        $additional = trim((string) ($data['additional_details'] ?? ''));
+
+        if ($additional !== '') {
+            $text = trim($text."\n".$additional);
+        }
+
+        return $text;
+    }
+
+    private function buildInputFromParts(string $text, ?UploadedFile $image, ?CustomerRequest $existing): ClassificationInput
+    {
+        $contents = null;
+        $mime = null;
+        $size = null;
+        $hasImage = false;
+
+        if ($image instanceof UploadedFile) {
+            $hasImage = true;
+            $mime = $image->getMimeType();
+            $size = $image->getSize() ?: null;
+            $contents = file_get_contents($image->getRealPath()) ?: null;
+        } elseif ($existing instanceof CustomerRequest) {
+            $existing->loadMissing('image');
+            $stored = $existing->image;
+            if ($stored instanceof RequestImage && is_string($stored->path) && $stored->path !== '') {
+                $disk = Storage::disk(RequestImage::DISK);
+                if ($disk->exists($stored->path)) {
+                    $hasImage = true;
+                    $mime = $stored->mime_type;
+                    $size = $stored->size;
+                    $contents = $disk->get($stored->path);
+                }
+            }
+        }
+
+        return new ClassificationInput(
+            requestText: $text,
+            hasImage: $hasImage,
+            imageMime: $mime,
+            imageSize: $size,
+            imageContents: $contents,
+            taxonomy: $this->taxonomyForProvider(),
+        );
     }
 
     private function buildInput(CustomerRequest $request): ClassificationInput
@@ -350,6 +452,10 @@ class RequestClassificationService
             question: $result->question,
             reason: $result->reason,
             usage: $result->usage,
+            contactInformationDetected: $result->contactInformationDetected,
+            contactInformationTypes: $this->contactInformationScanner->sanitizedTypes($result->contactInformationTypes),
+            contactDetectionConfidence: $this->clampConfidence($result->contactDetectionConfidence),
+            contactEvidenceSummary: $result->contactEvidenceSummary,
         );
     }
 
@@ -505,5 +611,21 @@ class RequestClassificationService
         }
 
         return $category;
+    }
+
+    private function assertConfirmableCategory(RequestClassification $classification, string $categoryPublicId): Category
+    {
+        $classification->loadMissing('suggestedCategory');
+        $allowed = collect($this->presentSuggestions($classification))
+            ->pluck('category_public_id')
+            ->all();
+
+        if (! in_array($categoryPublicId, $allowed, true)) {
+            throw ValidationException::withMessages([
+                'category_id' => CustomerRequestMessages::confirmSuggestedOnly(),
+            ]);
+        }
+
+        return $this->requireActiveCategory($categoryPublicId);
     }
 }

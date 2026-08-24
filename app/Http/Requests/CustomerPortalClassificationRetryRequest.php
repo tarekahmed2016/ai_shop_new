@@ -10,7 +10,7 @@ class CustomerPortalClassificationRetryRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->customer?->isActive() === true;
+        return $this->user()?->customer?->canUsePortal() === true;
     }
 
     /**
@@ -28,6 +28,7 @@ class CustomerPortalClassificationRetryRequest extends FormRequest
             'status' => ['prohibited'],
             'pending_request_id' => ['prohibited'],
             'customer_request_id' => ['prohibited'],
+            'daily_request_limit_override' => ['prohibited'],
         ];
     }
 }

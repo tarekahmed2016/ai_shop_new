@@ -2,23 +2,18 @@
 import { computed, ref, watch } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import CategoryTreeSelector from '../../Components/Features/Categories/CategoryTreeSelector.vue'
 
 const { t, locale } = useI18n()
 const page = usePage()
-const availableCategories = computed(() => page.props.availableCategories || [])
 const classification = computed(() => page.props.classification || null)
 const pendingRequest = computed(() => page.props.pendingRequest || null)
+const requestQuota = computed(() => page.props.requestQuota || page.props.customerContext?.request_quota || {})
+const isSuspended = computed(() => page.props.customerContext?.is_suspended === true)
+const remaining = computed(() => Number(requestQuota.value.remaining ?? 0))
+const atLimit = computed(() => remaining.value <= 0)
 
-const path = ref('choose')
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
-
-const createForm = useForm({
-    category_id: '',
-    request_text: '',
-    image: null,
-})
 
 const classifyForm = useForm({
     request_text: '',
@@ -33,10 +28,8 @@ const confirmForm = useForm({
 
 watch(classification, (value) => {
     if (value) {
-        path.value = 'result'
         selectedSuggestion.value = value.primary?.category_public_id || value.suggestions?.[0]?.category_public_id || ''
         if (pendingRequest.value?.request_text) {
-            createForm.request_text = pendingRequest.value.request_text
             classifyForm.request_text = pendingRequest.value.request_text
         }
         classifyForm.pending_request_id = pendingRequest.value?.public_id || ''
@@ -49,22 +42,12 @@ const categoryLabel = (row) => {
 }
 
 const onFileChange = (event) => {
-    const file = event.target.files?.[0] || null
-    createForm.image = file
-    classifyForm.image = file
-}
-
-const submitManual = () => {
-    createForm.post(route('customer.requests.store'), {
-        forceFormData: true,
-    })
+    classifyForm.image = event.target.files?.[0] || null
 }
 
 const analyze = () => {
-    classifyForm.request_text = createForm.request_text
     classifyForm.additional_details = additionalDetails.value
     classifyForm.pending_request_id = pendingRequest.value?.public_id || ''
-    classifyForm.image = createForm.image
     classifyForm.post(route('customer.requests.classify'), {
         forceFormData: true,
         preserveScroll: true,
@@ -77,7 +60,8 @@ const confirmSuggestion = (categoryPublicId) => {
     confirmForm.post(route('customer.requests.classifications.confirm', classification.value.public_id))
 }
 
-const processing = computed(() => createForm.processing || classifyForm.processing || confirmForm.processing)
+const processing = computed(() => classifyForm.processing || confirmForm.processing)
+const canSubmit = computed(() => !isSuspended.value && !atLimit.value && !!classifyForm.request_text && !processing.value)
 </script>
 
 <template>
@@ -88,58 +72,45 @@ const processing = computed(() => createForm.processing || classifyForm.processi
                 <p class="mt-2 text-muted muted-color">{{ t('customerPortal.create.subtitle') }}</p>
             </div>
 
+            <div v-if="isSuspended" class="mb-4 rounded-md border border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/40 p-4">
+                <p class="text-body text-red-800 dark:text-red-200">{{ t('customerPortal.suspended.message') }}</p>
+            </div>
+
+            <div v-else class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                <p class="text-body text-gray-900 dark:text-gray-100">
+                    {{ t('customerPortal.quota.today', { used: requestQuota.used ?? 0, limit: requestQuota.daily_limit ?? 0, remaining: remaining }) }}
+                </p>
+                <p v-if="atLimit" class="form-error mt-2">{{ t('customerPortal.quota.reached') }}</p>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-5">
                 <div>
                     <label class="form-label text-label">
                         {{ t('customerPortal.create.requestText') }} <span class="text-red-500">*</span>
                     </label>
-                    <textarea v-model="createForm.request_text" rows="6" required class="form-input text-body" />
-                    <p v-if="createForm.errors.request_text" class="form-error">{{ createForm.errors.request_text }}</p>
+                    <textarea v-model="classifyForm.request_text" rows="6" required class="form-input text-body" :disabled="isSuspended || atLimit" />
                     <p v-if="classifyForm.errors.request_text" class="form-error">{{ classifyForm.errors.request_text }}</p>
                 </div>
 
                 <div>
                     <label class="form-label text-label">{{ t('customerPortal.create.image') }}</label>
-                    <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" class="form-input text-body" @change="onFileChange" />
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/jpg" class="form-input text-body" :disabled="isSuspended || atLimit" @change="onFileChange" />
                     <p class="text-muted text-sm mt-1">{{ t('customerPortal.create.imageHint') }}</p>
-                    <p v-if="createForm.errors.image" class="form-error">{{ createForm.errors.image }}</p>
+                    <p v-if="classifyForm.errors.image" class="form-error">{{ classifyForm.errors.image }}</p>
                 </div>
 
-                <div class="space-y-3">
-                    <p class="form-label text-label">{{ t('customerPortal.classify.howToChoose') }}</p>
-                    <div class="flex flex-col sm:flex-row gap-3">
-                        <button
-                            type="button"
-                            class="btn btn-primary px-4 py-2 disabled:opacity-50"
-                            :disabled="processing || !createForm.request_text"
-                            @click="analyze"
-                        >
-                            {{ classifyForm.processing ? t('customerPortal.classify.analyzing') : t('customerPortal.classify.helpMe') }}
-                        </button>
-                        <button type="button" class="btn btn-secondary px-4 py-2" :disabled="processing" @click="path = 'manual'">
-                            {{ t('customerPortal.classify.chooseManually') }}
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="path === 'manual'" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <label class="form-label text-label">
-                        {{ t('customerPortal.create.category') }} <span class="text-red-500">*</span>
-                    </label>
-                    <CategoryTreeSelector
-                        :categories="availableCategories"
-                        :multiple="false"
-                        :selectedId="createForm.category_id"
-                        :emptyText="t('customerPortal.create.selectCategory')"
-                        @select="createForm.category_id = $event"
-                    />
-                    <p v-if="createForm.errors.category_id" class="form-error">{{ createForm.errors.category_id }}</p>
-                    <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="submitManual">
-                        {{ createForm.processing ? t('customerPortal.create.submitting') : t('customerPortal.create.submit') }}
+                <div v-if="!classification" class="flex flex-wrap gap-3">
+                    <button
+                        type="button"
+                        class="btn btn-primary px-4 py-2 disabled:opacity-50"
+                        :disabled="!canSubmit"
+                        @click="analyze"
+                    >
+                        {{ classifyForm.processing ? t('customerPortal.classify.analyzing') : t('customerPortal.create.submit') }}
                     </button>
                 </div>
 
-                <div v-if="path === 'result' && classification" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div v-if="classification" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
                     <p v-if="classification.failed" class="form-error">{{ t('customerPortal.classify.failed') }}</p>
 
                     <template v-else-if="classification.confidence_band === 'high' && classification.primary">
@@ -150,9 +121,6 @@ const processing = computed(() => createForm.processing || classifyForm.processi
                         <div class="flex flex-wrap gap-3">
                             <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="confirmSuggestion(classification.primary.category_public_id)">
                                 {{ t('customerPortal.classify.confirmSubmit') }}
-                            </button>
-                            <button type="button" class="btn btn-secondary px-4 py-2" @click="path = 'manual'">
-                                {{ t('customerPortal.classify.changeCategory') }}
                             </button>
                         </div>
                     </template>
@@ -168,9 +136,6 @@ const processing = computed(() => createForm.processing || classifyForm.processi
                             <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing || !selectedSuggestion" @click="confirmSuggestion(selectedSuggestion)">
                                 {{ t('customerPortal.classify.continue') }}
                             </button>
-                            <button type="button" class="btn btn-secondary px-4 py-2" @click="path = 'manual'">
-                                {{ t('customerPortal.classify.chooseManually') }}
-                            </button>
                         </div>
                     </template>
 
@@ -182,9 +147,6 @@ const processing = computed(() => createForm.processing || classifyForm.processi
                         <div class="flex flex-wrap gap-3">
                             <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="analyze">
                                 {{ t('customerPortal.classify.tryAgain') }}
-                            </button>
-                            <button type="button" class="btn btn-secondary px-4 py-2" @click="path = 'manual'">
-                                {{ t('customerPortal.classify.chooseManually') }}
                             </button>
                         </div>
                     </template>

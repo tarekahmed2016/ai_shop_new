@@ -34,7 +34,7 @@ class EnsureCustomer
             return redirect()->guest(route('account.customer.enable'));
         }
 
-        if (! $customer->isActive()) {
+        if (! $customer->canUsePortal()) {
             abort(403);
         }
 

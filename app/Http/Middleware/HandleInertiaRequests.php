@@ -52,7 +52,6 @@ class HandleInertiaRequests extends Middleware
                 'isCustomer' => (bool) $request->user()?->customer,
                 'capabilities' => $request->user() ? UserCapabilities::for($request->user()) : null,
                 'home' => $request->user() ? target() : null,
-                'home' => $request->user() ? target() : null,
             ],
             'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
             'customerContext' => fn () => app(CustomerContext::class)->toArray(),
@@ -87,7 +86,7 @@ class HandleInertiaRequests extends Middleware
         }
 
         $merchantActive = app(MerchantContext::class)->isActive();
-        $customerActive = app(CustomerContext::class)->isActive();
+        $customerActive = app(CustomerContext::class)->canUsePortal();
 
         if (! $merchantActive && ! $customerActive) {
             return null;

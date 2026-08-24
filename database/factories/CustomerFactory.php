@@ -24,6 +24,10 @@ class CustomerFactory extends Factory
             'whatsapp_id' => null,
             'email' => fake()->optional()->safeEmail(),
             'status' => Status::Active,
+            'daily_request_limit_override' => null,
+            'suspended_at' => null,
+            'suspension_reason' => null,
+            'suspension_types' => null,
         ];
     }
 
@@ -31,6 +35,16 @@ class CustomerFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'status' => Status::Inactive,
+        ]);
+    }
+
+    public function suspended(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'status' => Status::Suspended,
+            'suspended_at' => now(),
+            'suspension_reason' => 'contact_information_in_request',
+            'suspension_types' => ['phone'],
         ]);
     }
 }

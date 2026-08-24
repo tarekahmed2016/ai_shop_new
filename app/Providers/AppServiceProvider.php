@@ -10,6 +10,7 @@ use App\Services\Classification\DeferredRemoteClassificationProvider;
 use App\Services\Classification\FakeClassificationProvider;
 use App\Services\Classification\OpenAIClassificationProvider;
 use App\Services\MerchantPermissionService;
+use App\Services\PlatformSettingService;
 use App\Services\WebPush\SafeWebPushReportHandler;
 use App\Support\CustomerContext;
 use App\Support\MerchantAuthorization;
@@ -33,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->scoped(MerchantAuthorization::class);
         $this->app->scoped(MerchantPermissionService::class);
         $this->app->scoped(CustomerContext::class);
+        $this->app->scoped(PlatformSettingService::class);
         $this->app->bind(ReportHandlerInterface::class, SafeWebPushReportHandler::class);
         $this->app->singleton(AiClassificationProviderInterface::class, function () {
             return match ((string) config('classification.provider')) {

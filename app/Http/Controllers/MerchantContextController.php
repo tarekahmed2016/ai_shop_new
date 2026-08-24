@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\SelectMerchantContextRequest;
 use App\Services\MerchantContextService;
+use App\Services\MerchantOfferCreditService;
 use App\Services\MerchantRequestMatchService;
 use App\Support\MerchantContext;
 use Illuminate\Http\Request;
@@ -16,6 +17,7 @@ class MerchantContextController extends Controller
         public MerchantContextService $merchantContextService,
         public MerchantContext $merchantContext,
         public MerchantRequestMatchService $merchantRequestMatchService,
+        public MerchantOfferCreditService $merchantOfferCreditService,
     ) {}
 
     public function select(Request $request)
@@ -54,6 +56,7 @@ class MerchantContextController extends Controller
         return Inertia::render('Merchants/MerchantHomePage', [
             'merchant' => $this->merchantContext->toArray(),
             'usage' => $usage,
+            'offerCredits' => $this->merchantOfferCreditService->presentForMerchant($merchantId),
         ]);
     }
 }

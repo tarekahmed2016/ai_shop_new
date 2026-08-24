@@ -148,6 +148,13 @@
       "recent": "أحدث الطلبات",
       "viewAll": "عرض الكل"
     },
+    "quota": {
+      "today": "طلبات اليوم: {used} · الحد اليومي: {limit} · المتبقي: {remaining}",
+      "reached": "لقد وصلت إلى الحد اليومي المسموح به لإرسال الطلبات."
+    },
+    "suspended": {
+      "message": "تم إيقاف حساب العميل بسبب محاولة إرسال بيانات تواصل مباشرة داخل الطلب. يمكنك التواصل مع إدارة المنصة لمراجعة الحساب."
+    },
     "requests": {
       "title": "طلباتي",
       "subtitle": "الطلبات التي أرسلتها",
@@ -168,7 +175,7 @@
     },
     "create": {
       "title": "طلب جديد",
-      "subtitle": "اختر تصنيفاً ووصف ما تحتاجه",
+      "subtitle": "صف ما تحتاجه. يمكنك إرفاق صورة اختيارية.",
       "category": "التصنيف",
       "selectCategory": "اختر تصنيفاً نشطاً",
       "requestText": "تفاصيل الطلب",
@@ -182,7 +189,7 @@
       "helpMe": "ساعدني في تحديد النشاط",
       "chooseManually": "اختيار التصنيف يدوياً",
       "analyzing": "جاري التحليل...",
-      "failed": "تعذر تحديد التصنيف تلقائياً. يمكنك اختياره يدوياً.",
+      "failed": "تعذر تحديد التصنيف تلقائياً. أضف مزيداً من التفاصيل وحاول مرة أخرى.",
       "highIntro": "نعتقد أنك تبحث عن:",
       "detectedItem": "العنصر المكتشف",
       "suggestedCategory": "التصنيف المقترح",
@@ -197,7 +204,7 @@
       "confidence": "الثقة",
       "reason": "السبب",
       "alternatives": "بدائل",
-      "inactiveSuggestion": "التصنيف المقترح لم يعد متاحاً. يمكنك اختيار تصنيف آخر أو إعادة التحليل.",
+      "inactiveSuggestion": "التصنيف المقترح لم يعد متاحاً. أعد التحليل مع مزيد من التفاصيل.",
       "mediumIntro": "لسنا متأكدين تماماً. أي تصنيف يناسب طلبك؟",
       "continue": "متابعة",
       "lowIntro": "نحتاج مزيداً من المعلومات لتحديد التصنيف الصحيح.",
@@ -325,6 +332,7 @@
   "sidebar": {
     "users": "المستخدمون",
     "merchants": "التجار",
+    "merchantCreditHistory": "سجل أرصدة التجار",
     "categories": "التصنيفات",
     "customers": "العملاء",
     "marketers": "المسوقون",
@@ -374,6 +382,9 @@
       "roleLabel": "دور العضوية",
       "requestsReceived": "الطلبات التي وصلتك",
       "offersSubmitted": "العروض التي قدمتها",
+      "offerCredits": "رصيد العروض",
+      "remainingOfferCredits": "رصيد العروض المتبقي",
+      "freeSubmission": "الاستخدام مجاني حاليًا",
       "categoriesCount": "التصنيفات النشطة",
       "availableRequestsCount": "الطلبات المتاحة",
       "viewedRequestsCount": "الطلبات المعروضة",
@@ -1162,10 +1173,75 @@
       "requestsReceived": "الطلبات التي وصلته",
       "offersSubmitted": "العروض التي قدمها",
       "offerSubmissionRate": "نسبة تقديم العروض",
+      "offerCredits": "رصيد العروض",
       "actions": "إجراءات",
       "members": "الأعضاء",
       "categories": "التصنيفات",
+      "credits": "الرصيد",
       "edit": "تعديل"
+    },
+    "credits": {
+      "pageTitle": "رصيد العروض",
+      "pageSubtitle": "رصيد العروض وسجل الحركات لـ {name}",
+      "backToMerchants": "العودة إلى التجار",
+      "balanceLabel": "رصيد العروض",
+      "addButton": "إضافة رصيد",
+      "deductButton": "خصم رصيد",
+      "addTitle": "إضافة رصيد",
+      "deductTitle": "خصم رصيد",
+      "bulkTitle": "إضافة رصيد عروض",
+      "bulkButton": "إضافة رصيد عروض",
+      "bulkSubmit": "إضافة الرصيد",
+      "bulkSelected": "تم تحديد {count} تاجرًا في هذه الصفحة",
+      "amountLabel": "عدد العروض",
+      "sourceLabel": "سبب الإضافة",
+      "selectSource": "اختر السبب",
+      "referenceLabel": "المرجع",
+      "notesLabel": "ملاحظات",
+      "enforcementToggle": "تفعيل رصيد تقديم العروض",
+      "enforcementOn": "تم تفعيل رصيد تقديم العروض",
+      "enforcementOff": "الاستخدام مجاني حاليًا",
+      "enforcementOnHint": "يحتاج التاجر إلى رصيد متاح لتقديم عرض جديد.",
+      "enforcementOffHint": "يمكن للتجار تقديم العروض دون استهلاك رصيد.",
+      "empty": "لا توجد حركات رصيد بعد",
+      "globalPageTitle": "سجل أرصدة التجار",
+      "globalPageSubtitle": "جميع حركات رصيد العروض للتجار",
+      "paidAmountLabel": "المبلغ المدفوع (ر.ع)",
+      "paidAmountHint": "اختياري. اتركه فارغًا للإضافات الترويجية أو غير المدفوعة.",
+      "paidAmountPerMerchantLabel": "المبلغ المدفوع لكل تاجر",
+      "paidAmountPerMerchantHint": "يُسجَّل هذا المبلغ لكل تاجر محدد، وليس كإجمالي للدفعة.",
+      "summary": {
+        "totalPaid": "إجمالي المبلغ المدفوع (ر.ع)",
+        "creditsAdded": "العروض المضافة"
+      },
+      "filters": {
+        "type": "نوع العملية",
+        "source": "المصدر",
+        "merchant": "التاجر",
+        "dateFrom": "من",
+        "dateTo": "إلى",
+        "allTypes": "كل الأنواع",
+        "allSources": "كل المصادر",
+        "allMerchants": "كل التجار",
+        "paidOnly": "المدفوع فقط",
+        "apply": "تصفية",
+        "reset": "إعادة تعيين"
+      },
+      "table": {
+        "date": "التاريخ",
+        "merchant": "التاجر",
+        "type": "نوع العملية",
+        "amount": "القيمة",
+        "offerCredits": "عدد العروض",
+        "paidAmount": "المبلغ المدفوع",
+        "balanceAfter": "الرصيد بعد العملية",
+        "effect": "أثر الرصيد",
+        "source": "المصدر",
+        "reference": "المرجع",
+        "notes": "ملاحظات",
+        "createdBy": "بواسطة",
+        "performedBy": "تم بواسطة"
+      }
     },
     "form": {
       "addTitle": "إضافة تاجر",
@@ -1274,7 +1350,11 @@
       "portal": "دخول البوابة",
       "actions": "إجراءات",
       "edit": "تعديل",
-      "requests": "الطلبات"
+      "requests": "الطلبات",
+      "dailyLimitHistory": "سجل الحد اليومي",
+      "requestsToday": "الطلبات اليوم",
+      "dailyLimit": "الحد اليومي",
+      "remainingToday": "المتبقي اليوم"
     },
     "form": {
       "addTitle": "إضافة عميل",
@@ -1288,9 +1368,57 @@
       "portalAlwaysEnabled": "العملاء الجدد يحصلون دائماً على دخول بوابة العميل.",
       "statusLabel": "الحالة",
       "selectStatus": "اختر الحالة",
+      "overrideLabel": "حد خاص للعميل",
+      "overridePlaceholder": "اتركه فارغاً لاستخدام الحد العام",
+      "overrideHint": "الحد العام: {global} · حد العميل: {override} · الحد الفعلي: {effective}",
+      "overrideNone": "لا يوجد (الحد العام)",
+      "overrideNotesLabel": "ملاحظات تغيير الحد",
+      "overrideNotesPlaceholder": "اختياري، مثال: عميل VIP",
       "cancel": "إلغاء",
       "save": "حفظ",
       "saving": "جاري الحفظ..."
+    },
+    "settings": {
+      "dailyLimit": "الحد اليومي لطلبات العملاء",
+      "saveLimit": "حفظ الحد",
+      "dailyLimitHint": "ينطبق على جميع العملاء ما لم يكن للعميل حد خاص.",
+      "globalHistoryTitle": "سجل الحد اليومي العام",
+      "globalHistoryEmpty": "لا توجد تغييرات على الحد العام بعد",
+      "globalHistory": {
+        "date": "التاريخ",
+        "oldValue": "الحد السابق",
+        "newValue": "الحد الجديد",
+        "changedBy": "تم بواسطة"
+      }
+    },
+    "limitHistory": {
+      "pageTitle": "سجل تغييرات الحد اليومي",
+      "pageSubtitle": "سجل تغيير حد الطلب اليومي لـ {name}",
+      "backToCustomers": "العودة إلى العملاء",
+      "empty": "لا توجد تغييرات على الحد اليومي بعد",
+      "global": "الحد العام",
+      "changeTypes": {
+        "set_override": "تعيين حد خاص",
+        "update_override": "تحديث الحد الخاص",
+        "clear_override": "إزالة الحد الخاص"
+      },
+      "table": {
+        "date": "التاريخ",
+        "oldOverride": "الحد الخاص السابق",
+        "newOverride": "الحد الخاص الجديد",
+        "oldEffective": "الحد الفعلي السابق",
+        "newEffective": "الحد الفعلي الجديد",
+        "changeType": "نوع التغيير",
+        "changedBy": "تم بواسطة",
+        "notes": "ملاحظات"
+      }
+    },
+    "reactivate": "إعادة تفعيل العميل",
+    "suspension": {
+      "title": "تم إيقاف صلاحية العميل",
+      "reason": "السبب",
+      "date": "تاريخ الإيقاف",
+      "types": "نوع المخالفة"
     },
     "portal": {
       "enabled": "دخول البوابة: مفعّل",
@@ -1404,6 +1532,9 @@
     "contextRole": "دور العضوية",
     "requestsReceived": "الطلبات التي وصلتك",
     "offersSubmitted": "العروض التي قدمتها",
+    "offerCredits": "رصيد العروض",
+    "remainingOfferCredits": "رصيد العروض المتبقي",
+    "freeSubmission": "الاستخدام مجاني حاليًا",
     "switchMerchant": "تبديل التاجر",
     "availableRequests": "الطلبات المتاحة",
     "businessActivities": "الأنشطة التجارية",
@@ -1556,7 +1687,10 @@
     "resubmit": "إرسال العرض",
     "saving": "جاري الحفظ...",
     "cancel": "إلغاء",
-    "none": "لا يوجد عرض بعد"
+    "none": "لا يوجد عرض بعد",
+    "freeSubmission": "الاستخدام مجاني حاليًا",
+    "remainingCredits": "رصيد العروض المتبقي: {count}",
+    "insufficientCredits": "لا يوجد لديك رصيد كافٍ لتقديم عرض. تواصل معنا أو قم بشحن رصيد العروض."
   },
   "public": {
     "home": {

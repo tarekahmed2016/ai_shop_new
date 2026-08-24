@@ -6,6 +6,7 @@ import {
     faBriefcase,
     faBuilding,
     faBullhorn,
+    faClockRotateLeft,
     faCode,
     faCog,
     faCreditCard,
@@ -59,6 +60,7 @@ export function useDashboardNav() {
         // Marketplace modules stay top-level. Only modules with a real Ziggy route are shown.
         const marketplaceModules = [
             { id: 'merchants', label: t('sidebar.merchants'), icon: faStore, routeName: 'merchants.index' },
+            { id: 'merchant-credit-history', label: t('sidebar.merchantCreditHistory'), icon: faClockRotateLeft, routeName: 'merchants.credits.transactions' },
             { id: 'categories', label: t('sidebar.categories'), icon: faTags, routeName: 'categories.index' },
             { id: 'customers', label: t('sidebar.customers'), icon: faUserGroup, routeName: 'customers.index' },
             { id: 'marketers', label: t('sidebar.marketers'), icon: faBullhorn, routeName: 'marketers.index' },

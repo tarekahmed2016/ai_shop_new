@@ -3,15 +3,12 @@ import { computed, ref, watch } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
-import CategoryTreeSelector from '../../Components/Features/Categories/CategoryTreeSelector.vue'
 
 const { t, locale } = useI18n()
 const page = usePage()
 const request = computed(() => page.props.request || {})
 const offers = computed(() => page.props.offers || [])
 const classification = computed(() => page.props.classification || null)
-const availableCategories = computed(() => page.props.availableCategories || [])
-const showManual = ref(false)
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
 
@@ -21,9 +18,6 @@ const confirmForm = useForm({
 const retryForm = useForm({
     additional_details: '',
     image: null,
-})
-const categoryForm = useForm({
-    category_id: '',
 })
 
 const isPendingClassification = computed(() => request.value.status_formatted?.name === 'PendingClassification')
@@ -77,11 +71,7 @@ const retryAnalysis = () => {
     })
 }
 
-const submitManualCategory = () => {
-    categoryForm.post(route('customer.requests.category', request.value.public_id))
-}
-
-const processing = computed(() => confirmForm.processing || retryForm.processing || categoryForm.processing)
+const processing = computed(() => confirmForm.processing || retryForm.processing)
 
 watch(classification, (value) => {
     selectedSuggestion.value = value?.primary?.category_public_id || value?.suggestions?.[0]?.category_public_id || ''
@@ -159,9 +149,6 @@ watch(classification, (value) => {
                     >
                         {{ t('customerPortal.classify.confirmSend') }}
                     </button>
-                    <button type="button" class="btn btn-secondary px-4 py-2" :disabled="processing" @click="showManual = !showManual">
-                        {{ t('customerPortal.classify.changeCategory') }}
-                    </button>
                     <button type="button" class="btn btn-secondary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="retryAnalysis">
                         {{ retryForm.processing ? t('customerPortal.classify.analyzing') : t('customerPortal.classify.retryAnalysis') }}
                     </button>
@@ -169,23 +156,6 @@ watch(classification, (value) => {
                 <p v-if="confirmForm.errors.category_id" class="form-error">{{ confirmForm.errors.category_id }}</p>
                 <p v-if="retryForm.errors.request_text" class="form-error">{{ retryForm.errors.request_text }}</p>
                 <p v-if="retryForm.errors.additional_details" class="form-error">{{ retryForm.errors.additional_details }}</p>
-
-                <div v-if="showManual" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    <label class="form-label text-label">
-                        {{ t('customerPortal.create.category') }} <span class="text-red-500">*</span>
-                    </label>
-                    <CategoryTreeSelector
-                        :categories="availableCategories"
-                        :multiple="false"
-                        :selectedId="categoryForm.category_id"
-                        :emptyText="t('customerPortal.create.selectCategory')"
-                        @select="categoryForm.category_id = $event"
-                    />
-                    <p v-if="categoryForm.errors.category_id" class="form-error">{{ categoryForm.errors.category_id }}</p>
-                    <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing || !categoryForm.category_id" @click="submitManualCategory">
-                        {{ t('customerPortal.create.submit') }}
-                    </button>
-                </div>
             </div>
 
             <div v-if="!isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">

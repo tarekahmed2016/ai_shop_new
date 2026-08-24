@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import MerchantPushStatusCard from '../../Components/Features/Merchants/MerchantPushStatusCard.vue'
 import {
     faClipboardList,
+    faCoins,
     faPaperPlane,
 } from '@fortawesome/free-solid-svg-icons'
 
@@ -12,6 +13,8 @@ const { t } = useI18n()
 const page = usePage()
 const merchant = computed(() => page.props.merchant || page.props.merchantContext || {})
 const usage = computed(() => page.props.usage || {})
+const offerCredits = computed(() => page.props.offerCredits || {})
+const enforcementEnabled = computed(() => offerCredits.value.enforcement_enabled === true)
 
 const usageCards = computed(() => [
     {
@@ -49,6 +52,21 @@ const usageCards = computed(() => [
                             <p class="text-muted muted-color">{{ card.label }}</p>
                             <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ card.value }}</p>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300">
+                        <font-awesome-icon :icon="faCoins" class="h-5 w-5" />
+                    </span>
+                    <div>
+                        <p class="text-muted muted-color">
+                            {{ enforcementEnabled ? t('merchantHome.remainingOfferCredits') : t('merchantHome.offerCredits') }}
+                        </p>
+                        <p class="mt-1 text-3xl font-semibold text-gray-900 dark:text-gray-100">{{ offerCredits.balance ?? 0 }}</p>
+                        <p v-if="!enforcementEnabled" class="mt-2 text-muted muted-color">{{ t('merchantHome.freeSubmission') }}</p>
                     </div>
                 </div>
             </div>

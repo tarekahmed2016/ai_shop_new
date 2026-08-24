@@ -22,7 +22,7 @@ function target(): string
         return route('dashboard', absolute: false);
     }
 
-    if ($capabilities['hasActiveCustomer']) {
+    if ($capabilities['hasCustomerPortalAccess'] ?? $capabilities['hasActiveCustomer']) {
         return route('customer.home', absolute: false);
     }
 

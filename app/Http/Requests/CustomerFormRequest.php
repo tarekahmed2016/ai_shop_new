@@ -47,6 +47,8 @@ class CustomerFormRequest extends FormRequest
                     Rule::unique('customers', 'email')->ignore($customer->id),
                 ],
                 'status' => ['required', new Enum(Status::class)],
+                'daily_request_limit_override' => ['nullable', 'integer', 'min:1', 'max:100'],
+                'daily_request_limit_notes' => ['nullable', 'string', 'max:500'],
                 'password' => ['prohibited'],
                 'password_confirmation' => ['prohibited'],
                 'user_id' => ['prohibited'],
@@ -64,6 +66,8 @@ class CustomerFormRequest extends FormRequest
                 Rule::unique('customers', 'whatsapp_id'),
             ],
             'status' => ['required', new Enum(Status::class)],
+            'daily_request_limit_override' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'daily_request_limit_notes' => ['nullable', 'string', 'max:500'],
             'password' => ['required', 'string', Password::defaults(), 'confirmed'],
             'user_id' => ['prohibited'],
         ];
@@ -75,6 +79,14 @@ class CustomerFormRequest extends FormRequest
             if ($this->input($field) === '') {
                 $this->merge([$field => null]);
             }
+        }
+
+        if ($this->exists('daily_request_limit_override') && $this->input('daily_request_limit_override') === '') {
+            $this->merge(['daily_request_limit_override' => null]);
+        }
+
+        if ($this->exists('daily_request_limit_notes') && $this->input('daily_request_limit_notes') === '') {
+            $this->merge(['daily_request_limit_notes' => null]);
         }
     }
 }

@@ -56,24 +56,32 @@ test('guest and unlinked user cannot classify', function () {
         ->assertRedirect(route('account.customer.enable'));
 });
 
-test('manual category flow still becomes ready and matches without ai', function () {
+test('customer submitted category_id is prohibited and cannot skip ai classification', function () {
     $category = Category::factory()->create(['status' => CategoryStatus::Active]);
     $merchant = Merchant::factory()->create();
     MerchantCategory::factory()->create(['merchant_id' => $merchant->id, 'category_id' => $category->id]);
     ['user' => $user, 'customer' => $customer] = classificationCustomer();
 
     $this->actingAs($user)
+        ->get(route('customer.requests.create'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('CustomerPortal/RequestCreatePage', false)
+            ->missing('availableCategories')
+        );
+
+    $this->actingAs($user)
         ->post(route('customer.requests.store'), [
             'category_id' => $category->public_id,
             'request_text' => 'Need plumbing help',
         ])
-        ->assertRedirect();
+        ->assertSessionHasErrors('category_id');
 
-    $request = CustomerRequest::query()->where('customer_id', $customer->id)->first();
-
-    expect($request->status)->toBe(RequestStatus::Ready)
+    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(0)
         ->and(RequestClassification::query()->count())->toBe(0)
-        ->and(RequestMatch::query()->where('customer_request_id', $request->id)->count())->toBe(1);
+        ->and(RequestMatch::query()->count())->toBe(0)
+        ->and(file_get_contents(resource_path('js/Pages/CustomerPortal/RequestCreatePage.vue')))->not->toContain('CategoryTreeSelector')
+        ->and(file_get_contents(resource_path('js/Pages/CustomerPortal/RequestShowPage.vue')))->not->toContain('CategoryTreeSelector');
 });
 
 test('high confidence suggestion does not match until customer confirms', function () {
@@ -269,11 +277,11 @@ test('inactive and invented categories from provider are ignored and cannot be c
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $active->public_id,
         ])
-        ->assertRedirect();
+        ->assertSessionHasErrors('category_id');
 });
 
-test('provider failure stays friendly and keeps manual flow available', function () {
-    $category = Category::factory()->create();
+test('provider failure stays friendly and retry remains available', function () {
+    Category::factory()->create();
     ['user' => $user, 'customer' => $customer] = classificationCustomer();
 
     $this->actingAs($user)
@@ -288,14 +296,17 @@ test('provider failure stays friendly and keeps manual flow available', function
     expect(RequestClassification::query()->latest('id')->first()->status)->toBe(ClassificationStatus::Failed)
         ->and(RequestMatch::query()->count())->toBe(0);
 
-    $this->actingAs($user)
-        ->post(route('customer.requests.store'), [
-            'category_id' => $category->public_id,
-            'request_text' => 'Manual after failure',
-        ])
-        ->assertRedirect();
+    $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
 
-    expect(CustomerRequest::query()->where('customer_id', $customer->id)->where('status', RequestStatus::Ready)->count())->toBe(1);
+    $this->actingAs($user)
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor after failure',
+            'pending_request_id' => $pending->public_id,
+        ])
+        ->assertOk();
+
+    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
+        ->and(RequestClassification::query()->where('customer_request_id', $pending->id)->count())->toBe(2);
 });
 
 test('pending classification can be resumed from request details after leaving create page', function () {
@@ -354,7 +365,7 @@ test('pending classification can be resumed from request details after leaving c
         ->and(RequestMatch::query()->where('customer_request_id', $pending->id)->count())->toBe(1);
 });
 
-test('customer can manually change category on the same pending request', function () {
+test('customer cannot confirm an unrelated category on a pending request', function () {
     $suggested = Category::factory()->create(['name_en' => 'Auto Spare Parts']);
     $override = Category::factory()->create(['name_en' => 'Plumbing']);
     $merchant = Merchant::factory()->create();
@@ -367,7 +378,6 @@ test('customer can manually change category on the same pending request', functi
         ]);
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
-    $attempt = RequestClassification::query()->where('customer_request_id', $pending->id)->first();
 
     $this->actingAs($user)
         ->post(route('customer.requests.category', $pending), [
@@ -380,15 +390,11 @@ test('customer can manually change category on the same pending request', functi
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $override->public_id,
         ])
-        ->assertRedirect(route('customer.requests.show', $pending));
+        ->assertSessionHasErrors('category_id');
 
-    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
-        ->and($pending->fresh()->id)->toBe($pending->id)
-        ->and($pending->fresh()->status)->toBe(RequestStatus::Ready)
-        ->and($pending->fresh()->category_id)->toBe($override->id)
-        ->and($attempt->fresh()->suggested_category_id)->toBe($suggested->id)
-        ->and($attempt->fresh()->customer_confirmed_category_id)->toBe($override->id)
-        ->and(RequestMatch::query()->where('customer_request_id', $pending->id)->count())->toBe(1);
+    expect($pending->fresh()->status)->toBe(RequestStatus::PendingClassification)
+        ->and($pending->fresh()->category_id)->toBeNull()
+        ->and(RequestMatch::query()->where('customer_request_id', $pending->id)->count())->toBe(0);
 });
 
 test('retry classification adds history on the same request and reuses the private image', function () {
@@ -532,10 +538,10 @@ test('inactive suggested category cannot be confirmed from request details', fun
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $other->public_id,
         ])
-        ->assertRedirect();
+        ->assertSessionHasErrors('category_id');
 
-    expect($pending->fresh()->status)->toBe(RequestStatus::Ready)
-        ->and($pending->fresh()->category_id)->toBe($other->id);
+    expect($pending->fresh()->status)->toBe(RequestStatus::PendingClassification)
+        ->and($pending->fresh()->category_id)->toBeNull();
 });
 
 test('ready closed and cancelled requests cannot be classified again', function () {

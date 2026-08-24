@@ -16,9 +16,28 @@ class FakeClassificationProvider implements AiClassificationProviderInterface
     {
         $this->lastInput = $input;
         $text = $input->requestText;
+        $forcedContact = $this->forcedContact($input);
 
-        if (str_contains($text, 'FORCE_FAIL')) {
+        if (str_contains($text, 'FORCE_FAIL') && $forcedContact === null) {
             throw new ClassificationFailedException('Forced fake provider failure.');
+        }
+
+        if ($forcedContact !== null) {
+            $leaf = $this->preferredCategory($input->taxonomy);
+
+            return new ClassificationResult(
+                detectedItem: 'Contact attempt',
+                confidence: 0.90,
+                primaryCategoryPublicId: $leaf,
+                alternatives: [],
+                needsMoreInformation: false,
+                question: null,
+                reason: 'contact-test',
+                contactInformationDetected: true,
+                contactInformationTypes: $forcedContact,
+                contactDetectionConfidence: 0.95,
+                contactEvidenceSummary: 'contact-pattern',
+            );
         }
 
         if (str_contains($text, 'FORCE_MALFORMED')) {
@@ -116,5 +135,48 @@ class FakeClassificationProvider implements AiClassificationProviderInterface
         }
 
         return $taxonomy[0]['public_id'];
+    }
+
+    /**
+     * @return list<string>|null
+     */
+    private function forcedContact(ClassificationInput $input): ?array
+    {
+        $text = $input->requestText;
+        $map = [
+            'FORCE_CONTACT_PHONE' => ['phone'],
+            'FORCE_CONTACT_WHATSAPP' => ['whatsapp'],
+            'FORCE_CONTACT_EMAIL' => ['email'],
+            'FORCE_CONTACT_URL' => ['url'],
+            'FORCE_CONTACT_SOCIAL' => ['social'],
+            'FORCE_CONTACT_QR' => ['qr'],
+        ];
+
+        foreach ($map as $token => $types) {
+            if (str_contains($text, $token)) {
+                return $types;
+            }
+        }
+
+        if (! $input->hasImage) {
+            return null;
+        }
+
+        $imageMap = [
+            'IMAGE_CONTACT_PHONE' => ['phone'],
+            'IMAGE_CONTACT_EMAIL' => ['email'],
+            'IMAGE_CONTACT_URL' => ['url'],
+            'IMAGE_CONTACT_QR' => ['qr'],
+            'IMAGE_CONTACT_SOCIAL' => ['social'],
+            'IMAGE_CONTACT_WHATSAPP' => ['whatsapp'],
+        ];
+
+        foreach ($imageMap as $token => $types) {
+            if (str_contains($text, $token)) {
+                return $types;
+            }
+        }
+
+        return null;
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services\Classification;
 
 use App\Contracts\AiClassificationProviderInterface;
 use App\Exceptions\ClassificationFailedException;
+use App\Services\ContactInformationScanner;
 use App\Support\Classification\ClassificationCandidate;
 use App\Support\Classification\ClassificationInput;
 use App\Support\Classification\ClassificationResult;
@@ -124,6 +125,12 @@ class OpenAIClassificationProvider implements AiClassificationProviderInterface
         }
 
         $primary = $decoded['primary_category_public_id'] ?? null;
+        $contactTypes = [];
+        foreach ($decoded['contact_information_types'] ?? [] as $type) {
+            if (is_string($type) && in_array($type, ContactInformationScanner::TYPES, true)) {
+                $contactTypes[] = $type;
+            }
+        }
 
         return new ClassificationResult(
             detectedItem: is_string($decoded['detected_item'] ?? null) ? $decoded['detected_item'] : null,
@@ -134,6 +141,14 @@ class OpenAIClassificationProvider implements AiClassificationProviderInterface
             question: is_string($decoded['question'] ?? null) ? $decoded['question'] : null,
             reason: is_string($decoded['reason'] ?? null) ? $decoded['reason'] : null,
             usage: $this->usageFrom($payload),
+            contactInformationDetected: (bool) ($decoded['contact_information_detected'] ?? false),
+            contactInformationTypes: array_values(array_unique($contactTypes)),
+            contactDetectionConfidence: is_numeric($decoded['contact_detection_confidence'] ?? null)
+                ? (float) $decoded['contact_detection_confidence']
+                : null,
+            contactEvidenceSummary: is_string($decoded['contact_evidence_summary'] ?? null)
+                ? $decoded['contact_evidence_summary']
+                : null,
         );
     }
 
@@ -153,6 +168,10 @@ class OpenAIClassificationProvider implements AiClassificationProviderInterface
                 'needs_more_information',
                 'question',
                 'reason',
+                'contact_information_detected',
+                'contact_information_types',
+                'contact_detection_confidence',
+                'contact_evidence_summary',
             ],
             'properties' => [
                 'detected_item' => ['type' => ['string', 'null']],
@@ -173,6 +192,16 @@ class OpenAIClassificationProvider implements AiClassificationProviderInterface
                 'needs_more_information' => ['type' => 'boolean'],
                 'question' => ['type' => ['string', 'null']],
                 'reason' => ['type' => ['string', 'null']],
+                'contact_information_detected' => ['type' => 'boolean'],
+                'contact_information_types' => [
+                    'type' => 'array',
+                    'items' => [
+                        'type' => 'string',
+                        'enum' => ContactInformationScanner::TYPES,
+                    ],
+                ],
+                'contact_detection_confidence' => ['type' => ['number', 'null']],
+                'contact_evidence_summary' => ['type' => ['string', 'null']],
             ],
         ];
     }
@@ -201,6 +230,11 @@ class OpenAIClassificationProvider implements AiClassificationProviderInterface
             'Prefer the most specific child category when it clearly matches.',
             'Do not invent categories. Do not use customer identity.',
             'Set needs_more_information true when confidence is low or the item is unclear.',
+            'Also detect off-platform contact information in text and images.',
+            'Set contact_information_detected true only for direct contact details: phone/mobile numbers used as contact, WhatsApp, email, URLs/domains, social handles used for contact, or QR codes linking off-platform.',
+            'Do not treat quantities, prices, product models, part numbers, dimensions, or vehicle years as contact information.',
+            'Inspect images for visible phone numbers, WhatsApp, email, websites, social handles, and QR codes when present.',
+            'contact_evidence_summary must be a short safe label such as "phone-in-image"; never repeat the actual phone, email, or URL.',
         ]);
     }
 

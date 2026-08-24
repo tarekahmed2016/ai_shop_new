@@ -10,6 +10,7 @@ use App\Models\CustomerRequest;
 use App\Models\MerchantOffer;
 use App\Models\MerchantOfferImage;
 use App\Models\RequestMatch;
+use App\Models\User;
 use App\Support\MerchantContext;
 use App\Support\WhatsAppLink;
 use Illuminate\Http\UploadedFile;
@@ -39,6 +40,7 @@ class MerchantOfferService
         public MerchantPermissionService $merchantPermissionService,
         public MerchantOfferImageService $merchantOfferImageService,
         public ActivityLogService $activityLogService,
+        public MerchantOfferCreditService $merchantOfferCreditService,
     ) {}
 
     public function currentOffer(CustomerRequest $customerRequest): ?MerchantOffer
@@ -75,15 +77,20 @@ class MerchantOfferService
 
         $payload = $this->normalizedPayload($data);
         $previousStatus = $existing?->status;
+        $merchantId = (int) $this->merchantContext->merchantId();
+        $actor = auth()->user();
 
-        $offer = DB::transaction(function () use ($customerRequest, $payload, $images, $existing) {
+        $offer = DB::transaction(function () use ($customerRequest, $payload, $images, $existing, $merchantId, $actor) {
+            $merchant = $this->merchantOfferCreditService->lockMerchant($merchantId);
+            $this->merchantOfferCreditService->assertCanConsumeForSubmit($merchant, $customerRequest);
+
             $offer = $existing ?? new MerchantOffer;
             $isNew = ! $offer->exists;
 
             if ($isNew) {
                 $offer->public_id = (string) Str::ulid();
                 $offer->customer_request_id = $customerRequest->id;
-                $offer->merchant_id = (int) $this->merchantContext->merchantId();
+                $offer->merchant_id = $merchantId;
             }
 
             $offer->fill($payload);
@@ -96,6 +103,13 @@ class MerchantOfferService
             if ($images !== []) {
                 $this->merchantOfferImageService->storeMany($offer, $images);
             }
+
+            $this->merchantOfferCreditService->consumeForOfferSubmit(
+                $merchant,
+                $customerRequest,
+                $offer,
+                $actor instanceof User ? $actor : null,
+            );
 
             $this->activityLogService->recordCreated(
                 subject: $offer,

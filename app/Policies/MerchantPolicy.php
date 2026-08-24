@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Enums\MerchantMemberships\Status;
+use App\Enums\MerchantOfferCredits\AdminPermission;
 use App\Models\Merchant;
 use App\Models\User;
 use App\Services\MerchantContextService;
@@ -36,10 +37,45 @@ class MerchantPolicy
         return $user->hasRole('admin');
     }
 
+    public function viewCredits(User $user, Merchant $merchant): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::View);
+    }
+
+    public function viewCreditHistory(User $user): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::View);
+    }
+
+    public function addCredits(User $user, Merchant $merchant): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::Add);
+    }
+
+    public function deductCredits(User $user, Merchant $merchant): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::Deduct);
+    }
+
+    public function bulkAddCredits(User $user): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::Add);
+    }
+
+    public function manageCreditSettings(User $user): bool
+    {
+        return $this->hasCreditPermission($user, AdminPermission::ManageSettings);
+    }
+
     public function select(User $user, Merchant $merchant): bool
     {
         return app(MerchantContextService::class)
             ->activeMembership($user, $merchant) !== null
             && $merchant->isActive();
+    }
+
+    private function hasCreditPermission(User $user, AdminPermission $permission): bool
+    {
+        return $user->hasRole('admin') && $user->can($permission->value);
     }
 }

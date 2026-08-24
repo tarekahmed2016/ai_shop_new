@@ -1,6 +1,11 @@
 <?php
 
+use App\Enums\MerchantOfferCredits\AdminPermission;
+use App\Models\User;
+use App\Services\MerchantOfferCreditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role as SpatieRole;
 use Tests\TestCase;
 
 /*
@@ -44,7 +49,26 @@ expect()->extend('toBeOne', function () {
 |
 */
 
-function something()
+function creditAdmin(?array $permissions = null): User
 {
-    // ..
+    SpatieRole::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+
+    foreach (AdminPermission::values() as $name) {
+        Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+    }
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    $grant = $permissions ?? AdminPermission::values();
+    if ($grant !== []) {
+        $admin->givePermissionTo($grant);
+    }
+
+    return $admin;
+}
+
+function enableOfferCreditEnforcement(): void
+{
+    app(MerchantOfferCreditService::class)->setEnforcementEnabled(true);
 }

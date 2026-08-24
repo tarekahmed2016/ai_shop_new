@@ -59,6 +59,10 @@ class RoleSeeder extends Seeder
             'marketers.approve',
             'marketers.reject',
             'marketers.activate',
+            'merchant-credits.view',
+            'merchant-credits.add',
+            'merchant-credits.deduct',
+            'merchant-credits.manage-settings',
         ];
 
         foreach ($permissions as $permission) {

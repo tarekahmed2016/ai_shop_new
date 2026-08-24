@@ -13,7 +13,7 @@ class CustomerOfferRecipientResolver
         $offer->loadMissing(['customerRequest.customer.user']);
 
         $customer = $offer->customerRequest?->customer;
-        if ($customer === null || ! $customer->isActive()) {
+        if ($customer === null || ! $customer->canUsePortal()) {
             return null;
         }
 

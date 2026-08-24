@@ -14,6 +14,8 @@ class UserCapabilities
      * @return array{
      *     hasCustomer: bool,
      *     hasActiveCustomer: bool,
+     *     hasCustomerPortalAccess: bool,
+     *     hasSuspendedCustomer: bool,
      *     hasMerchantMemberships: bool,
      *     hasActiveMerchantMemberships: bool,
      *     merchantCount: int,
@@ -39,6 +41,8 @@ class UserCapabilities
         return [
             'hasCustomer' => $customer !== null,
             'hasActiveCustomer' => $customer?->isActive() === true,
+            'hasCustomerPortalAccess' => $customer?->canUsePortal() === true,
+            'hasSuspendedCustomer' => $customer?->isSuspended() === true,
             'hasMerchantMemberships' => $memberships->isNotEmpty(),
             'hasActiveMerchantMemberships' => $activeMemberships->isNotEmpty(),
             'merchantCount' => $memberships->count(),
