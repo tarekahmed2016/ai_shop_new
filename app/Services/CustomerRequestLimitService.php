@@ -13,6 +13,7 @@ class CustomerRequestLimitService
 {
     public function __construct(
         public PlatformSettingService $platformSettingService,
+        public CustomerExtraRequestService $customerExtraRequestService,
     ) {}
 
     public function timezone(): string
@@ -70,7 +71,9 @@ class CustomerRequestLimitService
      *     override: int|null,
      *     daily_limit: int,
      *     used: int,
-     *     remaining: int
+     *     remaining: int,
+     *     extra_request_balance: int,
+     *     can_create: bool
      * }
      */
     public function snapshot(Customer $customer, ?CarbonImmutable $now = null): array
@@ -78,6 +81,8 @@ class CustomerRequestLimitService
         $global = $this->globalLimit();
         $effective = $this->effectiveLimit($customer);
         $used = $this->todayCount($customer, $now);
+        $remaining = max(0, $effective - $used);
+        $extra = $this->customerExtraRequestService->balance((int) $customer->id);
 
         return [
             'timezone' => $this->timezone(),
@@ -85,16 +90,29 @@ class CustomerRequestLimitService
             'override' => $customer->daily_request_limit_override,
             'daily_limit' => $effective,
             'used' => $used,
-            'remaining' => max(0, $effective - $used),
+            'remaining' => $remaining,
+            'extra_request_balance' => $extra,
+            'can_create' => $remaining > 0 || $extra > 0,
         ];
+    }
+
+    public function dailyQuotaExhausted(Customer $customer, ?CarbonImmutable $now = null): bool
+    {
+        return $this->todayCount($customer, $now) >= $this->effectiveLimit($customer);
     }
 
     public function assertWithinLimit(Customer $customer): void
     {
-        if ($this->todayCount($customer) >= $this->effectiveLimit($customer)) {
-            throw ValidationException::withMessages([
-                'request_text' => CustomerRequestMessages::dailyLimitReached(),
-            ]);
+        if (! $this->dailyQuotaExhausted($customer)) {
+            return;
         }
+
+        if ($this->customerExtraRequestService->balance((int) $customer->id) > 0) {
+            return;
+        }
+
+        throw ValidationException::withMessages([
+            'request_text' => CustomerRequestMessages::dailyLimitReached(),
+        ]);
     }
 }

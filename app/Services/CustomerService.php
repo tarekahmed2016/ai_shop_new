@@ -51,6 +51,7 @@ class CustomerService
 
         $paginator = Customer::query()
             ->with('user:id,name,email,phone')
+            ->withSum('extraRequestTransactions as extra_request_balance', 'amount')
             ->withCount([
                 'requests',
                 'requests as requests_today_count' => function ($query) use ($start, $end) {
@@ -80,6 +81,7 @@ class CustomerService
                 $customer->daily_request_limit_override !== null ? (int) $customer->daily_request_limit_override : null,
             );
             $customer->setAttribute('remaining_today', max(0, (int) $effective - $used));
+            $customer->setAttribute('extra_request_balance', (int) ($customer->extra_request_balance ?? 0));
 
             return $customer;
         });

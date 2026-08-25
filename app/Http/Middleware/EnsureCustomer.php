@@ -27,6 +27,10 @@ class EnsureCustomer
         $customer = $this->customerContext->resolveFromUser($user);
 
         if ($customer === null) {
+            if ($user->hasRole('admin')) {
+                return redirect()->route('dashboard');
+            }
+
             if ($request->expectsJson()) {
                 abort(403);
             }

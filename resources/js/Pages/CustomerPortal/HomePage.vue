@@ -20,7 +20,7 @@ const recentRequests = computed(() => page.props.recentRequests || [])
                     <p class="mt-2 text-muted muted-color">{{ t('customerPortal.home.subtitle', { name: customer.name }) }}</p>
                 </div>
                 <Link
-                    v-if="!page.props.customerContext?.is_suspended && (page.props.requestQuota?.remaining ?? page.props.customerContext?.request_quota?.remaining ?? 1) > 0"
+                    v-if="!page.props.customerContext?.is_suspended && (page.props.requestQuota?.can_create ?? page.props.customerContext?.request_quota?.can_create ?? ((page.props.requestQuota?.remaining ?? 1) > 0))"
                     :href="route('customer.requests.create')"
                     class="inline-flex items-center justify-center px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
                 >
@@ -40,6 +40,11 @@ const recentRequests = computed(() => page.props.recentRequests || [])
                         used: page.props.requestQuota?.used ?? page.props.customerContext?.request_quota?.used ?? 0,
                         limit: page.props.requestQuota?.daily_limit ?? page.props.customerContext?.request_quota?.daily_limit ?? 0,
                         remaining: page.props.requestQuota?.remaining ?? page.props.customerContext?.request_quota?.remaining ?? 0,
+                    }) }}
+                </p>
+                <p class="text-body text-gray-900 dark:text-gray-100 mt-1">
+                    {{ t('customerPortal.quota.extra', {
+                        extra: page.props.requestQuota?.extra_request_balance ?? page.props.customerContext?.request_quota?.extra_request_balance ?? 0,
                     }) }}
                 </p>
             </div>

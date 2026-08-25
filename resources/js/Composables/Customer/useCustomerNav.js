@@ -2,12 +2,9 @@ import { computed } from 'vue'
 import { useAccountNav } from '../useAccountNav.js'
 
 export function useCustomerNav() {
-    const { accountSections, merchantToolItems } = useAccountNav()
+    const { accountSections } = useAccountNav()
 
-    const menuItems = computed(() => [
-        ...accountSections.value,
-        ...merchantToolItems.value,
-    ])
+    const menuItems = computed(() => [...accountSections.value])
 
     return { menuItems }
 }

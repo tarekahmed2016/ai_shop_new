@@ -1,8 +1,15 @@
 <template>
     <div class="overflow-x-auto">
         <table class="w-full border-collapse">
-            <thead>
-                <tr class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <thead>
+            <tr class="bg-gray-100 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                    <th class="table-header-cell text-table-header w-10">
+                        <input
+                            type="checkbox"
+                            :checked="allSelected"
+                            @change="$emit('toggle-select-all', !allSelected)"
+                        />
+                    </th>
                     <th v-for="column in columns" :key="column.key"
                         @click="column.sortable ? handleSort(column.key) : null" :class="[
                             'table-header-cell text-table-header',
@@ -22,6 +29,13 @@
             </thead>
             <tbody class="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 <tr v-for="customer in customers" :key="customer.id" class="table-row">
+                    <td class="table-cell table-cell-secondary text-body">
+                        <input
+                            type="checkbox"
+                            :checked="selectedPublicIds.includes(customer.public_id)"
+                            @change="$emit('toggle-select', customer.public_id)"
+                        />
+                    </td>
                     <td class="table-cell table-cell-primary text-body">{{ customer.id }}</td>
                     <td class="table-cell table-cell-primary text-body">{{ customer.display_name }}</td>
                     <td class="table-cell table-cell-secondary text-body" dir="ltr">{{ customer.phone || '—' }}</td>
@@ -34,6 +48,7 @@
                     <td class="table-cell table-cell-secondary text-body">{{ customer.requests_today ?? 0 }}</td>
                     <td class="table-cell table-cell-secondary text-body">{{ customer.daily_limit ?? '—' }}</td>
                     <td class="table-cell table-cell-secondary text-body">{{ customer.remaining_today ?? 0 }}</td>
+                    <td class="table-cell table-cell-secondary text-body">{{ customer.extra_request_balance ?? 0 }}</td>
                     <td class="table-cell table-cell-secondary text-body">
                         <span v-if="customer.has_portal_access || customer.user_id" class="text-green-700 dark:text-green-300">
                             {{ t('customers.portal.enabled') }}
@@ -48,6 +63,9 @@
                         </button>
                         <button type="button" @click="$emit('dailyLimitHistory', customer)" class="btn btn-secondary me-2">
                             {{ t('customers.table.dailyLimitHistory') }}
+                        </button>
+                        <button type="button" @click="$emit('extraRequests', customer)" class="btn btn-secondary me-2">
+                            {{ t('customers.table.extraRequestsManage') }}
                         </button>
                         <button
                             v-if="!(customer.has_portal_access || customer.user_id)"
@@ -86,10 +104,13 @@ const { t } = useI18n()
 const props = defineProps({
     customers: { type: Array, required: true },
     sortColumn: { type: String, default: 'created_at' },
-    sortDirection: { type: String, default: 'desc' }
+    sortDirection: { type: String, default: 'desc' },
+    selectedPublicIds: { type: Array, default: () => [] },
 })
 
-const emit = defineEmits(['edit', 'requests', 'enablePortal', 'reactivate', 'sort', 'dailyLimitHistory'])
+const emit = defineEmits(['edit', 'requests', 'enablePortal', 'reactivate', 'sort', 'dailyLimitHistory', 'extraRequests', 'toggle-select', 'toggle-select-all'])
+
+const allSelected = computed(() => props.customers.length > 0 && props.customers.every((customer) => props.selectedPublicIds.includes(customer.public_id)))
 
 const columns = computed(() => [
     { key: 'id', label: t('customers.table.id'), sortable: true },
@@ -100,6 +121,7 @@ const columns = computed(() => [
     { key: 'requests_today', label: t('customers.table.requestsToday'), sortable: false },
     { key: 'daily_limit', label: t('customers.table.dailyLimit'), sortable: false },
     { key: 'remaining_today', label: t('customers.table.remainingToday'), sortable: false },
+    { key: 'extra_request_balance', label: t('customers.table.extraRequests'), sortable: false },
     { key: 'portal', label: t('customers.table.portal'), sortable: false },
 ])
 

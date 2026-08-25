@@ -5,14 +5,19 @@ namespace App\Models;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
 use App\Enums\Merchants\Status as MerchantStatus;
+use Database\Factories\MarketerReferralFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 #[Fillable(['marketer_id', 'referred_user_id', 'referral_code', 'landing_path', 'registered_at'])]
 class MarketerReferral extends Model
 {
+    /** @use HasFactory<MarketerReferralFactory> */
+    use HasFactory;
+
     /**
      * @return array<string, string>
      */

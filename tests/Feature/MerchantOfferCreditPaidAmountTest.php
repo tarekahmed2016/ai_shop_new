@@ -27,6 +27,7 @@ function moneyOf(mixed $value): ?string
 test('manual add stores paid amount and allows null promotional bonus', function () {
     $admin = creditAdmin();
     $merchant = Merchant::factory()->create();
+    attachMerchantOwner($merchant);
 
     $this->actingAs($admin)
         ->post(route('merchants.credits.store', $merchant), [
@@ -120,6 +121,7 @@ test('offer submit and manual deduct keep paid amount null and old rows stay nul
 test('bulk add records paid amount per merchant not as a batch total', function () {
     $admin = creditAdmin();
     $merchants = Merchant::factory()->count(3)->create();
+    $merchants->each(fn ($merchant) => attachMerchantOwner($merchant));
 
     $this->actingAs($admin)
         ->post(route('merchants.credits.bulk'), [
@@ -141,6 +143,8 @@ test('global credit history lists multiple merchants with filters pagination sum
     $admin = creditAdmin();
     $first = Merchant::factory()->create(['name' => 'Alpha Trading']);
     $second = Merchant::factory()->create(['name' => 'Beta Parts']);
+    attachMerchantOwner($first);
+    attachMerchantOwner($second);
 
     $this->actingAs($admin)
         ->post(route('merchants.credits.store', $first), [

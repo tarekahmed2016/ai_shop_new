@@ -16,4 +16,8 @@ class PlatformSetting extends Model
     public const KEY_OFFER_CREDIT_ENFORCEMENT = 'merchant_offer_credit_enforcement';
 
     public const KEY_DAILY_CUSTOMER_REQUEST_LIMIT = 'daily_customer_request_limit';
+
+    public const KEY_MARKETER_COMMISSION_CUSTOMER = 'mk_comm_customer_rate';
+
+    public const KEY_MARKETER_COMMISSION_MERCHANT = 'mk_comm_merchant_rate';
 }

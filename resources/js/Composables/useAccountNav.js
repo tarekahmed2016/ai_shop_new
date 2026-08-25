@@ -9,6 +9,8 @@ import {
     faBullhorn,
     faTags,
     faUsers,
+    faAward,
+    faMoneyBill,
 } from '@fortawesome/free-solid-svg-icons'
 import { useAccountWorkspaces } from './useAccountWorkspaces.js'
 
@@ -42,6 +44,63 @@ export function useAccountNav() {
         selectMerchant,
         goToStartMerchant,
     } = useAccountWorkspaces()
+
+    const merchantToolItems = computed(() => {
+        if (!page.props.merchantContext) {
+            return []
+        }
+
+        const items = [
+            {
+                id: 'merchant-home',
+                label: t('sidebar.merchantHome'),
+                icon: faStore,
+                route: namedRoute('merchant.home'),
+            },
+        ]
+
+        const merchantRequestsHref = namedRoute('merchant.requests.index')
+        if (merchantRequestsHref) {
+            items.push({
+                id: 'merchant-requests',
+                label: t('sidebar.merchantRequests'),
+                icon: faClipboardList,
+                route: merchantRequestsHref,
+            })
+        }
+
+        const merchantActivitiesHref = namedRoute('merchant.activities.index')
+        if (merchantActivitiesHref) {
+            items.push({
+                id: 'merchant-activities',
+                label: t('sidebar.merchantActivities'),
+                icon: faTags,
+                route: merchantActivitiesHref,
+            })
+        }
+
+        const merchantTeamHref = namedRoute('merchant.team.index')
+        if (merchantTeamHref) {
+            items.push({
+                id: 'merchant-team',
+                label: t('sidebar.merchantTeam'),
+                icon: faUsers,
+                route: merchantTeamHref,
+            })
+        }
+
+        const merchantBusinessProfileHref = namedRoute('merchant.business-profile.edit')
+        if (merchantBusinessProfileHref) {
+            items.push({
+                id: 'merchant-business-profile',
+                label: t('sidebar.merchantBusinessProfile'),
+                icon: faBuilding,
+                route: merchantBusinessProfileHref,
+            })
+        }
+
+        return items.filter((item) => item.route)
+    })
 
     const accountSections = computed(() => {
         const customerChildren = hasInactiveCustomer.value
@@ -80,6 +139,8 @@ export function useAccountNav() {
                 onClick: () => selectMerchant(merchant.public_id),
             }
         })
+
+        merchantChildren.push(...merchantToolItems.value)
 
         merchantChildren.push({
             id: 'merchant-start',
@@ -141,6 +202,24 @@ export function useAccountNav() {
                 icon: faClipboardList,
                 route: namedRoute('marketer.referrals'),
             })
+            marketerChildren.push({
+                id: 'marketer-payments',
+                label: t('account.nav.marketerPayments'),
+                icon: faTags,
+                route: namedRoute('marketer.payments'),
+            })
+            marketerChildren.push({
+                id: 'marketer-commissions',
+                label: t('account.nav.marketerCommissions'),
+                icon: faAward,
+                route: namedRoute('marketer.commissions'),
+            })
+            marketerChildren.push({
+                id: 'marketer-payouts',
+                label: t('account.nav.marketerPayouts'),
+                icon: faMoneyBill,
+                route: namedRoute('marketer.payouts'),
+            })
         }
 
         return [
@@ -168,65 +247,7 @@ export function useAccountNav() {
         ]
     })
 
-    const merchantToolItems = computed(() => {
-        if (!page.props.merchantContext) {
-            return []
-        }
-
-        const items = [
-            {
-                id: 'merchant-home',
-                label: t('sidebar.merchantHome'),
-                icon: faStore,
-                route: namedRoute('merchant.home'),
-            },
-        ]
-
-        const merchantRequestsHref = namedRoute('merchant.requests.index')
-        if (merchantRequestsHref) {
-            items.push({
-                id: 'merchant-requests',
-                label: t('sidebar.merchantRequests'),
-                icon: faClipboardList,
-                route: merchantRequestsHref,
-            })
-        }
-
-        const merchantActivitiesHref = namedRoute('merchant.activities.index')
-        if (merchantActivitiesHref) {
-            items.push({
-                id: 'merchant-activities',
-                label: t('sidebar.merchantActivities'),
-                icon: faTags,
-                route: merchantActivitiesHref,
-            })
-        }
-
-        const merchantTeamHref = namedRoute('merchant.team.index')
-        if (merchantTeamHref) {
-            items.push({
-                id: 'merchant-team',
-                label: t('sidebar.merchantTeam'),
-                icon: faUsers,
-                route: merchantTeamHref,
-            })
-        }
-
-        const merchantBusinessProfileHref = namedRoute('merchant.business-profile.edit')
-        if (merchantBusinessProfileHref) {
-            items.push({
-                id: 'merchant-business-profile',
-                label: t('sidebar.merchantBusinessProfile'),
-                icon: faBuilding,
-                route: merchantBusinessProfileHref,
-            })
-        }
-
-        return items.filter((item) => item.route)
-    })
-
     return {
         accountSections,
-        merchantToolItems,
     }
 }

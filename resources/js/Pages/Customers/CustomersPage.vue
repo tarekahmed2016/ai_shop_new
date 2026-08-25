@@ -1,10 +1,11 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { router, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import CustomersTable from '../../Components/Features/Customers/CustomersTable.vue'
 import CustomerFormModal from '../../Components/Features/Customers/CustomerFormModal.vue'
 import CustomerEnablePortalModal from '../../Components/Features/Customers/CustomerEnablePortalModal.vue'
+import CustomerExtraRequestBulkModal from '../../Components/Features/Customers/CustomerExtraRequestBulkModal.vue'
 import Pagination from '../../Components/Dashboard/Pagination.vue'
 import LoadingOverlay from '../../Components/Common/LoadingOverlay.vue'
 import { useTableFilters } from '../../Composables/Dashboard/useTableFilters.js'
@@ -42,6 +43,30 @@ const {
 
 const formModal = useModal()
 const portalModal = useModal()
+const bulkModal = useModal()
+const selectedPublicIds = ref([])
+const extraRequestSources = computed(() => page.props.extraRequestSources || [])
+
+watch(customers, () => {
+    selectedPublicIds.value = []
+})
+
+const toggleSelect = (publicId) => {
+    if (selectedPublicIds.value.includes(publicId)) {
+        selectedPublicIds.value = selectedPublicIds.value.filter((id) => id !== publicId)
+        return
+    }
+
+    selectedPublicIds.value = [...selectedPublicIds.value, publicId]
+}
+
+const toggleSelectAll = (selectAll) => {
+    selectedPublicIds.value = selectAll ? customers.value.map((customer) => customer.public_id) : []
+}
+
+const clearSelection = () => {
+    selectedPublicIds.value = []
+}
 
 const openRequests = (customer) => {
     router.visit(route('customer-requests.index', { customer: customer.public_id }))
@@ -49,6 +74,10 @@ const openRequests = (customer) => {
 
 const openDailyLimitHistory = (customer) => {
     router.visit(route('customers.daily-limit-history', customer.public_id))
+}
+
+const openExtraRequests = (customer) => {
+    router.visit(route('customers.extra-requests.index', customer.public_id))
 }
 
 const customerListQuery = computed(() => ({
@@ -124,18 +153,31 @@ const globalHistoryQuery = computed(() => ({
                         <input v-model="searchQuery" type="text" :placeholder="t('customers.searchPlaceholder')"
                             class="block w-full ps-3 pe-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md leading-5 bg-white dark:bg-gray-700 text-body text-gray-900 dark:text-gray-100" />
                     </div>
-                    <button @click="formModal.open()"
-                        class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-button text-white bg-blue-600 hover:bg-blue-700 cursor-pointer">
-                        {{ t('customers.addNew') }}
-                    </button>
+                    <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+                        <button
+                            v-if="selectedPublicIds.length > 0"
+                            type="button"
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-button text-white bg-blue-600 hover:bg-blue-700"
+                            @click="bulkModal.open()"
+                        >
+                            {{ t('customers.extraRequests.bulkButton') }}
+                        </button>
+                        <button @click="formModal.open()"
+                            class="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-button text-white bg-blue-600 hover:bg-blue-700 cursor-pointer">
+                            {{ t('customers.addNew') }}
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden relative">
                 <LoadingOverlay :show="isPaginating" />
                 <CustomersTable :customers="customers" :sortColumn="sortColumn" :sortDirection="sortDirection"
+                    :selectedPublicIds="selectedPublicIds"
                     @edit="formModal.open" @enablePortal="portalModal.open" @requests="openRequests"
-                    @dailyLimitHistory="openDailyLimitHistory" @reactivate="reactivate" @sort="handleSort" />
+                    @dailyLimitHistory="openDailyLimitHistory" @extraRequests="openExtraRequests"
+                    @reactivate="reactivate" @sort="handleSort"
+                    @toggle-select="toggleSelect" @toggle-select-all="toggleSelectAll" />
                 <Pagination :paginationData="paginationData" routeName="customers.index" :query="customerListQuery" @paginating="handlePaginating" />
             </div>
         </div>
@@ -151,5 +193,12 @@ const globalHistoryQuery = computed(() => ({
             :isOpen="portalModal.isOpen.value"
             :customer="portalModal.selectedItem.value"
             @close="portalModal.close" />
+
+        <CustomerExtraRequestBulkModal
+            :isOpen="bulkModal.isOpen.value"
+            :sources="extraRequestSources"
+            :selectedPublicIds="selectedPublicIds"
+            @close="bulkModal.close"
+            @success="clearSelection" />
     </div>
 </template>

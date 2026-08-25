@@ -37,6 +37,9 @@ class HandleInertiaRequests extends Middleware
             app(CustomerContext::class)->resolveFromUser($request->user());
         }
 
+        $user = $request->user();
+        $isAdmin = (bool) $user?->hasRole('admin');
+
         return [
             ...parent::share($request),
             'flash' => Inertia::always([
@@ -46,12 +49,13 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
             ]),
             'auth' => [
-                'user' => $request->user(),
-                'role' => $request->user()?->getRoleNames()->first(),
-                'isAdmin' => (bool) $request->user()?->hasRole('admin'),
-                'isCustomer' => (bool) $request->user()?->customer,
-                'capabilities' => $request->user() ? UserCapabilities::for($request->user()) : null,
-                'home' => $request->user() ? target() : null,
+                'user' => $user,
+                'role' => $user?->getRoleNames()->first(),
+                'isAdmin' => $isAdmin,
+                'showUnifiedAccountNav' => $user !== null && ! $isAdmin,
+                'isCustomer' => (bool) $user?->customer,
+                'capabilities' => $user ? UserCapabilities::for($user) : null,
+                'home' => $user ? target() : null,
             ],
             'merchantContext' => fn () => app(MerchantContext::class)->toArray(),
             'customerContext' => fn () => app(CustomerContext::class)->toArray(),

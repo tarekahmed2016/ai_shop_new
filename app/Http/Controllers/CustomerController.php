@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CustomerExtraRequests\TransactionSource;
 use App\Enums\Customers\Status;
 use App\Http\Requests\CustomerDailyRequestLimitRequest;
 use App\Http\Requests\CustomerEnablePortalRequest;
@@ -46,6 +47,7 @@ class CustomerController extends Controller
             'dailyCustomerRequestLimit' => $this->customerService->customerRequestLimitService->globalLimit(),
             'dailyCustomerRequestTimezone' => $this->customerService->customerRequestLimitService->timezone(),
             'globalLimitHistory' => $globalLimitHistory,
+            'extraRequestSources' => TransactionSource::manualChoicesToArray(),
         ]);
     }
 

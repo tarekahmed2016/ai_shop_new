@@ -14,7 +14,13 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
-#[Fillable(['user_id', 'referral_code', 'status'])]
+#[Fillable([
+    'user_id',
+    'referral_code',
+    'status',
+    'customer_commission_rate',
+    'merchant_commission_rate',
+])]
 class Marketer extends Model
 {
     /** @use HasFactory<MarketerFactory> */
@@ -46,6 +52,8 @@ class Marketer extends Model
     {
         return [
             'status' => Status::class,
+            'customer_commission_rate' => 'decimal:3',
+            'merchant_commission_rate' => 'decimal:3',
         ];
     }
 
@@ -102,6 +110,22 @@ class Marketer extends Model
     public function referrals(): HasMany
     {
         return $this->hasMany(MarketerReferral::class);
+    }
+
+    /**
+     * @return HasMany<MarketerCommission, $this>
+     */
+    public function commissions(): HasMany
+    {
+        return $this->hasMany(MarketerCommission::class);
+    }
+
+    /**
+     * @return HasMany<MarketerPayout, $this>
+     */
+    public function payouts(): HasMany
+    {
+        return $this->hasMany(MarketerPayout::class);
     }
 
     /**

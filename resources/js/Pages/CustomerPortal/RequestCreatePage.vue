@@ -10,7 +10,10 @@ const pendingRequest = computed(() => page.props.pendingRequest || null)
 const requestQuota = computed(() => page.props.requestQuota || page.props.customerContext?.request_quota || {})
 const isSuspended = computed(() => page.props.customerContext?.is_suspended === true)
 const remaining = computed(() => Number(requestQuota.value.remaining ?? 0))
-const atLimit = computed(() => remaining.value <= 0)
+const extraBalance = computed(() => Number(requestQuota.value.extra_request_balance ?? 0))
+const canCreate = computed(() => requestQuota.value.can_create === true || remaining.value > 0 || extraBalance.value > 0)
+const hasPending = computed(() => !!pendingRequest.value)
+const atLimit = computed(() => !hasPending.value && !canCreate.value)
 
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
@@ -79,6 +82,9 @@ const canSubmit = computed(() => !isSuspended.value && !atLimit.value && !!class
             <div v-else class="mb-4 bg-white dark:bg-gray-800 rounded-lg shadow p-4">
                 <p class="text-body text-gray-900 dark:text-gray-100">
                     {{ t('customerPortal.quota.today', { used: requestQuota.used ?? 0, limit: requestQuota.daily_limit ?? 0, remaining: remaining }) }}
+                </p>
+                <p class="text-body text-gray-900 dark:text-gray-100 mt-1">
+                    {{ t('customerPortal.quota.extra', { extra: extraBalance }) }}
                 </p>
                 <p v-if="atLimit" class="form-error mt-2">{{ t('customerPortal.quota.reached') }}</p>
             </div>

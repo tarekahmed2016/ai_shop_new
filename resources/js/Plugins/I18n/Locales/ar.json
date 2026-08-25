@@ -72,7 +72,10 @@
       "marketerReapply": "إعادة التقديم",
       "marketerInactive": "الحساب غير نشط",
       "marketerOverview": "نظرة عامة",
-      "marketerReferrals": "الإحالات"
+      "marketerReferrals": "الإحالات",
+      "marketerPayments": "مدفوعات الإحالات",
+      "marketerCommissions": "الاستحقاقات",
+      "marketerPayouts": "المدفوعات المستلمة"
     },
     "workspace": {
       "usingAs": "أنت تستخدم المنصة الآن كـ",
@@ -150,7 +153,8 @@
     },
     "quota": {
       "today": "طلبات اليوم: {used} · الحد اليومي: {limit} · المتبقي: {remaining}",
-      "reached": "لقد وصلت إلى الحد اليومي المسموح به لإرسال الطلبات."
+      "extra": "رصيد الطلبات الإضافية: {extra}",
+      "reached": "لقد وصلت إلى الحد اليومي وليس لديك طلبات إضافية متبقية."
     },
     "suspended": {
       "message": "تم إيقاف حساب العميل بسبب محاولة إرسال بيانات تواصل مباشرة داخل الطلب. يمكنك التواصل مع إدارة المنصة لمراجعة الحساب."
@@ -244,6 +248,36 @@
     "previous": "السابق",
     "next": "التالي"
   },
+  "marketerFinance": {
+    "globalTitle": "استحقاقات المسوقين",
+    "globalSubtitle": "ملخص العمولات ونسب المنصة.",
+    "settingsTitle": "نسب العمولة",
+    "customerRate": "عمولة مدفوعات العملاء",
+    "merchantRate": "عمولة مدفوعات التجار",
+    "referralPayments": "مدفوعات الإحالات",
+    "approvedCommission": "الاستحقاقات المعتمدة",
+    "pendingCommission": "الاستحقاقات قيد المراجعة",
+    "totalPaid": "إجمالي المسدد",
+    "alreadyPaid": "تم سداده",
+    "outstanding": "المتبقي",
+    "recordPayout": "تسجيل دفعة",
+    "viewCommissions": "عرض الاستحقاقات",
+    "viewPayouts": "عرض الدفعات",
+    "details": "التفاصيل",
+    "back": "رجوع",
+    "amount": "المبلغ",
+    "method": "طريقة الدفع",
+    "reference": "المرجع",
+    "notes": "ملاحظات",
+    "paidAt": "تاريخ الدفع",
+    "overrides": "نسب خاصة بالمسوق",
+    "overrideHint": "اترك الحقل فارغًا لاستخدام النسبة العامة.",
+    "globalCustomerRate": "النسبة العامة للعملاء",
+    "globalMerchantRate": "النسبة العامة للتجار",
+    "effectiveCustomerRate": "النسبة الفعلية للعملاء",
+    "effectiveMerchantRate": "النسبة الفعلية للتجار",
+    "saveRates": "حفظ النسب"
+  },
   "marketers": {
     "pageTitle": "المسوقون",
     "pageSubtitle": "مراجعة الطلبات وإدارة حسابات المسوقين.",
@@ -290,12 +324,21 @@
     "no": "لا",
     "home": {
       "title": "نظرة عامة للمسوق",
-      "subtitle": "تابع إحالاتك. العمولات والمدفوعات ستظهر لاحقًا.",
+      "subtitle": "تابع الإحالات والاستحقاقات والمدفوعات المستلمة.",
       "total": "إجمالي المستخدمين المحالين",
       "customers": "العملاء",
       "merchants": "التجار",
       "dual": "عميل وتاجر معًا",
       "thisMonth": "تسجيلات هذا الشهر",
+      "totalPayments": "إجمالي مدفوعات الإحالات",
+      "commissionEarned": "إجمالي الاستحقاقات",
+      "paidToYou": "تم سداده",
+      "outstanding": "المتبقي",
+      "monthPayments": "مدفوعات الإحالات هذا الشهر",
+      "payingUsers": "المحالون الذين دفعوا",
+      "viewPayments": "مدفوعات الإحالات",
+      "viewCommissions": "الاستحقاقات",
+      "viewPayouts": "المدفوعات المستلمة",
       "referralCard": "رابط الإحالة",
       "copyCode": "نسخ الرمز",
       "copyLink": "نسخ الرابط",
@@ -312,6 +355,57 @@
       "merchant": "تاجر",
       "dual": "الاثنان",
       "empty": "لا توجد إحالات بعد."
+    },
+    "payments": {
+      "title": "مدفوعات الإحالات",
+      "subtitle": "مدفوعات المستخدمين الذين أحلتهم.",
+      "date": "التاريخ",
+      "user": "المستخدم",
+      "type": "نوع الدفع",
+      "capability": "الصفة",
+      "amount": "المبلغ",
+      "empty": "لا توجد مدفوعات إحالات بعد.",
+      "types": {
+        "MerchantOfferCredits": "رصيد عروض التاجر",
+        "CustomerExtraRequests": "طلبات إضافية للعميل",
+        "Subscription": "اشتراك",
+        "Other": "أخرى"
+      },
+      "capabilities": {
+        "Customer": "عميل",
+        "Merchant": "تاجر",
+        "Other": "أخرى"
+      }
+    },
+    "commissions": {
+      "title": "الاستحقاقات",
+      "subtitle": "سجل عمولاتك من مدفوعات الإحالات.",
+      "date": "التاريخ",
+      "user": "المستخدم المحال",
+      "type": "نوع الدفع",
+      "paymentAmount": "مبلغ الدفع",
+      "rate": "نسبة العمولة",
+      "amount": "مبلغ العمولة",
+      "status": "الحالة",
+      "empty": "لا توجد استحقاقات بعد.",
+      "statuses": {
+        "Pending": "قيد المراجعة",
+        "Approved": "معتمد",
+        "Cancelled": "ملغى"
+      }
+    },
+    "payouts": {
+      "title": "المدفوعات المستلمة",
+      "subtitle": "الدفعات التي استلمتها.",
+      "date": "التاريخ",
+      "amount": "المبلغ",
+      "method": "طريقة الدفع",
+      "empty": "لا توجد دفعات مستلمة بعد.",
+      "methods": {
+        "BankTransfer": "تحويل بنكي",
+        "Cash": "نقدي",
+        "Other": "أخرى"
+      }
     }
   },
   "bilingual": {
@@ -335,6 +429,8 @@
     "merchantCreditHistory": "سجل أرصدة التجار",
     "categories": "التصنيفات",
     "customers": "العملاء",
+    "payments": "سجل المدفوعات",
+    "marketerCommissions": "استحقاقات المسوقين",
     "marketers": "المسوقون",
     "customerRequests": "طلبات العملاء",
     "matching": "المطابقات",
@@ -1354,7 +1450,9 @@
       "dailyLimitHistory": "سجل الحد اليومي",
       "requestsToday": "الطلبات اليوم",
       "dailyLimit": "الحد اليومي",
-      "remainingToday": "المتبقي اليوم"
+      "remainingToday": "المتبقي اليوم",
+      "extraRequests": "رصيد الطلبات الإضافية",
+      "extraRequestsManage": "الطلبات الإضافية"
     },
     "form": {
       "addTitle": "إضافة عميل",
@@ -1429,6 +1527,65 @@
       "createLoginTitle": "إنشاء حساب دخول",
       "createLoginHint": "ينشئ حساب مستخدم جديداً ويربطه بهذا العميل. لن يتم ربط حساب موجود تلقائياً بالبريد فقط.",
       "createLoginSubmit": "تفعيل دخول البوابة"
+    },
+    "extraRequests": {
+      "pageTitle": "رصيد الطلبات الإضافية",
+      "pageSubtitle": "رصيد الطلبات الإضافية لـ {name}",
+      "backToCustomers": "العودة إلى العملاء",
+      "balanceLabel": "رصيد الطلبات الإضافية",
+      "addButton": "إضافة طلبات إضافية",
+      "deductButton": "خصم طلبات إضافية",
+      "addTitle": "إضافة طلبات إضافية",
+      "deductTitle": "خصم طلبات إضافية",
+      "bulkTitle": "إضافة طلبات إضافية",
+      "bulkButton": "إضافة طلبات إضافية",
+      "bulkSelected": "تم تحديد {count} عملاء في هذه الصفحة",
+      "amountLabel": "عدد الطلبات الإضافية",
+      "sourceLabel": "طريقة الدفع / المصدر",
+      "selectSource": "اختر الطريقة",
+      "paidAmountLabel": "المبلغ المدفوع (ر.ع)",
+      "paidAmountHint": "اختياري. اتركه فارغًا أو 0 للإضافة الترويجية أو غير المدفوعة.",
+      "paidAmountPerCustomerHint": "إذا تم إدخاله، يحصل كل عميل محدد على سجل دفع مستقل بهذا المبلغ.",
+      "referenceLabel": "المرجع",
+      "notesLabel": "ملاحظات",
+      "empty": "لا توجد حركات طلبات إضافية بعد"
+    }
+  },
+  "payments": {
+    "pageTitle": "سجل المدفوعات",
+    "pageSubtitle": "السجل المركزي للمبالغ المستلمة من المستخدمين",
+    "empty": "لا توجد مدفوعات بعد",
+    "details": "التفاصيل",
+    "backToPayments": "العودة إلى المدفوعات",
+    "showTitle": "تفاصيل الدفعة",
+    "ledgerTitle": "الاستحقاقات المرتبطة",
+    "extraLedger": "سجل الطلبات الإضافية",
+    "merchantLedger": "سجل رصيد عروض التاجر",
+    "noLedger": "لا توجد صفوف استحقاق مرتبطة",
+    "filters": {
+      "payer": "الدافع",
+      "type": "النوع",
+      "method": "طريقة الدفع",
+      "status": "الحالة",
+      "dateFrom": "من",
+      "dateTo": "إلى",
+      "allTypes": "كل الأنواع",
+      "allMethods": "كل الطرق",
+      "allStatuses": "كل الحالات",
+      "apply": "تصفية",
+      "reset": "إعادة تعيين"
+    },
+    "table": {
+      "date": "التاريخ",
+      "payer": "الدافع",
+      "type": "النوع",
+      "context": "عميل / تاجر",
+      "amount": "المبلغ",
+      "method": "طريقة الدفع",
+      "reference": "المرجع",
+      "createdBy": "أنشئ بواسطة",
+      "status": "الحالة",
+      "notes": "ملاحظات"
     }
   },
   "customerRequests": {

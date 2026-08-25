@@ -3,9 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Enums\Marketers\Status;
+use App\Enums\Payments\Method;
+use App\Enums\Payments\Type as PaymentType;
 use App\Exceptions\InvalidMarketerTransitionException;
+use App\Http\Requests\MarketerCommissionOverrideRequest;
+use App\Http\Requests\MarketerPayoutStoreRequest;
 use App\Http\Requests\MarketerStoreRequest;
 use App\Models\Marketer;
+use App\Services\MarketerCommissionService;
 use App\Services\MarketerService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,6 +21,7 @@ class MarketerController extends Controller
 {
     public function __construct(
         public MarketerService $marketerService,
+        public MarketerCommissionService $commissionService,
     ) {}
 
     public function index(Request $request): Response
@@ -79,6 +85,106 @@ class MarketerController extends Controller
         $this->authorize('reactivate', $marketer);
 
         return $this->runTransition(fn () => $this->marketerService->reactivate($marketer), 'تم إعادة تفعيل المسوق');
+    }
+
+    public function show(Marketer $marketer): Response
+    {
+        $this->authorize('view', $marketer);
+
+        $marketer->load(['user:id,name,email']);
+        $rates = $this->commissionService->globalRates();
+
+        return Inertia::render('Marketers/MarketerShowPage', [
+            'marketer' => [
+                'public_id' => $marketer->public_id,
+                'name' => $marketer->user?->name,
+                'email' => $marketer->user?->email,
+                'referral_code' => $marketer->referral_code,
+                'status' => $marketer->status_formatted,
+                'customer_commission_rate' => $marketer->customer_commission_rate,
+                'merchant_commission_rate' => $marketer->merchant_commission_rate,
+            ],
+            'summary' => $this->commissionService->financialSummary($marketer),
+            'globalRates' => $rates,
+            'effectiveRates' => [
+                'customer_extra_requests' => $this->commissionService->effectiveRate(
+                    $marketer,
+                    PaymentType::CustomerExtraRequests,
+                ),
+                'merchant_offer_credits' => $this->commissionService->effectiveRate(
+                    $marketer,
+                    PaymentType::MerchantOfferCredits,
+                ),
+            ],
+            'methods' => Method::toArray(),
+        ]);
+    }
+
+    public function commissions(Marketer $marketer): Response
+    {
+        $this->authorize('view', $marketer);
+        $marketer->load(['user:id,name,email']);
+
+        $commissions = $this->commissionService->paginatedCommissions($marketer);
+        $commissions->getCollection()->transform(
+            fn ($commission) => $this->commissionService->presentPortalCommission($commission)
+        );
+
+        return Inertia::render('Marketers/MarketerCommissionsPage', [
+            'marketer' => [
+                'public_id' => $marketer->public_id,
+                'name' => $marketer->user?->name,
+            ],
+            'commissions' => $commissions,
+            'summary' => $this->commissionService->financialSummary($marketer),
+        ]);
+    }
+
+    public function payouts(Marketer $marketer): Response
+    {
+        $this->authorize('view', $marketer);
+        $marketer->load(['user:id,name,email']);
+
+        $payouts = $this->commissionService->paginatedPayouts($marketer);
+        $payouts->load(['createdBy:id,name,email']);
+        $payouts->getCollection()->transform(
+            fn ($payout) => $this->commissionService->presentAdminPayout($payout)
+        );
+
+        return Inertia::render('Marketers/MarketerPayoutsPage', [
+            'marketer' => [
+                'public_id' => $marketer->public_id,
+                'name' => $marketer->user?->name,
+            ],
+            'payouts' => $payouts,
+            'summary' => $this->commissionService->financialSummary($marketer),
+        ]);
+    }
+
+    public function storePayout(MarketerPayoutStoreRequest $request, Marketer $marketer): RedirectResponse
+    {
+        $this->commissionService->recordPayout(
+            $marketer,
+            $request->validated('amount'),
+            $request->enum('payment_method', Method::class),
+            $request->user(),
+            $request->validated('reference'),
+            $request->validated('notes'),
+            $request->validated('paid_at'),
+        );
+
+        return redirect()->back()->with('success', 'تم تسجيل الدفعة');
+    }
+
+    public function updateRates(MarketerCommissionOverrideRequest $request, Marketer $marketer): RedirectResponse
+    {
+        $this->commissionService->updateMarketerOverrides(
+            $marketer,
+            $request->validated('customer_commission_rate'),
+            $request->validated('merchant_commission_rate'),
+        );
+
+        return redirect()->back()->with('success', 'تم حفظ نسب العمولة');
     }
 
     private function runTransition(callable $callback, string $success): RedirectResponse

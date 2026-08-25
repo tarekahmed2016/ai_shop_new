@@ -19,6 +19,10 @@ class EnableCustomerController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         $customer = $user?->customer;
 
@@ -35,6 +39,10 @@ class EnableCustomerController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 

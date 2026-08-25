@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { router, useForm, usePage } from '@inertiajs/vue3'
+import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import Pagination from '../../Components/Dashboard/Pagination.vue'
 import LoadingOverlay from '../../Components/Common/LoadingOverlay.vue'
@@ -119,6 +119,7 @@ const statusLabel = (status) => {
                             <td class="table-cell">{{ row.merchant_count }}</td>
                             <td class="table-cell">{{ row.created_at }}</td>
                             <td class="table-cell whitespace-nowrap">
+                                <Link :href="route('marketers.show', row.public_id)" class="text-blue-600 me-2">{{ t('marketerFinance.details') }}</Link>
                                 <button v-if="row.status === 3 || row.status === 4" type="button" class="btn btn-secondary me-1" @click="postAction('marketers.approve', row)">{{ t('marketers.approve') }}</button>
                                 <button v-if="row.status === 3" type="button" class="btn btn-secondary me-1" @click="postAction('marketers.reject', row)">{{ t('marketers.reject') }}</button>
                                 <button v-if="row.status === 1" type="button" class="btn btn-secondary me-1" @click="postAction('marketers.deactivate', row)">{{ t('marketers.deactivate') }}</button>

@@ -36,6 +36,7 @@ class CustomerRequestService
         public RequestMatchingService $requestMatchingService,
         public CustomerRequestLimitService $customerRequestLimitService,
         public CustomerContactAbuseService $customerContactAbuseService,
+        public CustomerExtraRequestService $customerExtraRequestService,
     ) {}
 
     public function getPaginatedRequests(
@@ -142,6 +143,7 @@ class CustomerRequestService
             }
 
             $this->customerContactAbuseService->assertCanCreate($locked);
+            $dailyQuotaExhausted = $this->customerRequestLimitService->dailyQuotaExhausted($locked);
             $this->customerRequestLimitService->assertWithinLimit($locked);
 
             $request = new CustomerRequest;
@@ -152,6 +154,10 @@ class CustomerRequestService
             $request->request_text = (string) $data['request_text'];
             $request->category_id = null;
             $request->save();
+
+            if ($dailyQuotaExhausted) {
+                $this->customerExtraRequestService->consumeForNewRequest($locked, $request);
+            }
 
             $this->activityLogService->recordCreated(
                 subject: $request,

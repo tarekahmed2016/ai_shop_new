@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'source',
     'amount',
     'paid_amount',
+    'payment_transaction_id',
     'balance_after',
     'reference',
     'notes',
@@ -44,6 +45,7 @@ class MerchantOfferCreditTransaction extends Model
             'source' => TransactionSource::class,
             'amount' => 'integer',
             'paid_amount' => 'decimal:3',
+            'payment_transaction_id' => 'integer',
             'balance_after' => 'integer',
             'merchant_id' => 'integer',
             'created_by_user_id' => 'integer',
@@ -94,6 +96,14 @@ class MerchantOfferCreditTransaction extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by_user_id');
+    }
+
+    /**
+     * @return BelongsTo<PaymentTransaction, $this>
+     */
+    public function paymentTransaction(): BelongsTo
+    {
+        return $this->belongsTo(PaymentTransaction::class);
     }
 
     /**

@@ -19,6 +19,10 @@ class MarketerApplicationController extends Controller
 
     public function create(Request $request): Response|RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 
@@ -34,6 +38,10 @@ class MarketerApplicationController extends Controller
 
     public function store(ApplyMarketerRequest $request): RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 
@@ -58,6 +66,10 @@ class MarketerApplicationController extends Controller
 
     public function status(Request $request): Response|RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 
@@ -77,6 +89,10 @@ class MarketerApplicationController extends Controller
 
     public function reapply(ApplyMarketerRequest $request): RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 

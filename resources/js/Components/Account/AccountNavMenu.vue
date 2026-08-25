@@ -1,4 +1,5 @@
 <script setup>
+import { router } from '@inertiajs/vue3'
 import { useAccountNav } from '../../Composables/useAccountNav.js'
 
 const { accountSections } = useAccountNav()
@@ -6,12 +7,20 @@ const { accountSections } = useAccountNav()
 const emit = defineEmits(['navigate'])
 
 const handleClick = (item) => {
-    if (item.disabled || typeof item.onClick !== 'function') {
+    if (item.disabled) {
         return
     }
 
-    item.onClick()
-    emit('navigate')
+    if (typeof item.onClick === 'function') {
+        item.onClick()
+        emit('navigate')
+        return
+    }
+
+    if (item.route) {
+        router.visit(item.route)
+        emit('navigate')
+    }
 }
 </script>
 

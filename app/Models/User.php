@@ -104,4 +104,12 @@ class User extends Authenticatable
             ->withPivot(['id', 'role', 'status'])
             ->withTimestamps();
     }
+
+    /**
+     * @return HasMany<PaymentTransaction, $this>
+     */
+    public function paymentTransactions(): HasMany
+    {
+        return $this->hasMany(PaymentTransaction::class, 'payer_user_id');
+    }
 }

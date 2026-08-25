@@ -17,6 +17,7 @@ import {
     faImages,
     faInbox,
     faBell,
+    faMoneyBill,
     faNewspaper,
     faPalette,
     faShuffle,
@@ -49,13 +50,16 @@ export function useDashboardNav() {
     const { t } = useI18n()
     const page = usePage()
     const isAdmin = computed(() => page.props.auth?.isAdmin === true)
-    const { accountSections, merchantToolItems } = useAccountNav()
+    const showUnifiedAccountNav = computed(() => page.props.auth?.showUnifiedAccountNav === true)
+    const { accountSections } = useAccountNav()
 
     const menuItems = computed(() => {
-        const items = [
-            ...accountSections.value,
-            ...merchantToolItems.value,
-        ]
+        // Admin dashboard shows admin modules only. Unified Customer/Merchant/Marketer
+        // account sections stay available to non-admin users from this same menuItems source
+        // (desktop sidebar and mobile drawer). Merchant tools live inside Merchant Account.
+        const items = showUnifiedAccountNav.value
+            ? [...accountSections.value]
+            : []
 
         // Marketplace modules stay top-level. Only modules with a real Ziggy route are shown.
         const marketplaceModules = [
@@ -63,6 +67,8 @@ export function useDashboardNav() {
             { id: 'merchant-credit-history', label: t('sidebar.merchantCreditHistory'), icon: faClockRotateLeft, routeName: 'merchants.credits.transactions' },
             { id: 'categories', label: t('sidebar.categories'), icon: faTags, routeName: 'categories.index' },
             { id: 'customers', label: t('sidebar.customers'), icon: faUserGroup, routeName: 'customers.index' },
+            { id: 'payments', label: t('sidebar.payments'), icon: faMoneyBill, routeName: 'payments.index' },
+            { id: 'marketer-commissions', label: t('sidebar.marketerCommissions'), icon: faAward, routeName: 'marketer-commissions.index' },
             { id: 'marketers', label: t('sidebar.marketers'), icon: faBullhorn, routeName: 'marketers.index' },
             { id: 'customer-requests', label: t('sidebar.customerRequests'), icon: faInbox, routeName: 'customer-requests.index' },
             { id: 'matching', label: t('sidebar.matching'), icon: faShuffle, routeName: 'matching.index' },

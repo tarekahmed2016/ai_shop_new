@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Enums\MerchantOfferCredits\TransactionSource;
 use App\Enums\MerchantOfferCredits\TransactionType;
+use App\Enums\Payments\Method;
+use App\Enums\Payments\Type as PaymentType;
 use App\Models\CustomerRequest;
 use App\Models\Merchant;
 use App\Models\MerchantOffer;
@@ -19,6 +21,7 @@ class MerchantOfferCreditService
 {
     public function __construct(
         public PlatformSettingService $platformSettingService,
+        public PaymentTransactionService $paymentTransactionService,
     ) {}
 
     public function isEnforcementEnabled(): bool
@@ -204,7 +207,7 @@ class MerchantOfferCreditService
             $source = TransactionSource::PromotionalBonus;
         }
 
-        $normalizedPaidAmount = $this->normalizePaidAmount($paidAmount);
+        $normalizedPaidAmount = $this->paymentTransactionService->normalizeAmount($paidAmount);
 
         return DB::transaction(function () use ($merchant, $amount, $source, $reference, $notes, $actor, $type, $normalizedPaidAmount) {
             $this->lockMerchant((int) $merchant->id);
@@ -302,7 +305,7 @@ class MerchantOfferCreditService
             ? TransactionType::PromotionalBonus
             : TransactionType::BulkManualAdd;
 
-        $normalizedPaidAmount = $this->normalizePaidAmount($paidAmount);
+        $normalizedPaidAmount = $this->paymentTransactionService->normalizeAmount($paidAmount);
 
         return DB::transaction(function () use ($ids, $amount, $source, $reference, $notes, $actor, $type, $normalizedPaidAmount) {
             $merchants = Merchant::query()
@@ -508,6 +511,22 @@ class MerchantOfferCreditService
         ?string $paidAmount = null,
     ): MerchantOfferCreditTransaction {
         $previous = $this->balance((int) $merchant->id);
+        $paymentId = null;
+
+        if ($paidAmount !== null) {
+            $payer = $this->paymentTransactionService->canonicalMerchantPayer($merchant);
+            $payment = $this->paymentTransactionService->recordPaid(
+                payer: $payer,
+                type: PaymentType::MerchantOfferCredits,
+                amount: $paidAmount,
+                method: Method::fromMerchantCreditSource($source),
+                actor: $actor,
+                reference: $reference,
+                notes: $notes,
+                relatedMerchant: $merchant,
+            );
+            $paymentId = $payment->id;
+        }
 
         return MerchantOfferCreditTransaction::query()->create([
             'merchant_id' => $merchant->id,
@@ -515,6 +534,7 @@ class MerchantOfferCreditService
             'source' => $source,
             'amount' => $amount,
             'paid_amount' => $paidAmount,
+            'payment_transaction_id' => $paymentId,
             'balance_after' => $previous + $amount,
             'reference' => $reference,
             'notes' => $notes,

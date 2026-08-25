@@ -22,6 +22,10 @@ class EnsureMarketer
         $marketer = $user->marketer;
 
         if ($marketer === null) {
+            if ($user->hasRole('admin')) {
+                return redirect()->route('dashboard');
+            }
+
             if ($request->expectsJson()) {
                 abort(403);
             }
@@ -30,6 +34,10 @@ class EnsureMarketer
         }
 
         if (! $marketer->isActive()) {
+            if ($user->hasRole('admin')) {
+                return redirect()->route('dashboard');
+            }
+
             if ($request->expectsJson()) {
                 abort(403);
             }

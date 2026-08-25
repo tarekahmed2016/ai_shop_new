@@ -1,6 +1,9 @@
 <?php
 
+use App\Enums\MerchantMemberships\Status as MembershipStatus;
 use App\Enums\MerchantOfferCredits\AdminPermission;
+use App\Models\Merchant;
+use App\Models\MerchantUser;
 use App\Models\User;
 use App\Services\MerchantOfferCreditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -71,4 +74,17 @@ function creditAdmin(?array $permissions = null): User
 function enableOfferCreditEnforcement(): void
 {
     app(MerchantOfferCreditService::class)->setEnforcementEnabled(true);
+}
+
+function attachMerchantOwner(Merchant $merchant, ?User $owner = null): User
+{
+    $owner ??= User::factory()->create();
+
+    MerchantUser::factory()->owner()->create([
+        'user_id' => $owner->id,
+        'merchant_id' => $merchant->id,
+        'status' => MembershipStatus::Active,
+    ]);
+
+    return $owner;
 }

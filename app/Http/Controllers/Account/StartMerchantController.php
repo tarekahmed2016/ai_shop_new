@@ -20,8 +20,12 @@ class StartMerchantController extends Controller
         public CategoryService $categoryService,
     ) {}
 
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         abort_unless($request->user() !== null, 403);
 
         return Inertia::render('Account/StartMerchantPage', [
@@ -31,6 +35,10 @@ class StartMerchantController extends Controller
 
     public function store(StartMerchantRequest $request): RedirectResponse
     {
+        if ($redirect = admin_dashboard_redirect()) {
+            return $redirect;
+        }
+
         $user = $request->user();
         abort_unless($user !== null, 403);
 

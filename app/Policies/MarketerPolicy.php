@@ -46,4 +46,14 @@ class MarketerPolicy
     {
         return $user->hasRole('admin');
     }
+
+    public function recordPayout(User $user, Marketer $marketer): bool
+    {
+        return $user->hasRole('admin');
+    }
+
+    public function updateCommissionRates(User $user, Marketer $marketer): bool
+    {
+        return $user->hasRole('admin');
+    }
 }

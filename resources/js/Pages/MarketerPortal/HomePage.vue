@@ -52,6 +52,25 @@ const copy = async (value, key) => {
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <p class="text-muted text-sm">{{ t('marketerPortal.home.totalPayments') }}</p>
+                    <p class="text-2xl font-semibold">{{ page.props.financeSummary?.referral_payments ?? page.props.paymentSummary?.total_amount ?? '0.000' }}</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <p class="text-muted text-sm">{{ t('marketerPortal.home.commissionEarned') }}</p>
+                    <p class="text-2xl font-semibold">{{ page.props.financeSummary?.approved_commission ?? '0.000' }}</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <p class="text-muted text-sm">{{ t('marketerPortal.home.paidToYou') }}</p>
+                    <p class="text-2xl font-semibold">{{ page.props.financeSummary?.paid ?? '0.000' }}</p>
+                </div>
+                <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+                    <p class="text-muted text-sm">{{ t('marketerPortal.home.outstanding') }}</p>
+                    <p class="text-2xl font-semibold">{{ page.props.financeSummary?.outstanding ?? '0.000' }}</p>
+                </div>
+            </div>
+
             <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 space-y-3">
                 <h2 class="text-card-title">{{ t('marketerPortal.home.referralCard') }}</h2>
                 <p class="font-mono text-lg">{{ metrics.referral_code }}</p>
@@ -65,6 +84,15 @@ const copy = async (value, key) => {
                     </button>
                     <Link :href="route('marketer.referrals')" class="btn btn-primary">
                         {{ t('marketerPortal.home.viewReferrals') }}
+                    </Link>
+                    <Link :href="route('marketer.payments')" class="btn btn-secondary">
+                        {{ t('marketerPortal.home.viewPayments') }}
+                    </Link>
+                    <Link :href="route('marketer.commissions')" class="btn btn-secondary">
+                        {{ t('marketerPortal.home.viewCommissions') }}
+                    </Link>
+                    <Link :href="route('marketer.payouts')" class="btn btn-secondary">
+                        {{ t('marketerPortal.home.viewPayouts') }}
                     </Link>
                 </div>
             </div>

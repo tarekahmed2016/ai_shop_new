@@ -3,6 +3,7 @@
 use App\Models\User;
 use App\Support\UserCapabilities;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 
 function target(): string
 {
@@ -31,6 +32,17 @@ function target(): string
     }
 
     return route('account.get-started', absolute: false);
+}
+
+function admin_dashboard_redirect(): ?RedirectResponse
+{
+    $user = auth()->user();
+
+    if ($user instanceof User && $user->hasRole('admin')) {
+        return redirect()->route('dashboard');
+    }
+
+    return null;
 }
 
 /**

@@ -120,6 +120,14 @@ class Customer extends Model
     }
 
     /**
+     * @return HasMany<CustomerExtraRequestTransaction, $this>
+     */
+    public function extraRequestTransactions(): HasMany
+    {
+        return $this->hasMany(CustomerExtraRequestTransaction::class);
+    }
+
+    /**
      * @return HasMany<CustomerDailyRequestLimitChange, $this>
      */
     public function dailyRequestLimitChanges(): HasMany

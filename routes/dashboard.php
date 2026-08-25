@@ -11,10 +11,12 @@ use App\Http\Controllers\CompanyInfoController;
 use App\Http\Controllers\ContactMessageController;
 use App\Http\Controllers\CustomAssetsController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\CustomerExtraRequestController;
 use App\Http\Controllers\CustomerRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HeroSlideController;
 use App\Http\Controllers\HomepagePromoBlockController;
+use App\Http\Controllers\MarketerCommissionController;
 use App\Http\Controllers\MarketerController;
 use App\Http\Controllers\MarketerPortal\MarketerPortalController;
 use App\Http\Controllers\MerchantBusinessActivityController;
@@ -30,6 +32,7 @@ use App\Http\Controllers\MerchantRequestController;
 use App\Http\Controllers\MerchantTeamController;
 use App\Http\Controllers\NewsletterSubscriberController;
 use App\Http\Controllers\PageController;
+use App\Http\Controllers\PaymentTransactionController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\RequestMatchController;
@@ -94,6 +97,9 @@ Route::middleware(['merchant'])->group(function () {
 Route::middleware(['marketer'])->group(function () {
     Route::get('/marketer', [MarketerPortalController::class, 'home'])->name('marketer.home');
     Route::get('/marketer/referrals', [MarketerPortalController::class, 'referrals'])->name('marketer.referrals');
+    Route::get('/marketer/payments', [MarketerPortalController::class, 'payments'])->name('marketer.payments');
+    Route::get('/marketer/commissions', [MarketerPortalController::class, 'commissions'])->name('marketer.commissions');
+    Route::get('/marketer/payouts', [MarketerPortalController::class, 'payouts'])->name('marketer.payouts');
 });
 
 Route::middleware(['admin'])->group(function () {
@@ -117,11 +123,24 @@ Route::middleware(['admin'])->group(function () {
     Route::patch('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'update'])->name('merchants.categories.update');
     Route::delete('/merchants/{merchant}/categories/{merchantCategory}', [MerchantCategoryController::class, 'destroy'])->name('merchants.categories.destroy');
     Route::resource('/categories', CategoryController::class)->except(['show', 'create', 'edit', 'destroy']);
+    Route::get('/payments', [PaymentTransactionController::class, 'index'])->name('payments.index');
+    Route::get('/payments/{payment}', [PaymentTransactionController::class, 'show'])->name('payments.show');
+    Route::get('/marketer-commissions', [MarketerCommissionController::class, 'index'])->name('marketer-commissions.index');
+    Route::put('/marketer-commissions/settings', [MarketerCommissionController::class, 'updateSettings'])->name('marketer-commissions.settings');
     Route::put('/customers/settings/daily-request-limit', [CustomerController::class, 'updateDailyLimit'])->name('customers.settings.daily-request-limit');
     Route::get('/customers/{customer}/daily-limit-history', [CustomerController::class, 'dailyLimitHistory'])->name('customers.daily-limit-history');
+    Route::get('/customers/{customer}/extra-requests', [CustomerExtraRequestController::class, 'index'])->name('customers.extra-requests.index');
+    Route::post('/customers/{customer}/extra-requests', [CustomerExtraRequestController::class, 'store'])->name('customers.extra-requests.store');
+    Route::post('/customers/{customer}/extra-requests/deduct', [CustomerExtraRequestController::class, 'deduct'])->name('customers.extra-requests.deduct');
+    Route::post('/customers/extra-requests/bulk', [CustomerExtraRequestController::class, 'bulkStore'])->name('customers.extra-requests.bulk');
     Route::resource('/customers', CustomerController::class)->except(['show', 'create', 'edit', 'destroy']);
     Route::get('/marketers', [MarketerController::class, 'index'])->name('marketers.index');
     Route::post('/marketers', [MarketerController::class, 'store'])->name('marketers.store');
+    Route::get('/marketers/{marketer}', [MarketerController::class, 'show'])->name('marketers.show');
+    Route::get('/marketers/{marketer}/commissions', [MarketerController::class, 'commissions'])->name('marketers.commissions');
+    Route::get('/marketers/{marketer}/payouts', [MarketerController::class, 'payouts'])->name('marketers.payouts');
+    Route::post('/marketers/{marketer}/payouts', [MarketerController::class, 'storePayout'])->name('marketers.payouts.store');
+    Route::put('/marketers/{marketer}/commission-rates', [MarketerController::class, 'updateRates'])->name('marketers.commission-rates.update');
     Route::post('/marketers/{marketer}/approve', [MarketerController::class, 'approve'])->name('marketers.approve');
     Route::post('/marketers/{marketer}/reject', [MarketerController::class, 'reject'])->name('marketers.reject');
     Route::post('/marketers/{marketer}/deactivate', [MarketerController::class, 'deactivate'])->name('marketers.deactivate');

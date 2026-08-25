@@ -72,7 +72,10 @@
       "marketerReapply": "Apply Again",
       "marketerInactive": "Account Inactive",
       "marketerOverview": "Overview",
-      "marketerReferrals": "Referrals"
+      "marketerReferrals": "Referrals",
+      "marketerPayments": "Referral Payments",
+      "marketerCommissions": "Commissions",
+      "marketerPayouts": "Payouts"
     },
     "workspace": {
       "usingAs": "Currently using",
@@ -150,7 +153,8 @@
     },
     "quota": {
       "today": "Requests today: {used} · Daily limit: {limit} · Remaining: {remaining}",
-      "reached": "You have reached your daily request limit."
+      "extra": "Extra request credits: {extra}",
+      "reached": "You have reached your daily request limit and have no extra request credits left."
     },
     "suspended": {
       "message": "Your customer account has been suspended because direct contact information was detected in the request. Please contact platform support for review."
@@ -244,6 +248,36 @@
     "previous": "Previous",
     "next": "Next"
   },
+  "marketerFinance": {
+    "globalTitle": "Marketer Commissions",
+    "globalSubtitle": "Commission summaries and platform rates.",
+    "settingsTitle": "Commission rates",
+    "customerRate": "Customer Payment Commission",
+    "merchantRate": "Merchant Payment Commission",
+    "referralPayments": "Referral Payments",
+    "approvedCommission": "Approved Commission",
+    "pendingCommission": "Pending Commission",
+    "totalPaid": "Total Paid",
+    "alreadyPaid": "Already Paid",
+    "outstanding": "Outstanding",
+    "recordPayout": "Record Payout",
+    "viewCommissions": "View Commissions",
+    "viewPayouts": "View Payouts",
+    "details": "Details",
+    "back": "Back",
+    "amount": "Amount",
+    "method": "Payment Method",
+    "reference": "Reference",
+    "notes": "Notes",
+    "paidAt": "Paid Date",
+    "overrides": "Per-marketer rates",
+    "overrideHint": "Leave blank to use the global rate.",
+    "globalCustomerRate": "Global customer rate",
+    "globalMerchantRate": "Global merchant rate",
+    "effectiveCustomerRate": "Effective customer rate",
+    "effectiveMerchantRate": "Effective merchant rate",
+    "saveRates": "Save rates"
+  },
   "marketers": {
     "pageTitle": "Marketers",
     "pageSubtitle": "Review applications and manage marketer accounts.",
@@ -290,12 +324,21 @@
     "no": "No",
     "home": {
       "title": "Marketer overview",
-      "subtitle": "Track your referrals. Commission and payouts will appear later.",
+      "subtitle": "Track your referrals, commissions, and payouts.",
       "total": "Total referred users",
       "customers": "Customers",
       "merchants": "Merchants",
       "dual": "Customer + Merchant",
       "thisMonth": "Registrations this month",
+      "totalPayments": "Total Referral Payments",
+      "commissionEarned": "Commission Earned",
+      "paidToYou": "Paid to You",
+      "outstanding": "Outstanding Balance",
+      "monthPayments": "Referral payments this month",
+      "payingUsers": "Paying referred users",
+      "viewPayments": "Referral Payments",
+      "viewCommissions": "Commissions",
+      "viewPayouts": "Payouts",
       "referralCard": "Your referral link",
       "copyCode": "Copy code",
       "copyLink": "Copy link",
@@ -312,6 +355,57 @@
       "merchant": "Merchant",
       "dual": "Dual",
       "empty": "No referrals yet."
+    },
+    "payments": {
+      "title": "Referral Payments",
+      "subtitle": "Payments made by users you referred.",
+      "date": "Date",
+      "user": "Referred User",
+      "type": "Payment Type",
+      "capability": "Capability",
+      "amount": "Amount",
+      "empty": "No referral payments yet.",
+      "types": {
+        "MerchantOfferCredits": "Merchant offer credits",
+        "CustomerExtraRequests": "Customer extra requests",
+        "Subscription": "Subscription",
+        "Other": "Other"
+      },
+      "capabilities": {
+        "Customer": "Customer",
+        "Merchant": "Merchant",
+        "Other": "Other"
+      }
+    },
+    "commissions": {
+      "title": "Commissions",
+      "subtitle": "Your commission history from referred payments.",
+      "date": "Date",
+      "user": "Referred User",
+      "type": "Payment Type",
+      "paymentAmount": "Payment Amount",
+      "rate": "Commission Rate",
+      "amount": "Commission Amount",
+      "status": "Status",
+      "empty": "No commissions yet.",
+      "statuses": {
+        "Pending": "Pending",
+        "Approved": "Approved",
+        "Cancelled": "Cancelled"
+      }
+    },
+    "payouts": {
+      "title": "Payouts",
+      "subtitle": "Payouts you have received.",
+      "date": "Date",
+      "amount": "Amount",
+      "method": "Payment Method",
+      "empty": "No payouts yet.",
+      "methods": {
+        "BankTransfer": "Bank Transfer",
+        "Cash": "Cash",
+        "Other": "Other"
+      }
     }
   },
   "bilingual": {
@@ -335,14 +429,16 @@
     "merchantCreditHistory": "Merchant Credit History",
     "categories": "Categories",
     "customers": "Customers",
+    "payments": "Payments",
+    "marketerCommissions": "Marketer Commissions",
     "marketers": "Marketers",
     "customerRequests": "Customer Requests",
     "matching": "Matching",
-    "merchantHome": "Merchant Home",
+    "merchantHome": "Merchant Space",
     "merchantRequests": "Available Requests",
     "merchantActivities": "Business Activities",
     "merchantTeam": "Team Members",
-    "merchantBusinessProfile": "Business Profile",
+    "merchantBusinessProfile": "Business Information",
     "offers": "Offers",
     "notifications": "Notifications",
     "subscriptions": "Subscriptions",
@@ -1354,7 +1450,9 @@
       "dailyLimitHistory": "Daily Limit History",
       "requestsToday": "Requests Today",
       "dailyLimit": "Daily Limit",
-      "remainingToday": "Remaining Today"
+      "remainingToday": "Remaining Today",
+      "extraRequests": "Extra Request Credits",
+      "extraRequestsManage": "Extra Requests"
     },
     "form": {
       "addTitle": "Add Customer",
@@ -1429,6 +1527,65 @@
       "createLoginTitle": "Create Login Account",
       "createLoginHint": "Creates a new user account and links it to this customer. Existing accounts are never auto-linked by email.",
       "createLoginSubmit": "Enable Portal Access"
+    },
+    "extraRequests": {
+      "pageTitle": "Extra Request Credits",
+      "pageSubtitle": "Extra request credits for {name}",
+      "backToCustomers": "Back to customers",
+      "balanceLabel": "Extra Request Credits",
+      "addButton": "Add Extra Requests",
+      "deductButton": "Deduct Extra Requests",
+      "addTitle": "Add Extra Requests",
+      "deductTitle": "Deduct Extra Requests",
+      "bulkTitle": "Add Extra Requests",
+      "bulkButton": "Add Extra Requests",
+      "bulkSelected": "{count} customers selected on this page",
+      "amountLabel": "Number of Extra Requests",
+      "sourceLabel": "Payment Method / Source",
+      "selectSource": "Select method",
+      "paidAmountLabel": "Paid Amount (OMR)",
+      "paidAmountHint": "Optional. Leave blank or 0 for promotional or unpaid additions.",
+      "paidAmountPerCustomerHint": "If provided, each selected customer gets their own payment record for this amount.",
+      "referenceLabel": "Reference",
+      "notesLabel": "Notes",
+      "empty": "No extra request movements yet"
+    }
+  },
+  "payments": {
+    "pageTitle": "Payments",
+    "pageSubtitle": "Central record of money received from users",
+    "empty": "No payments yet",
+    "details": "Details",
+    "backToPayments": "Back to payments",
+    "showTitle": "Payment details",
+    "ledgerTitle": "Linked entitlements",
+    "extraLedger": "Customer extra request ledger",
+    "merchantLedger": "Merchant offer credit ledger",
+    "noLedger": "No linked entitlement rows",
+    "filters": {
+      "payer": "Payer",
+      "type": "Type",
+      "method": "Payment Method",
+      "status": "Status",
+      "dateFrom": "From",
+      "dateTo": "To",
+      "allTypes": "All types",
+      "allMethods": "All methods",
+      "allStatuses": "All statuses",
+      "apply": "Filter",
+      "reset": "Reset"
+    },
+    "table": {
+      "date": "Date",
+      "payer": "Payer",
+      "type": "Type",
+      "context": "Customer/Merchant",
+      "amount": "Amount",
+      "method": "Payment Method",
+      "reference": "Reference",
+      "createdBy": "Created By",
+      "status": "Status",
+      "notes": "Notes"
     }
   },
   "customerRequests": {
