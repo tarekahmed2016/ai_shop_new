@@ -76,6 +76,20 @@ const getRoutePath = (routeUrl) => {
 }
 
 const isActiveRoute = (item) => {
+  const patterns = item?.activePatterns
+  if (Array.isArray(patterns) && patterns.length > 0) {
+    try {
+      if (typeof route === 'function') {
+        const ziggy = route()
+        if (ziggy && typeof ziggy.current === 'function') {
+          return patterns.some((pattern) => ziggy.current(pattern))
+        }
+      }
+    } catch {
+      // Fall through to path matching when Ziggy is unavailable.
+    }
+  }
+
   const currentPath = getRoutePath(currentRoute.value)
   const itemPath = getRoutePath(itemHref(item))
 
@@ -163,7 +177,7 @@ watch(
   <!-- Sidebar -->
   <aside
     :class="[
-      'fixed start-0 top-0 h-screen bg-gray-900 border-e border-gray-800 flex flex-col transition-all duration-300',
+      'fixed start-0 top-0 h-screen bg-gray-900 border-e border-gray-800 flex flex-col overflow-hidden transition-all duration-300',
       'z-40',
       // Mobile: slide in/out from start side
       'md:translate-x-0',
@@ -171,7 +185,7 @@ watch(
     ]"
   >
     <!-- Logo Area -->
-    <div class="flex items-center justify-between px-4 py-4 border-b border-gray-800">
+    <div class="flex items-center justify-between px-4 py-4 border-b border-gray-800 shrink-0">
       <div v-if="!isCollapsed" class="flex items-center gap-3 min-w-0">
         <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center overflow-hidden shrink-0">
           <img v-if="companyLogo" :src="companyLogo" :alt="companyName" class="h-full w-full object-cover" />
@@ -199,7 +213,7 @@ watch(
     </div>
 
     <!-- Navigation Menu -->
-    <nav class="flex-1 px-3 py-4 overflow-y-auto">
+    <nav class="flex-1 min-h-0 px-3 py-4 overflow-y-auto overscroll-contain">
       <ul class="space-y-4">
         <li v-for="item in items" :key="item.id || item.route || item.route" class="relative">
           <div v-if="isAlwaysOpenSection(item)" class="space-y-1.5">
@@ -428,7 +442,7 @@ watch(
     </nav>
 
     <!-- Footer (Optional User Info) -->
-    <div class="px-3 py-4 border-t border-gray-800">
+    <div class="px-3 py-4 border-t border-gray-800 shrink-0">
       <div
         :class="[
           'flex items-center gap-3 px-3 py-2 rounded-lg text-gray-300',

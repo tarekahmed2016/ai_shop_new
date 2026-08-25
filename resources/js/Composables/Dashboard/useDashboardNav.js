@@ -63,15 +63,15 @@ export function useDashboardNav() {
 
         // Marketplace modules stay top-level. Only modules with a real Ziggy route are shown.
         const marketplaceModules = [
+            { id: 'categories', label: t('sidebar.categories'), icon: faTags, routeName: 'categories.index' },
             { id: 'merchants', label: t('sidebar.merchants'), icon: faStore, routeName: 'merchants.index' },
             { id: 'merchant-credit-history', label: t('sidebar.merchantCreditHistory'), icon: faClockRotateLeft, routeName: 'merchants.credits.transactions' },
-            { id: 'categories', label: t('sidebar.categories'), icon: faTags, routeName: 'categories.index' },
             { id: 'customers', label: t('sidebar.customers'), icon: faUserGroup, routeName: 'customers.index' },
-            { id: 'payments', label: t('sidebar.payments'), icon: faMoneyBill, routeName: 'payments.index' },
-            { id: 'marketer-commissions', label: t('sidebar.marketerCommissions'), icon: faAward, routeName: 'marketer-commissions.index' },
-            { id: 'marketers', label: t('sidebar.marketers'), icon: faBullhorn, routeName: 'marketers.index' },
             { id: 'customer-requests', label: t('sidebar.customerRequests'), icon: faInbox, routeName: 'customer-requests.index' },
             { id: 'matching', label: t('sidebar.matching'), icon: faShuffle, routeName: 'matching.index' },
+            { id: 'payments', label: t('sidebar.payments'), icon: faMoneyBill, routeName: 'payments.index', activePatterns: ['payments.index', 'payments.show'] },
+            { id: 'marketers', label: t('sidebar.marketers'), icon: faBullhorn, routeName: 'marketers.index', activePatterns: ['marketers.index'] },
+            { id: 'marketer-commissions', label: t('sidebar.marketerCommissions'), icon: faAward, routeName: 'marketer-commissions.index', activePatterns: ['marketer-commissions.*', 'marketers.show', 'marketers.commissions', 'marketers.payouts'] },
             { id: 'offers', label: t('sidebar.offers'), icon: faHandshake, routeName: 'offers.index' },
             { id: 'notifications', label: t('sidebar.notifications'), icon: faBell, routeName: 'notifications.index' },
             { id: 'subscriptions', label: t('sidebar.subscriptions'), icon: faCreditCard, routeName: 'subscriptions.index' },
@@ -89,6 +89,7 @@ export function useDashboardNav() {
                     label: module.label,
                     icon: module.icon,
                     route: href,
+                    activePatterns: module.activePatterns,
                 })
             })
         }

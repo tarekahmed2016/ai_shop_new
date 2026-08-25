@@ -167,5 +167,7 @@ test('desktop sidebar and mobile drawer use the same dashboard nav source', func
         ->and($sideMenu)->toContain('props.collapsed')
         ->and($sideMenu)->toContain('md:hidden')
         ->and($sideMenu)->toContain('md:translate-x-0')
+        ->and($sideMenu)->toContain('min-h-0')
+        ->and($sideMenu)->toContain('overflow-y-auto')
         ->and(substr_count($sideMenu, 'defineProps'))->toBe(1);
 });
