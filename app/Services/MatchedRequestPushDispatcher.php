@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Jobs\DispatchMatchedRequestNotifications;
 use App\Models\RequestMatch;
+use App\Models\User;
 use App\Notifications\MatchedCustomerRequestNotification;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Throwable;
@@ -17,17 +20,17 @@ class MatchedRequestPushDispatcher
     /**
      * @param  list<int>  $matchIds
      */
-    public function dispatchAfterCommit(array $matchIds): void
+    public function dispatchAfterCommit(int $customerRequestId, array $matchIds): void
     {
         $ids = array_values(array_unique(array_filter($matchIds, fn ($id) => is_int($id) && $id > 0)));
 
-        if ($ids === []) {
+        if ($customerRequestId < 1 || $ids === []) {
             return;
         }
 
-        DB::afterCommit(function () use ($ids): void {
+        DB::afterCommit(function () use ($customerRequestId, $ids): void {
             try {
-                $this->notify($ids);
+                DispatchMatchedRequestNotifications::dispatch($customerRequestId, $ids);
             } catch (Throwable $exception) {
                 report($exception);
             }
@@ -37,21 +40,41 @@ class MatchedRequestPushDispatcher
     /**
      * @param  list<int>  $matchIds
      */
-    public function notify(array $matchIds): void
+    public function notify(array $matchIds, ?int $customerRequestId = null): void
     {
-        $matches = RequestMatch::query()
-            ->with(['customerRequest:id,public_id,status', 'merchant:id,public_id,status'])
-            ->whereIn('id', $matchIds)
-            ->get();
+        $this->recipientResolver->eachMatchRecipients(
+            $matchIds,
+            function (RequestMatch $match, $users): void {
+                foreach ($users as $user) {
+                    if (! $user instanceof User) {
+                        continue;
+                    }
 
-        foreach ($matches as $match) {
-            $recipients = $this->recipientResolver->usersFor($match);
+                    $this->queueRecipientNotification($match, $user);
+                }
+            },
+            $customerRequestId,
+        );
+    }
 
-            if ($recipients->isEmpty()) {
-                continue;
-            }
+    private function queueRecipientNotification(RequestMatch $match, User $user): void
+    {
+        $key = $this->idempotencyKey((int) $match->id, (int) $user->id);
 
-            Notification::send($recipients, new MatchedCustomerRequestNotification($match));
+        if (! Cache::add($key, 1, now()->addDay())) {
+            return;
         }
+
+        try {
+            Notification::send($user, new MatchedCustomerRequestNotification($match));
+        } catch (Throwable $exception) {
+            Cache::forget($key);
+            report($exception);
+        }
+    }
+
+    private function idempotencyKey(int $matchId, int $userId): string
+    {
+        return "matched-request-notification:{$matchId}:{$userId}";
     }
 }

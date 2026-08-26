@@ -60,68 +60,68 @@ class RequestMatchingService
                 $eligibleMerchantIds,
             );
 
-            $existing = RequestMatch::query()
+            $existingByMerchantId = RequestMatch::query()
                 ->where('customer_request_id', $customerRequest->id)
-                ->get();
+                ->pluck('id', 'merchant_id');
 
-            $eligibleIdList = $eligibleMerchantIds->all();
+            $eligibleIdList = $eligibleMerchantIds->map(fn ($id) => (int) $id)->all();
+            $eligibleLookup = array_fill_keys($eligibleIdList, true);
+            $chunkSize = $this->writeChunkSize();
             $removed = 0;
 
             if ($eligibleIdList === []) {
-                $removed = $existing->count();
+                $removed = $existingByMerchantId->count();
                 if ($removed > 0) {
                     RequestMatch::query()
                         ->where('customer_request_id', $customerRequest->id)
                         ->delete();
                 }
-                $existingAfterRemoval = collect();
+                $retained = 0;
+                $createdMatchIds = [];
             } else {
-                $obsoleteIds = $existing
-                    ->reject(fn (RequestMatch $match) => in_array($match->merchant_id, $eligibleIdList, true))
-                    ->pluck('id');
-
-                if ($obsoleteIds->isNotEmpty()) {
-                    $removed = $obsoleteIds->count();
-                    RequestMatch::query()->whereIn('id', $obsoleteIds)->delete();
+                $obsoleteIds = [];
+                foreach ($existingByMerchantId as $merchantId => $matchId) {
+                    if (! isset($eligibleLookup[(int) $merchantId])) {
+                        $obsoleteIds[] = (int) $matchId;
+                    }
                 }
 
-                $existingAfterRemoval = $existing
-                    ->filter(fn (RequestMatch $match) => in_array($match->merchant_id, $eligibleIdList, true))
-                    ->values();
-            }
-
-            $existingMerchantIds = $existingAfterRemoval->pluck('merchant_id')->all();
-            $created = 0;
-            $createdMatchIds = [];
-
-            foreach ($eligibleIdList as $merchantId) {
-                if (in_array($merchantId, $existingMerchantIds, true)) {
-                    continue;
+                if ($obsoleteIds !== []) {
+                    $removed = count($obsoleteIds);
+                    foreach (array_chunk($obsoleteIds, $chunkSize) as $obsoleteChunk) {
+                        RequestMatch::query()->whereIn('id', $obsoleteChunk)->delete();
+                    }
                 }
 
-                $match = new RequestMatch;
-                $match->customer_request_id = $customerRequest->id;
-                $match->merchant_id = $merchantId;
-                $match->status = MatchStatus::Pending;
-                $match->matched_at = now();
-                $match->save();
-                $created++;
-                $createdMatchIds[] = (int) $match->id;
+                $existingMerchantLookup = array_flip($existingByMerchantId->keys()->map(fn ($id) => (int) $id)->all());
+                $newMerchantIds = [];
+                foreach ($eligibleIdList as $merchantId) {
+                    $merchantId = (int) $merchantId;
+                    if (! isset($existingMerchantLookup[$merchantId])) {
+                        $newMerchantIds[] = $merchantId;
+                    }
+                }
+
+                $createdMatchIds = $this->insertPendingMatches((int) $customerRequest->id, $newMerchantIds, $chunkSize);
+                $retained = count($eligibleIdList) - count($newMerchantIds);
             }
 
             return [
                 'eligible' => $reason === null,
                 'reason' => $reason,
-                'created' => $created,
+                'created' => count($createdMatchIds),
                 'created_match_ids' => $createdMatchIds,
                 'removed' => $removed,
-                'retained' => $existingAfterRemoval->count(),
+                'retained' => $retained,
             ];
         });
 
         $this->logSyncSummary($customerRequest, $result);
 
-        app(MatchedRequestPushDispatcher::class)->dispatchAfterCommit($result['created_match_ids'] ?? []);
+        app(MatchedRequestPushDispatcher::class)->dispatchAfterCommit(
+            (int) $customerRequest->id,
+            $result['created_match_ids'] ?? [],
+        );
 
         app(MerchantOfferService::class)->invalidateSubmittedOffersMissingMatch($customerRequest);
 
@@ -260,6 +260,55 @@ class RequestMatchingService
         }
 
         return null;
+    }
+
+    private function writeChunkSize(): int
+    {
+        return max(1, min(500, (int) config('notifications.matched_request_chunk_size', 200)));
+    }
+
+    /**
+     * @param  list<int>  $merchantIds
+     * @return list<int>
+     */
+    private function insertPendingMatches(int $customerRequestId, array $merchantIds, int $chunkSize): array
+    {
+        if ($merchantIds === []) {
+            return [];
+        }
+
+        $now = now();
+        foreach (array_chunk($merchantIds, $chunkSize) as $chunk) {
+            $rows = [];
+            foreach ($chunk as $merchantId) {
+                $rows[] = [
+                    'customer_request_id' => $customerRequestId,
+                    'merchant_id' => $merchantId,
+                    'status' => MatchStatus::Pending->value,
+                    'matched_at' => $now,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+
+            RequestMatch::query()->insert($rows);
+        }
+
+        $createdMatchIds = [];
+        foreach (array_chunk($merchantIds, $chunkSize) as $chunk) {
+            $createdMatchIds = array_merge(
+                $createdMatchIds,
+                RequestMatch::query()
+                    ->where('customer_request_id', $customerRequestId)
+                    ->whereIn('merchant_id', $chunk)
+                    ->orderBy('id')
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->all(),
+            );
+        }
+
+        return $createdMatchIds;
     }
 
     /**

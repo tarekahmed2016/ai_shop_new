@@ -7,6 +7,7 @@ use App\Enums\MerchantMemberships\Status as MembershipStatus;
 use App\Enums\MerchantPermissions\PermissionKey;
 use App\Enums\Merchants\Status as MerchantStatus;
 use App\Enums\Users\Status as UserStatus;
+use App\Jobs\DispatchMatchedRequestNotifications;
 use App\Models\Category;
 use App\Models\CustomerRequest;
 use App\Models\Merchant;
@@ -21,6 +22,7 @@ use App\Services\MerchantContextService;
 use App\Services\MerchantPermissionService;
 use App\Services\RequestMatchingService;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use NotificationChannels\WebPush\HasPushSubscriptions;
 use NotificationChannels\WebPush\PushSubscription;
@@ -331,23 +333,33 @@ test('forged public ids cannot open a matched request', function () {
 });
 
 test('push dispatch failure does not roll back matching', function () {
+    Queue::fake();
     ['request' => $request] = pushMatchedSetup();
-
-    $this->app->bind(MatchedRequestPushDispatcher::class, function () {
-        return new class(app(MatchedRequestRecipientResolver::class)) extends MatchedRequestPushDispatcher
-        {
-            public function notify(array $matchIds): void
-            {
-                throw new RuntimeException('simulated push failure');
-            }
-        };
-    });
 
     $result = app(RequestMatchingService::class)->sync($request);
 
     expect($result['created'])->toBe(1)
         ->and(RequestMatch::query()->where('customer_request_id', $request->id)->count())->toBe(1)
         ->and($request->fresh()->status)->toBe(RequestStatus::Ready);
+
+    Queue::assertPushed(DispatchMatchedRequestNotifications::class, 1);
+
+    $dispatcher = new class(app(MatchedRequestRecipientResolver::class)) extends MatchedRequestPushDispatcher
+    {
+        public function notify(array $matchIds, ?int $customerRequestId = null): void
+        {
+            throw new RuntimeException('simulated push failure');
+        }
+    };
+
+    try {
+        $dispatcher->notify($result['created_match_ids']);
+        expect(false)->toBeTrue();
+    } catch (RuntimeException $exception) {
+        expect($exception->getMessage())->toBe('simulated push failure');
+    }
+
+    expect(RequestMatch::query()->where('customer_request_id', $request->id)->count())->toBe(1);
 });
 
 test('guest is redirected to login for the deep link', function () {

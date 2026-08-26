@@ -6,6 +6,7 @@ use App\Enums\Marketers\Status as MarketerStatus;
 use App\Enums\MerchantMemberships\Role;
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
 use App\Enums\MerchantOffers\Status as OfferStatus;
+use App\Jobs\DispatchMatchedRequestNotifications;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
@@ -26,6 +27,7 @@ use App\Services\RequestMatchingService;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role as SpatieRole;
 
@@ -160,19 +162,24 @@ test('duplicate distribution keeps one historical row per merchant and request',
 });
 
 test('push failure does not prevent or remove the historical match', function () {
+    Queue::fake();
     $category = Category::factory()->create();
     $merchant = Merchant::factory()->create();
     historyAssign($merchant, $category);
     $request = historyRequest($category);
 
-    $dispatcher = Mockery::mock(MatchedRequestPushDispatcher::class)->makePartial();
-    $dispatcher->shouldReceive('notify')->andThrow(new RuntimeException('push failed'));
-    $this->app->instance(MatchedRequestPushDispatcher::class, $dispatcher);
-
     app(RequestMatchingService::class)->sync($request);
 
     expect(MerchantRequestMatch::query()->where('merchant_id', $merchant->id)->where('customer_request_id', $request->id)->exists())->toBeTrue()
         ->and(app(MerchantRequestMatchService::class)->requestsReceivedCount($merchant->id))->toBe(1);
+
+    Queue::assertPushed(DispatchMatchedRequestNotifications::class, 1);
+
+    $dispatcher = Mockery::mock(MatchedRequestPushDispatcher::class)->makePartial();
+    $dispatcher->shouldReceive('notify')->andThrow(new RuntimeException('push failed'));
+
+    expect(fn () => $dispatcher->notify([1]))->toThrow(RuntimeException::class);
+    expect(MerchantRequestMatch::query()->where('merchant_id', $merchant->id)->where('customer_request_id', $request->id)->exists())->toBeTrue();
 });
 
 test('merchant with no push subscription still receives a historical match', function () {

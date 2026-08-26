@@ -28,16 +28,23 @@ class MerchantRequestMatchService
         }
 
         $now = Carbon::now();
-        $rows = $ids->map(fn (int $merchantId) => [
-            'merchant_id' => $merchantId,
-            'customer_request_id' => $customerRequest->id,
-            'matched_category_id' => $customerRequest->category_id,
-            'matched_at' => $now,
-            'created_at' => $now,
-            'updated_at' => $now,
-        ])->all();
+        $chunkSize = max(1, min(500, (int) config('notifications.matched_request_chunk_size', 200)));
+        $inserted = 0;
 
-        return (int) MerchantRequestMatch::query()->insertOrIgnore($rows);
+        foreach ($ids->chunk($chunkSize) as $chunk) {
+            $rows = $chunk->map(fn (int $merchantId) => [
+                'merchant_id' => $merchantId,
+                'customer_request_id' => $customerRequest->id,
+                'matched_category_id' => $customerRequest->category_id,
+                'matched_at' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all();
+
+            $inserted += (int) MerchantRequestMatch::query()->insertOrIgnore($rows);
+        }
+
+        return $inserted;
     }
 
     public function requestsReceivedCount(int $merchantId): int

@@ -16,6 +16,13 @@ class MatchedCustomerRequestNotification extends Notification implements ShouldQ
 {
     use Queueable;
 
+    public int $tries = 3;
+
+    /**
+     * @var list<int>
+     */
+    public array $backoff = [10, 30, 60];
+
     public const TYPE = 'matched_request';
 
     public const TITLE_AR = 'طلب جديد مناسب لنشاطك';
