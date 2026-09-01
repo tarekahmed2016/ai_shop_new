@@ -138,6 +138,14 @@ class Merchant extends Model
     }
 
     /**
+     * @return HasMany<CustomerOfferContactReveal, $this>
+     */
+    public function offerContactReveals(): HasMany
+    {
+        return $this->hasMany(CustomerOfferContactReveal::class);
+    }
+
+    /**
      * @return HasMany<MerchantOfferCreditTransaction, $this>
      */
     public function offerCreditTransactions(): HasMany

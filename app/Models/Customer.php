@@ -128,6 +128,14 @@ class Customer extends Model
     }
 
     /**
+     * @return HasMany<CustomerOfferContactReveal, $this>
+     */
+    public function offerContactReveals(): HasMany
+    {
+        return $this->hasMany(CustomerOfferContactReveal::class);
+    }
+
+    /**
      * @return HasMany<CustomerDailyRequestLimitChange, $this>
      */
     public function dailyRequestLimitChanges(): HasMany

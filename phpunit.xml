@@ -34,5 +34,7 @@
         <env name="NIGHTWATCH_ENABLED" value="false"/>
         <env name="AI_CLASSIFICATION_PROVIDER" value="fake"/>
         <env name="AI_CLASSIFICATION_MODEL" value="fake-v1"/>
+        <env name="AI_DUPLICATE_DETECTION_PROVIDER" value="fake"/>
+        <env name="AI_DUPLICATE_DETECTION_MODEL" value="fake-v1"/>
     </php>
 </phpunit>

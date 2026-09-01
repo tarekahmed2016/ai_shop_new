@@ -31,6 +31,11 @@ class MerchantOfferPolicy
         return $this->view($user, $offer);
     }
 
+    public function revealContact(User $user, MerchantOffer $offer): bool
+    {
+        return $this->customerMayView($user, $offer);
+    }
+
     private function customerMayView(User $user, MerchantOffer $offer): bool
     {
         $customer = $user->customer;

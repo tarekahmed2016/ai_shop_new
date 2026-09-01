@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CustomerPortal;
 
+use App\Exceptions\DuplicateCustomerRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerPortalClassificationConfirmRequest;
 use App\Http\Requests\CustomerPortalClassificationRequest;
@@ -17,7 +18,9 @@ use App\Models\RequestImage;
 use App\Services\CategoryService;
 use App\Services\CustomerPortalService;
 use App\Services\MerchantOfferService;
+use App\Services\OfferContactRevealService;
 use App\Services\RequestClassificationService;
+use App\Support\CustomerRequests\CustomerRequestMessages;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +35,7 @@ class CustomerPortalController extends Controller
         public CategoryService $categoryService,
         public MerchantOfferService $merchantOfferService,
         public RequestClassificationService $requestClassificationService,
+        public OfferContactRevealService $offerContactRevealService,
     ) {}
 
     public function home(): Response
@@ -98,15 +102,21 @@ class CustomerPortalController extends Controller
             ->with('success', 'تم إنشاء الطلب بنجاح');
     }
 
-    public function requestsClassify(CustomerPortalClassificationRequest $request): Response
+    public function requestsClassify(CustomerPortalClassificationRequest $request): Response|RedirectResponse
     {
         $customer = $this->customerPortalService->requireCustomer();
 
-        $classification = $this->requestClassificationService->classify(
-            customer: $customer,
-            data: $request->validated(),
-            image: $request->file('image'),
-        );
+        try {
+            $classification = $this->requestClassificationService->classify(
+                customer: $customer,
+                data: $request->validated(),
+                image: $request->file('image'),
+            );
+        } catch (DuplicateCustomerRequestException $exception) {
+            return redirect()
+                ->route('customer.requests.show', $exception->matchedRequest)
+                ->with('error', CustomerRequestMessages::duplicateRequest());
+        }
 
         $message = $classification->status?->name === 'Failed'
             ? __('We couldn\'t determine the category automatically. Add more details and try again.')
@@ -130,11 +140,17 @@ class CustomerPortalController extends Controller
     ): RedirectResponse {
         $customer = $this->customerPortalService->requireCustomer();
 
-        $created = $this->requestClassificationService->confirm(
-            customer: $customer,
-            classification: $requestClassification,
-            categoryPublicId: $request->validated('category_id'),
-        );
+        try {
+            $created = $this->requestClassificationService->confirm(
+                customer: $customer,
+                classification: $requestClassification,
+                categoryPublicId: $request->validated('category_id'),
+            );
+        } catch (DuplicateCustomerRequestException $exception) {
+            return redirect()
+                ->route('customer.requests.show', $exception->matchedRequest)
+                ->with('error', CustomerRequestMessages::duplicateRequest());
+        }
 
         return redirect()
             ->route('customer.requests.show', $created)
@@ -148,12 +164,18 @@ class CustomerPortalController extends Controller
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
 
-        $this->requestClassificationService->retry(
-            customer: $customer,
-            request: $owned,
-            data: $request->validated(),
-            image: $request->file('image'),
-        );
+        try {
+            $this->requestClassificationService->retry(
+                customer: $customer,
+                request: $owned,
+                data: $request->validated(),
+                image: $request->file('image'),
+            );
+        } catch (DuplicateCustomerRequestException $exception) {
+            return redirect()
+                ->route('customer.requests.show', $exception->matchedRequest)
+                ->with('error', CustomerRequestMessages::duplicateRequest());
+        }
 
         return redirect()
             ->route('customer.requests.show', $owned)
@@ -167,11 +189,17 @@ class CustomerPortalController extends Controller
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
 
-        $finalized = $this->requestClassificationService->finalizeWithCategory(
-            customer: $customer,
-            request: $owned,
-            categoryPublicId: $request->validated('category_id'),
-        );
+        try {
+            $finalized = $this->requestClassificationService->finalizeWithCategory(
+                customer: $customer,
+                request: $owned,
+                categoryPublicId: $request->validated('category_id'),
+            );
+        } catch (DuplicateCustomerRequestException $exception) {
+            return redirect()
+                ->route('customer.requests.show', $exception->matchedRequest)
+                ->with('error', CustomerRequestMessages::duplicateRequest());
+        }
 
         return redirect()
             ->route('customer.requests.show', $finalized)
@@ -205,6 +233,9 @@ class CustomerPortalController extends Controller
             'offers' => $classification !== null
                 ? []
                 : $this->merchantOfferService->presentSubmittedForCustomer($owned),
+            'contactReveal' => $classification !== null
+                ? null
+                : $this->offerContactRevealService->quotaSnapshot($owned, $customer),
         ]);
     }
 
@@ -226,6 +257,23 @@ class CustomerPortalController extends Controller
                 'X-Content-Type-Options' => 'nosniff',
             ]
         );
+    }
+
+    public function offerContactReveal(MerchantOffer $merchantOffer): RedirectResponse
+    {
+        $this->authorize('revealContact', $merchantOffer);
+
+        $customer = $this->customerPortalService->requireCustomer();
+        $this->offerContactRevealService->reveal($customer, $merchantOffer);
+
+        $owned = $this->customerPortalService->findOwnRequestOrFail(
+            $customer,
+            $merchantOffer->customerRequest ?? $merchantOffer->customerRequest()->firstOrFail(),
+        );
+
+        return redirect()
+            ->route('customer.requests.show', $owned)
+            ->with('success', 'تم فتح بيانات التواصل');
     }
 
     public function offerImage(MerchantOffer $merchantOffer, MerchantOfferImage $offerImage): StreamedResponse

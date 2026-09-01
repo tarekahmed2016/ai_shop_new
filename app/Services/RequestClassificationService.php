@@ -6,6 +6,7 @@ use App\Contracts\AiClassificationProviderInterface;
 use App\Enums\Categories\Status as CategoryStatus;
 use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Enums\RequestClassifications\Status as ClassificationStatus;
+use App\Exceptions\DuplicateCustomerRequestException;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
@@ -15,6 +16,7 @@ use App\Support\Classification\ClassificationCandidate;
 use App\Support\Classification\ClassificationInput;
 use App\Support\Classification\ClassificationResult;
 use App\Support\CustomerRequests\CustomerRequestMessages;
+use App\Support\CustomerRequests\NormalizedRequestSnapshot;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -30,6 +32,8 @@ class RequestClassificationService
         public ContactInformationScanner $contactInformationScanner,
         public CustomerContactAbuseService $customerContactAbuseService,
         public CustomerRequestLimitService $customerRequestLimitService,
+        public CustomerRequestDuplicateDetectionService $duplicateDetectionService,
+        public NormalizedRequestSnapshotService $normalizedRequestSnapshotService,
     ) {}
 
     /**
@@ -67,15 +71,15 @@ class RequestClassificationService
             }
 
             $status = $this->statusFor($sanitized);
-            $request = $this->persistAfterScan($customer, $pending, $data, $image);
+            $request = $this->persistAfterScan($customer, $pending, $data, $image, $sanitized);
 
             return $this->storeAttempt($request, $sanitized, $status, $input->hasImage);
-        } catch (ValidationException $exception) {
+        } catch (ValidationException|DuplicateCustomerRequestException $exception) {
             throw $exception;
         } catch (Throwable $exception) {
             report($exception);
 
-            $request = $this->persistAfterScan($customer, $pending, $data, $image);
+            $request = $this->persistAfterScan($customer, $pending, $data, $image, null);
 
             return $this->storeAttempt(
                 $request,
@@ -111,12 +115,16 @@ class RequestClassificationService
 
         $category = $this->assertConfirmableCategory($classification, $categoryPublicId);
 
-        $classification->status = ClassificationStatus::Confirmed;
-        $classification->customer_confirmed_category_id = $category->id;
-        $classification->confirmed_at = now();
-        $classification->save();
+        return $this->duplicateDetectionService->runSerialized($customer, function () use ($customer, $request, $classification, $category) {
+            $this->assertNotDuplicateOrDiscard($customer, $request, $classification, $category);
 
-        return $this->customerRequestService->finalizeReady($request, $category->id);
+            $classification->status = ClassificationStatus::Confirmed;
+            $classification->customer_confirmed_category_id = $category->id;
+            $classification->confirmed_at = now();
+            $classification->save();
+
+            return $this->customerRequestService->finalizeReady($request, $category->id);
+        });
     }
 
     public function finalizeWithCategory(Customer $customer, CustomerRequest $request, string $categoryPublicId): CustomerRequest
@@ -137,12 +145,16 @@ class RequestClassificationService
 
         $category = $this->assertConfirmableCategory($latest, $categoryPublicId);
 
-        $latest->status = ClassificationStatus::Confirmed;
-        $latest->customer_confirmed_category_id = $category->id;
-        $latest->confirmed_at = now();
-        $latest->save();
+        return $this->duplicateDetectionService->runSerialized($customer, function () use ($customer, $request, $latest, $category) {
+            $this->assertNotDuplicateOrDiscard($customer, $request, $latest, $category);
 
-        return $this->customerRequestService->finalizeReady($request, $category->id);
+            $latest->status = ClassificationStatus::Confirmed;
+            $latest->customer_confirmed_category_id = $category->id;
+            $latest->confirmed_at = now();
+            $latest->save();
+
+            return $this->customerRequestService->finalizeReady($request, $category->id);
+        });
     }
 
     /**
@@ -286,17 +298,70 @@ class RequestClassificationService
         Customer $customer,
         ?CustomerRequest $pending,
         array $data,
-        ?UploadedFile $image
+        ?UploadedFile $image,
+        ?ClassificationResult $result
     ): CustomerRequest {
+        $snapshot = $result instanceof ClassificationResult
+            ? $this->normalizedRequestSnapshotService->fromClassificationResult(
+                $result,
+                $this->categoryFromPublicId($result->primaryCategoryPublicId),
+            )
+            : [];
+
         if ($pending instanceof CustomerRequest) {
-            return $this->customerRequestService->appendDetailsAndMaybeReplaceImage(
+            $request = $this->customerRequestService->appendDetailsAndMaybeReplaceImage(
                 $pending,
                 isset($data['additional_details']) ? (string) $data['additional_details'] : null,
                 $image,
             );
+
+            if (NormalizedRequestSnapshot::isComparable($snapshot)) {
+                $this->normalizedRequestSnapshotService->store($request, $snapshot);
+            }
+
+            return $request;
         }
 
-        return $this->customerRequestService->storePendingForCustomer($customer, $data, $image);
+        if (! NormalizedRequestSnapshot::isComparable($snapshot)) {
+            return $this->customerRequestService->storePendingForCustomer($customer, $data, $image);
+        }
+
+        return $this->duplicateDetectionService->persistIfNotDuplicate(
+            $customer,
+            $snapshot,
+            fn () => $this->customerRequestService->storePendingForCustomer($customer, $data, $image),
+        );
+    }
+
+    private function assertNotDuplicateOrDiscard(
+        Customer $customer,
+        CustomerRequest $request,
+        RequestClassification $classification,
+        Category $category
+    ): void {
+        $snapshot = $this->normalizedRequestSnapshotService->fromPersisted($request, $classification, $category);
+        $snapshot['category_public_id'] = $category->public_id;
+        $snapshot['category_name_en'] = $category->name_en;
+        $snapshot['category_name_ar'] = $category->name_ar;
+
+        try {
+            $this->duplicateDetectionService->assertNotDuplicate($customer, $snapshot, (int) $request->id);
+        } catch (DuplicateCustomerRequestException $exception) {
+            $this->customerRequestService->discardPendingUnfinalized($request);
+
+            throw $exception;
+        }
+
+        $this->normalizedRequestSnapshotService->store($request, $snapshot);
+    }
+
+    private function categoryFromPublicId(?string $publicId): ?Category
+    {
+        if (! is_string($publicId) || $publicId === '') {
+            return null;
+        }
+
+        return Category::query()->where('public_id', $publicId)->first();
     }
 
     private function existingPendingRequest(Customer $customer, mixed $pendingPublicId): ?CustomerRequest

@@ -89,6 +89,17 @@ class CustomerExtraRequestService
         return true;
     }
 
+    /**
+     * Reverse a request-create consumption so a discarded pending request does not keep the credit.
+     */
+    public function restoreConsumedForRequest(CustomerRequest $customerRequest): void
+    {
+        CustomerExtraRequestTransaction::query()
+            ->where('customer_request_id', $customerRequest->id)
+            ->where('type', TransactionType::RequestCreate)
+            ->delete();
+    }
+
     public function addCredits(
         Customer $customer,
         int $amount,

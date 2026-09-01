@@ -8,9 +8,11 @@ const { t, locale } = useI18n()
 const page = usePage()
 const request = computed(() => page.props.request || {})
 const offers = computed(() => page.props.offers || [])
+const contactReveal = computed(() => page.props.contactReveal || null)
 const classification = computed(() => page.props.classification || null)
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
+const revealingOfferId = ref('')
 
 const confirmForm = useForm({
     category_id: '',
@@ -19,8 +21,16 @@ const retryForm = useForm({
     additional_details: '',
     image: null,
 })
+const revealForm = useForm({})
 
 const isPendingClassification = computed(() => request.value.status_formatted?.name === 'PendingClassification')
+const revealLimitReached = computed(() => {
+    if (!contactReveal.value) {
+        return false
+    }
+
+    return Number(contactReveal.value.remaining ?? 0) <= 0
+})
 
 const isMobileClient = computed(() => {
     if (typeof navigator === 'undefined') {
@@ -35,9 +45,25 @@ const isMobileClient = computed(() => {
     return navigator.maxTouchPoints > 1 && window.matchMedia('(pointer: coarse)').matches
 })
 
-const offerWhatsAppHref = (offer) => (
-    isMobileClient.value ? offer.whatsapp_mobile_url : offer.whatsapp_web_url
-)
+const offerWhatsAppHref = (offer) => {
+    const contact = offer.contact || {}
+    return isMobileClient.value ? contact.whatsapp_mobile_url : contact.whatsapp_web_url
+}
+
+const revealContact = (offer) => {
+    if (!offer?.public_id || revealForm.processing) {
+        return
+    }
+
+    revealingOfferId.value = offer.public_id
+    revealForm.clearErrors()
+    revealForm.post(route('customer.offers.contact-reveal', offer.public_id), {
+        preserveScroll: true,
+        onFinish: () => {
+            revealingOfferId.value = ''
+        },
+    })
+}
 
 const categoryName = computed(() => {
     const category = request.value.category
@@ -161,6 +187,16 @@ watch(classification, (value) => {
             <div v-if="!isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
                 <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.show.offersTitle') }}</h2>
                 <p class="text-muted">{{ t('customerPortal.show.offersCount', { count: offers.length }) }}</p>
+                <p v-if="contactReveal" class="text-muted text-sm">
+                    {{ t('customerPortal.show.contactAllowance', { limit: contactReveal.limit }) }}
+                </p>
+                <p v-if="contactReveal && !revealLimitReached" class="text-muted text-sm">
+                    {{ t('customerPortal.show.contactRemaining', { remaining: contactReveal.remaining }) }}
+                </p>
+                <p v-if="revealLimitReached && offers.length" class="text-amber-700 dark:text-amber-300 text-sm">
+                    {{ t('customerPortal.show.contactLimitReached') }}
+                </p>
+                <p v-if="revealForm.errors.offer" class="form-error">{{ revealForm.errors.offer }}</p>
                 <p v-if="offers.length === 0" class="text-muted">{{ t('customerPortal.show.noOffers') }}</p>
                 <div v-for="offer in offers" :key="offer.public_id" class="border border-gray-200 dark:border-gray-700 rounded-md p-4 space-y-2">
                     <p class="text-body font-medium text-gray-900 dark:text-gray-100">{{ offer.merchant_name }}</p>
@@ -172,24 +208,44 @@ watch(classification, (value) => {
                     <div v-if="offer.images?.length" class="flex flex-wrap gap-3 pt-2">
                         <img v-for="image in offer.images" :key="image.id" :src="image.url" alt="" class="h-24 rounded border border-gray-200 dark:border-gray-700" />
                     </div>
-                    <div class="pt-3">
-                        <a
-                            v-if="offerWhatsAppHref(offer)"
-                            :href="offerWhatsAppHref(offer)"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-[#25D366] hover:bg-[#1ebe5d]"
-                        >
-                            <font-awesome-icon :icon="faWhatsapp" />
-                            {{ t('customerPortal.show.contactWhatsApp') }}
-                        </a>
-                        <span
+                    <div class="pt-3 flex flex-wrap gap-2">
+                        <template v-if="offer.contact_revealed && offer.contact">
+                            <a
+                                v-if="offerWhatsAppHref(offer)"
+                                :href="offerWhatsAppHref(offer)"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-[#25D366] hover:bg-[#1ebe5d]"
+                            >
+                                <font-awesome-icon :icon="faWhatsapp" />
+                                {{ t('customerPortal.show.contactWhatsApp') }}
+                            </a>
+                            <a
+                                v-if="offer.contact.phone"
+                                :href="`tel:${offer.contact.phone}`"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700"
+                            >
+                                {{ t('customerPortal.show.contactPhone') }}
+                            </a>
+                            <span
+                                v-if="!offerWhatsAppHref(offer) && !offer.contact.phone"
+                                class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-gray-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 cursor-not-allowed"
+                            >
+                                <font-awesome-icon :icon="faWhatsapp" />
+                                {{ t('customerPortal.show.whatsappUnavailable') }}
+                            </span>
+                        </template>
+                        <button
                             v-else
-                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-gray-500 bg-gray-100 dark:bg-gray-700 dark:text-gray-300 cursor-not-allowed"
+                            type="button"
+                            class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="revealForm.processing || revealLimitReached"
+                            @click="revealContact(offer)"
                         >
-                            <font-awesome-icon :icon="faWhatsapp" />
-                            {{ t('customerPortal.show.whatsappUnavailable') }}
-                        </span>
+                            {{ revealingOfferId === offer.public_id && revealForm.processing
+                                ? t('customerPortal.show.revealing')
+                                : t('customerPortal.show.contactMerchant') }}
+                        </button>
                     </div>
                 </div>
             </div>

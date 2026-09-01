@@ -154,7 +154,8 @@
     "quota": {
       "today": "Requests today: {used} · Daily limit: {limit} · Remaining: {remaining}",
       "extra": "Extra request credits: {extra}",
-      "reached": "You have reached your daily request limit and have no extra request credits left."
+      "reached": "You have reached your daily request limit and have no extra request credits left.",
+      "duplicate": "You already have a similar request. You can continue with the existing request."
     },
     "suspended": {
       "message": "Your customer account has been suspended because direct contact information was detected in the request. Please contact platform support for review."
@@ -223,7 +224,13 @@
       "validUntil": "Valid until",
       "submittedAt": "Submitted",
       "contactWhatsApp": "Contact via WhatsApp",
-      "whatsappUnavailable": "WhatsApp unavailable"
+      "whatsappUnavailable": "WhatsApp unavailable",
+      "contactMerchant": "Contact Merchant",
+      "contactAllowance": "You can open contact details for {limit} merchants for this request.",
+      "contactRemaining": "{remaining} contact slots remaining for this request.",
+      "contactLimitReached": "You have reached the maximum merchant contacts available for this request.",
+      "contactPhone": "Call",
+      "revealing": "Opening..."
     },
     "profile": {
       "title": "Profile",

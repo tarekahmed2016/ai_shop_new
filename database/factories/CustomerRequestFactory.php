@@ -26,6 +26,7 @@ class CustomerRequestFactory extends Factory
             'status' => Status::New,
             'source' => Source::Admin,
             'category_id' => null,
+            'normalized_request_json' => null,
         ];
     }
 }

@@ -178,6 +178,18 @@ class CustomerRequestService
         });
     }
 
+    public function discardPendingUnfinalized(CustomerRequest $customerRequest): void
+    {
+        if ($customerRequest->status !== RequestStatus::PendingClassification) {
+            return;
+        }
+
+        DB::transaction(function () use ($customerRequest) {
+            $this->customerExtraRequestService->restoreConsumedForRequest($customerRequest);
+            $customerRequest->delete();
+        });
+    }
+
     public function appendDetailsAndMaybeReplaceImage(
         CustomerRequest $customerRequest,
         ?string $additionalDetails,

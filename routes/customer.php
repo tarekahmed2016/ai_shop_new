@@ -34,6 +34,7 @@ Route::middleware(['customer'])->prefix('customer')->name('customer.')->group(fu
     Route::delete('/push-subscriptions', [CustomerPushSubscriptionController::class, 'destroy'])
         ->name('push-subscriptions.destroy');
     Route::get('/offers/{merchantOffer}/images/{offerImage}', [CustomerPortalController::class, 'offerImage'])->name('offers.images.show');
+    Route::post('/offers/{merchantOffer}/contact-reveal', [CustomerPortalController::class, 'offerContactReveal'])->name('offers.contact-reveal');
     Route::get('/profile', [CustomerPortalController::class, 'profileEdit'])->name('profile.edit');
     Route::patch('/profile', [CustomerPortalController::class, 'profileUpdate'])->name('profile.update');
 });

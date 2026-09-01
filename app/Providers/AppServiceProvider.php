@@ -3,12 +3,16 @@
 namespace App\Providers;
 
 use App\Contracts\AiClassificationProviderInterface;
+use App\Contracts\AiDuplicateDetectionProviderInterface;
 use App\Models\MerchantCategory;
 use App\Models\MerchantUser;
 use App\Models\RequestClassification;
 use App\Services\Classification\DeferredRemoteClassificationProvider;
 use App\Services\Classification\FakeClassificationProvider;
 use App\Services\Classification\OpenAIClassificationProvider;
+use App\Services\DuplicateDetection\DeferredRemoteDuplicateDetectionProvider;
+use App\Services\DuplicateDetection\FakeDuplicateDetectionProvider;
+use App\Services\DuplicateDetection\OpenAIDuplicateDetectionProvider;
 use App\Services\MerchantPermissionService;
 use App\Services\PlatformSettingService;
 use App\Services\WebPush\SafeWebPushReportHandler;
@@ -41,6 +45,13 @@ class AppServiceProvider extends ServiceProvider
                 'fake' => new FakeClassificationProvider,
                 'openai' => new OpenAIClassificationProvider,
                 default => new DeferredRemoteClassificationProvider,
+            };
+        });
+        $this->app->singleton(AiDuplicateDetectionProviderInterface::class, function () {
+            return match ((string) config('duplicate_detection.provider')) {
+                'fake' => new FakeDuplicateDetectionProvider,
+                'openai' => new OpenAIDuplicateDetectionProvider,
+                default => new DeferredRemoteDuplicateDetectionProvider,
             };
         });
     }

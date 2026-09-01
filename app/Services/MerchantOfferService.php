@@ -12,7 +12,6 @@ use App\Models\MerchantOfferImage;
 use App\Models\RequestMatch;
 use App\Models\User;
 use App\Support\MerchantContext;
-use App\Support\WhatsAppLink;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -41,6 +40,7 @@ class MerchantOfferService
         public MerchantOfferImageService $merchantOfferImageService,
         public ActivityLogService $activityLogService,
         public MerchantOfferCreditService $merchantOfferCreditService,
+        public OfferContactRevealService $offerContactRevealService,
     ) {}
 
     public function currentOffer(CustomerRequest $customerRequest): ?MerchantOffer
@@ -291,34 +291,46 @@ class MerchantOfferService
      */
     public function presentSubmittedForCustomer(CustomerRequest $customerRequest): array
     {
+        $customer = $customerRequest->relationLoaded('customer')
+            ? $customerRequest->customer
+            : $customerRequest->customer()->first();
+
+        $revealedMerchantIds = $customer === null
+            ? []
+            : $this->offerContactRevealService->revealedMerchantIds($customerRequest, $customer);
+
         return MerchantOffer::query()
             ->submitted()
             ->where('customer_request_id', $customerRequest->id)
             ->with([
-                'merchant:id,name,phone',
-                'merchant.categoryAssignments' => fn ($query) => $query
-                    ->where('category_id', $customerRequest->category_id)
-                    ->select(['id', 'merchant_id', 'category_id', 'whatsapp_phone']),
+                'merchant:id,name',
                 'images',
             ])
             ->latest('submitted_at')
             ->latest('id')
             ->get()
-            ->map(fn (MerchantOffer $offer) => [
-                'public_id' => $offer->public_id,
-                'merchant_name' => $offer->merchant?->name,
-                'price' => $offer->price,
-                'currency' => $offer->currency,
-                'availability_status_formatted' => $offer->availability_status_formatted,
-                'notes' => $offer->notes,
-                'valid_until' => $offer->valid_until?->toDateString(),
-                'submitted_at' => $offer->submitted_at,
-                ...$this->customerWhatsAppUrls($customerRequest, $offer),
-                'images' => $offer->images->map(fn (MerchantOfferImage $image) => [
-                    'id' => $image->id,
-                    'url' => route('customer.offers.images.show', [$offer, $image]),
-                ])->values()->all(),
-            ])
+            ->map(function (MerchantOffer $offer) use ($customerRequest, $revealedMerchantIds) {
+                $revealed = in_array((int) $offer->merchant_id, $revealedMerchantIds, true);
+
+                return [
+                    'public_id' => $offer->public_id,
+                    'merchant_name' => $offer->merchant?->name,
+                    'price' => $offer->price,
+                    'currency' => $offer->currency,
+                    'availability_status_formatted' => $offer->availability_status_formatted,
+                    'notes' => $offer->notes,
+                    'valid_until' => $offer->valid_until?->toDateString(),
+                    'submitted_at' => $offer->submitted_at,
+                    'contact_revealed' => $revealed,
+                    'contact' => $revealed
+                        ? $this->offerContactRevealService->contactPayload($customerRequest, $offer)
+                        : null,
+                    'images' => $offer->images->map(fn (MerchantOfferImage $image) => [
+                        'id' => $image->id,
+                        'url' => route('customer.offers.images.show', [$offer, $image]),
+                    ])->values()->all(),
+                ];
+            })
             ->values()
             ->all();
     }
@@ -458,44 +470,5 @@ class MerchantOfferService
             'notes' => $data['notes'] ?? null,
             'valid_until' => $validUntil,
         ];
-    }
-
-    /**
-     * @return array{whatsapp_mobile_url: ?string, whatsapp_web_url: ?string}
-     */
-    private function customerWhatsAppUrls(CustomerRequest $customerRequest, MerchantOffer $offer): array
-    {
-        $message = $this->customerWhatsAppMessage($customerRequest, $offer);
-        $activityPhone = $offer->merchant?->categoryAssignments
-            ->firstWhere('category_id', $customerRequest->category_id)
-            ?->whatsapp_phone;
-
-        foreach ([$activityPhone, $offer->merchant?->phone] as $phone) {
-            $pair = WhatsAppLink::pair($phone, $message);
-
-            if ($pair !== null) {
-                return [
-                    'whatsapp_mobile_url' => $pair['mobile'],
-                    'whatsapp_web_url' => $pair['web'],
-                ];
-            }
-        }
-
-        return [
-            'whatsapp_mobile_url' => null,
-            'whatsapp_web_url' => null,
-        ];
-    }
-
-    private function customerWhatsAppMessage(CustomerRequest $customerRequest, MerchantOffer $offer): string
-    {
-        $reference = (string) $customerRequest->public_id;
-        $price = (string) $offer->price;
-
-        if (str_starts_with(strtolower((string) app()->getLocale()), 'ar')) {
-            return "مرحبًا، أنا مهتم بالعرض المقدم على طلبي رقم {$reference} بقيمة {$price} OMR.";
-        }
-
-        return "Hello, I'm interested in your offer for request {$reference} priced at {$price} OMR.";
     }
 }

@@ -3,10 +3,12 @@
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
 use App\Enums\MerchantOfferCredits\AdminPermission;
 use App\Models\Merchant;
+use App\Models\MerchantOffer;
 use App\Models\MerchantUser;
 use App\Models\User;
 use App\Services\MerchantOfferCreditService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role as SpatieRole;
 use Tests\TestCase;
@@ -87,4 +89,13 @@ function attachMerchantOwner(Merchant $merchant, ?User $owner = null): User
     ]);
 
     return $owner;
+}
+
+function revealCustomerOfferContact(User $user, MerchantOffer $offer): TestResponse
+{
+    $offer->loadMissing('customerRequest');
+
+    return test()->actingAs($user)
+        ->from(route('customer.requests.show', $offer->customerRequest))
+        ->post(route('customer.offers.contact-reveal', $offer));
 }

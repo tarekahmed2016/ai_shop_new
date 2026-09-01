@@ -40,6 +40,15 @@ final class CustomerRequestMessages
         return 'You can only confirm a category suggested by classification.';
     }
 
+    public static function duplicateRequest(): string
+    {
+        if (self::arabic()) {
+            return 'لديك طلب مشابه موجود بالفعل. يمكنك متابعة العروض من الطلب السابق.';
+        }
+
+        return 'You already have a similar request. You can continue with the existing request.';
+    }
+
     private static function arabic(): bool
     {
         return str_starts_with(strtolower((string) app()->getLocale()), 'ar');

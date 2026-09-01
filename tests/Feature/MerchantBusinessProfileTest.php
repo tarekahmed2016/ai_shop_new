@@ -217,7 +217,7 @@ test('updated business phone is used for customer offer whatsapp url', function 
         'status' => RequestStatus::Ready,
     ]);
     app(RequestMatchingService::class)->sync($request);
-    MerchantOffer::factory()->create([
+    $offer = MerchantOffer::factory()->create([
         'customer_request_id' => $request->id,
         'merchant_id' => $merchant->id,
         'price' => '12.500',
@@ -243,8 +243,21 @@ test('updated business phone is used for customer offer whatsapp url', function 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('offers', 1)
-            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96877416103?text='))
-            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96877416103&text='))
+            ->where('offers.0.contact', null)
+            ->missing('offers.0.whatsapp_mobile_url')
+            ->missing('offers.0.merchant')
+            ->missing('request.customer.phone')
+        );
+
+    revealCustomerOfferContact($customerUser, $offer)->assertRedirect();
+
+    $this->actingAs($customerUser)
+        ->get(route('customer.requests.show', $request))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('offers', 1)
+            ->where('offers.0.contact.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96877416103?text='))
+            ->where('offers.0.contact.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96877416103&text='))
             ->missing('offers.0.merchant')
             ->missing('request.customer.phone')
         );

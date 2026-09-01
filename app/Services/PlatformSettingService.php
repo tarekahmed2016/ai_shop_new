@@ -69,7 +69,7 @@ class PlatformSettingService
     public function dailyCustomerRequestLimit(): int
     {
         $max = max(1, (int) config('customer_requests.max_daily_limit', 100));
-        $default = max(1, min($max, (int) config('customer_requests.default_daily_limit', 5)));
+        $default = max(1, min($max, (int) config('customer_requests.default_daily_limit', 3)));
         $value = $this->get(PlatformSetting::KEY_DAILY_CUSTOMER_REQUEST_LIMIT);
 
         if ($value === null || ! is_numeric($value)) {

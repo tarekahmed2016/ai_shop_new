@@ -75,9 +75,9 @@ function whatsappOfferSetup(array $merchantAttrs = []): array
     return compact('merchant', 'owner', 'customerUser', 'customer', 'request', 'offer');
 }
 
-test('owning customer receives a whatsapp url from merchant business phone', function () {
+test('owning customer receives a whatsapp url from merchant business phone after reveal', function () {
     App::setLocale('en');
-    ['merchant' => $merchant, 'owner' => $owner, 'customerUser' => $customerUser, 'customer' => $customer, 'request' => $request] = whatsappOfferSetup();
+    ['merchant' => $merchant, 'owner' => $owner, 'customerUser' => $customerUser, 'customer' => $customer, 'request' => $request, 'offer' => $offer] = whatsappOfferSetup();
 
     $this->actingAs($customerUser)
         ->get(route('customer.requests.show', $request))
@@ -85,7 +85,24 @@ test('owning customer receives a whatsapp url from merchant business phone', fun
         ->assertInertia(fn (Assert $page) => $page
             ->component('CustomerPortal/RequestShowPage', false)
             ->has('offers', 1)
-            ->where('offers.0.whatsapp_mobile_url', function ($url) use ($request, $customer) {
+            ->where('offers.0.contact_revealed', false)
+            ->where('offers.0.contact', null)
+            ->missing('offers.0.whatsapp_mobile_url')
+            ->missing('offers.0.whatsapp_web_url')
+            ->missing('offers.0.whatsapp_url')
+            ->missing('offers.0.merchant')
+            ->missing('offers.0.phone')
+        );
+
+    revealCustomerOfferContact($customerUser, $offer)->assertRedirect(route('customer.requests.show', $request));
+
+    $this->actingAs($customerUser)
+        ->get(route('customer.requests.show', $request))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('offers', 1)
+            ->where('offers.0.contact_revealed', true)
+            ->where('offers.0.contact.whatsapp_mobile_url', function ($url) use ($request, $customer) {
                 $decoded = urldecode((string) $url);
 
                 return str_starts_with((string) $url, 'https://wa.me/96891112222?text=')
@@ -98,7 +115,7 @@ test('owning customer receives a whatsapp url from merchant business phone', fun
                     && ! str_contains($decoded, (string) $customer->whatsapp_id)
                     && ! str_contains((string) $url, '999000111');
             })
-            ->where('offers.0.whatsapp_web_url', function ($url) use ($request, $customer) {
+            ->where('offers.0.contact.whatsapp_web_url', function ($url) use ($request, $customer) {
                 $decoded = urldecode((string) $url);
 
                 return str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96891112222&text=')
@@ -120,20 +137,22 @@ test('owning customer receives a whatsapp url from merchant business phone', fun
 
 test('arabic locale prefills an arabic whatsapp message', function () {
     App::setLocale('ar');
-    ['customerUser' => $customerUser, 'request' => $request] = whatsappOfferSetup();
+    ['customerUser' => $customerUser, 'request' => $request, 'offer' => $offer] = whatsappOfferSetup();
+
+    revealCustomerOfferContact($customerUser, $offer)->assertRedirect();
 
     $this->actingAs($customerUser)
         ->get(route('customer.requests.show', $request))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_mobile_url', function ($url) use ($request) {
+            ->where('offers.0.contact.whatsapp_mobile_url', function ($url) use ($request) {
                 $decoded = urldecode((string) $url);
 
                 return str_contains($decoded, 'مرحبًا')
                     && str_contains($decoded, $request->public_id)
                     && str_contains($decoded, '32.500');
             })
-            ->where('offers.0.whatsapp_web_url', function ($url) use ($request) {
+            ->where('offers.0.contact.whatsapp_web_url', function ($url) use ($request) {
                 $decoded = urldecode((string) $url);
 
                 return str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96891112222&text=')
@@ -172,42 +191,48 @@ test('withdrawn and invalidated offers do not expose a whatsapp url', function (
 });
 
 test('missing or invalid merchant phone does not generate a whatsapp url', function () {
-    ['customerUser' => $customerUser, 'request' => $request] = whatsappOfferSetup([
+    ['customerUser' => $customerUser, 'request' => $request, 'offer' => $offer] = whatsappOfferSetup([
         'phone' => '01012345678',
     ]);
+
+    revealCustomerOfferContact($customerUser, $offer)->assertRedirect();
 
     $this->actingAs($customerUser)
         ->get(route('customer.requests.show', $request))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('offers', 1)
-            ->where('offers.0.whatsapp_mobile_url', null)
-            ->where('offers.0.whatsapp_web_url', null)
+            ->where('offers.0.contact.whatsapp_mobile_url', null)
+            ->where('offers.0.contact.whatsapp_web_url', null)
         );
 
-    ['customerUser' => $customerUser2, 'request' => $request2] = whatsappOfferSetup([
+    ['customerUser' => $customerUser2, 'request' => $request2, 'offer' => $offer2] = whatsappOfferSetup([
         'phone' => null,
     ]);
+
+    revealCustomerOfferContact($customerUser2, $offer2)->assertRedirect();
 
     $this->actingAs($customerUser2)
         ->get(route('customer.requests.show', $request2))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_mobile_url', null)
-            ->where('offers.0.whatsapp_web_url', null)
+            ->where('offers.0.contact.whatsapp_mobile_url', null)
+            ->where('offers.0.contact.whatsapp_web_url', null)
         );
 });
 
 test('eight-digit oman merchant phone is prefixed for the customer whatsapp url', function () {
-    ['customerUser' => $customerUser, 'request' => $request] = whatsappOfferSetup([
+    ['customerUser' => $customerUser, 'request' => $request, 'offer' => $offer] = whatsappOfferSetup([
         'phone' => '91234567',
     ]);
+
+    revealCustomerOfferContact($customerUser, $offer)->assertRedirect();
 
     $this->actingAs($customerUser)
         ->get(route('customer.requests.show', $request))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
-            ->where('offers.0.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96891234567?text='))
-            ->where('offers.0.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96891234567&text='))
+            ->where('offers.0.contact.whatsapp_mobile_url', fn ($url) => str_starts_with((string) $url, 'https://wa.me/96891234567?text='))
+            ->where('offers.0.contact.whatsapp_web_url', fn ($url) => str_starts_with((string) $url, 'https://web.whatsapp.com/send?phone=96891234567&text='))
         );
 });

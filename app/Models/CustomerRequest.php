@@ -35,6 +35,7 @@ class CustomerRequest extends Model
             'source' => Source::class,
             'category_id' => 'integer',
             'customer_id' => 'integer',
+            'normalized_request_json' => 'array',
         ];
     }
 
@@ -204,6 +205,14 @@ class CustomerRequest extends Model
     public function submittedOffers(): HasMany
     {
         return $this->hasMany(MerchantOffer::class)->submitted();
+    }
+
+    /**
+     * @return HasMany<CustomerOfferContactReveal, $this>
+     */
+    public function offerContactReveals(): HasMany
+    {
+        return $this->hasMany(CustomerOfferContactReveal::class);
     }
 
     public function isMatchable(): bool
