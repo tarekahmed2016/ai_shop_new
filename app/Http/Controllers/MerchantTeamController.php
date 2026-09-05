@@ -8,7 +8,6 @@ use App\Enums\MerchantPermissions\PermissionKey;
 use App\Http\Requests\MerchantTeamStoreRequest;
 use App\Http\Requests\MerchantTeamUpdateRequest;
 use App\Models\MerchantUser;
-use App\Models\User;
 use App\Services\MerchantPermissionService;
 use App\Services\MerchantTeamService;
 use App\Support\MerchantAuthorization;
@@ -75,29 +74,6 @@ class MerchantTeamController extends Controller
                     PermissionKey::staffDefaults()
                 ),
             ],
-        ]);
-    }
-
-    public function lookup(Request $request)
-    {
-        abort_unless($this->merchantAuthorization->canCreateMembers(), 403);
-
-        $email = strtolower(trim((string) $request->query('email', '')));
-
-        if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            return response()->json([
-                'exists' => false,
-                'user' => null,
-            ]);
-        }
-
-        $user = User::query()
-            ->whereRaw('LOWER(email) = ?', [$email])
-            ->first(['id', 'name', 'email', 'phone']);
-
-        return response()->json([
-            'exists' => $user !== null,
-            'user' => $user,
         ]);
     }
 

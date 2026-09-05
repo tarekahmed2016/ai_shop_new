@@ -214,7 +214,11 @@
       "continue": "Continue",
       "lowIntro": "We need more information to identify the correct category.",
       "moreDetails": "Add more details",
-      "tryAgain": "Try again"
+      "tryAgain": "Try again",
+      "processingTitle": "Processing",
+      "viewDuplicate": "View existing request",
+      "checkingBack": "Still working on it — this page will update automatically.",
+      "backToRequests": "Back to my requests"
     },
     "show": {
       "title": "Request details",
@@ -1779,9 +1783,7 @@
       "selectRole": "Select role",
       "statusLabel": "Status",
       "selectStatus": "Select status",
-      "lookingUp": "Checking email...",
-      "existingUserHint": "Existing user found. They will be attached without changing their password.",
-      "newUserHint": "No user found for this email. A new account will be created.",
+      "addHint": "Enter the member’s email, name, and a password. If the email already has an account, they are added to this team without changing their password. Otherwise a new account is created.",
       "permissionsTitle": "Permissions",
       "fullAccess": "Full access",
       "fullAccessHint": "Merchant owners always retain full merchant access. These capabilities cannot be removed.",

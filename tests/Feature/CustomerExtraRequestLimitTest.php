@@ -2,6 +2,7 @@
 
 use App\Enums\CustomerExtraRequests\TransactionSource;
 use App\Enums\CustomerExtraRequests\TransactionType;
+use App\Enums\CustomerRequests\AiStage;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Models\Category;
 use App\Models\Customer;
@@ -13,6 +14,7 @@ use App\Services\CustomerExtraRequestService;
 use App\Services\PlatformSettingService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Spatie\Permission\Models\Role as SpatieRole;
 
@@ -23,6 +25,7 @@ beforeEach(function () {
     $this->extraAdmin->assignRole('admin');
     app(PlatformSettingService::class)->setDailyCustomerRequestLimit(1);
     Category::factory()->create();
+    enableAsyncClassification();
 });
 
 function extraRequestCustomer(array $userAttrs = []): array
@@ -44,7 +47,31 @@ function extraClassify(User $user, string $text = 'ABS Sensor')
     return test()->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => $text,
+            'submission_token' => (string) Str::ulid(),
         ]);
+}
+
+/**
+ * Drives the async pipeline all the way through its single
+ * quota/credit-consuming step: classify (no consumption) then confirm the
+ * suggested category (the only place that can consume — inside
+ * FinalizeCustomerRequestJob, run inline here because phpunit.xml sets
+ * QUEUE_CONNECTION=sync).
+ */
+function extraClassifyAndConfirm(User $user, string $text = 'ABS Sensor'): CustomerRequest
+{
+    extraClassify($user, $text)->assertRedirect();
+
+    $classification = RequestClassification::query()->latest('id')->first();
+
+    test()->actingAs($user)
+        ->post(route('customer.requests.classifications.confirm', $classification), [
+            'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
+        ])
+        ->assertRedirect();
+
+    return $classification->customerRequest->fresh();
 }
 
 test('daily quota available uses a free slot and leaves extra balance unchanged', function () {
@@ -58,9 +85,10 @@ test('daily quota available uses a free slot and leaves extra balance unchanged'
         $this->extraAdmin,
     );
 
-    extraClassify($user)->assertOk();
+    $request = extraClassifyAndConfirm($user);
 
     expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
+        ->and($request->quota_consumed_at)->not->toBeNull()
         ->and(app(CustomerExtraRequestService::class)->balance((int) $customer->id))->toBe(3)
         ->and(CustomerExtraRequestTransaction::query()->where('type', TransactionType::RequestCreate)->count())->toBe(0);
 });
@@ -76,8 +104,9 @@ test('exhausted daily quota consumes one extra credit then rejects the next requ
         $this->extraAdmin,
     );
 
-    extraClassify($user, 'ABS Sensor one')->assertOk();
-    extraClassify($user, 'ABS Sensor two')->assertOk();
+    extraClassifyAndConfirm($user, 'ABS Sensor one'); // uses the free daily slot
+    extraClassifyAndConfirm($user, 'ABS Sensor two'); // daily slot exhausted -> consumes the extra credit
+
     extraClassify($user, 'ABS Sensor three')->assertSessionHasErrors('request_text');
 
     expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(2)
@@ -97,12 +126,12 @@ test('next oman day uses free quota before extra credits and extra balance persi
     );
 
     $this->travelTo(Carbon::parse('2026-08-25 20:00:00', 'Asia/Muscat'));
-    extraClassify($user, 'ABS Sensor day one free')->assertOk();
-    extraClassify($user, 'ABS Sensor day one extra')->assertOk();
+    extraClassifyAndConfirm($user, 'ABS Sensor day one free');
+    extraClassifyAndConfirm($user, 'ABS Sensor day one extra');
     expect(app(CustomerExtraRequestService::class)->balance((int) $customer->id))->toBe(1);
 
     $this->travelTo(Carbon::parse('2026-08-26 00:05:00', 'Asia/Muscat'));
-    extraClassify($user, 'ABS Sensor next day free')->assertOk();
+    extraClassifyAndConfirm($user, 'ABS Sensor next day free');
 
     expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(3)
         ->and(app(CustomerExtraRequestService::class)->balance((int) $customer->id))->toBe(1)
@@ -111,7 +140,7 @@ test('next oman day uses free quota before extra credits and extra balance persi
 
 test('failed validation and contact-blocked requests do not deduct extra credits', function () {
     ['user' => $user, 'customer' => $customer] = extraRequestCustomer();
-    extraClassify($user)->assertOk();
+    extraClassify($user)->assertRedirect();
     app(CustomerExtraRequestService::class)->addCredits(
         $customer,
         2,
@@ -131,7 +160,7 @@ test('failed validation and contact-blocked requests do not deduct extra credits
 
 test('confirmation and edit do not deduct extra credits', function () {
     ['user' => $user, 'customer' => $customer] = extraRequestCustomer();
-    extraClassify($user)->assertOk();
+    extraClassify($user)->assertRedirect();
     app(CustomerExtraRequestService::class)->addCredits(
         $customer,
         2,
@@ -145,6 +174,7 @@ test('confirmation and edit do not deduct extra credits', function () {
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertRedirect();
 
@@ -164,7 +194,7 @@ test('confirmation and edit do not deduct extra credits', function () {
 
 test('the same customer request cannot deduct extra credit twice', function () {
     ['user' => $user, 'customer' => $customer] = extraRequestCustomer();
-    extraClassify($user)->assertOk();
+    extraClassifyAndConfirm($user); // uses the free daily slot
     app(CustomerExtraRequestService::class)->addCredits(
         $customer,
         3,
@@ -173,9 +203,8 @@ test('the same customer request cannot deduct extra credit twice', function () {
         null,
         $this->extraAdmin,
     );
-    extraClassify($user, 'ABS Sensor extra')->assertOk();
+    $request = extraClassifyAndConfirm($user, 'ABS Sensor extra'); // exhausted -> consumes 1 extra credit
 
-    $request = CustomerRequest::query()->where('customer_id', $customer->id)->latest('id')->first();
     $consumed = app(CustomerExtraRequestService::class)->consumeForNewRequest($customer, $request);
 
     expect($consumed)->toBeFalse()
@@ -185,7 +214,7 @@ test('the same customer request cannot deduct extra credit twice', function () {
 
 test('extra credit deduction rolls back when ledger insert fails', function () {
     ['user' => $user, 'customer' => $customer] = extraRequestCustomer();
-    extraClassify($user)->assertOk();
+    extraClassifyAndConfirm($user); // uses the free daily slot
     app(CustomerExtraRequestService::class)->addCredits(
         $customer,
         1,
@@ -204,10 +233,27 @@ test('extra credit deduction rolls back when ledger insert fails', function () {
         }
     });
 
-    extraClassify($user, 'ABS Sensor extra')->assertSessionHasErrors('request_text');
+    extraClassify($user, 'ABS Sensor extra')->assertRedirect();
+    $pending = CustomerRequest::query()->where('customer_id', $customer->id)->latest('id')->first();
+    $classification = RequestClassification::query()->where('customer_request_id', $pending->id)->latest('id')->first();
+
+    // The HTTP confirm call itself still succeeds (redirects) — the ledger
+    // failure happens *inside* FinalizeCustomerRequestJob (run inline by
+    // QUEUE_CONNECTION=sync) and is turned into ready_for_review with a
+    // quota_exhausted_at_finalization reason, never a session error.
+    $this->actingAs($user)
+        ->post(route('customer.requests.classifications.confirm', $classification), [
+            'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
+        ])
+        ->assertRedirect();
+
     $fail = false;
 
-    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
+    expect($pending->fresh()->ai_stage)->toBe(AiStage::ReadyForReview)
+        ->and($pending->fresh()->ai_stage_reason)->toBe('quota_exhausted_at_finalization')
+        ->and($pending->fresh()->quota_consumed_at)->toBeNull()
+        ->and(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(2)
         ->and(app(CustomerExtraRequestService::class)->balance((int) $customer->id))->toBe(1);
 });
 

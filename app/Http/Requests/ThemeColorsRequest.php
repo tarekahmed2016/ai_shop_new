@@ -8,9 +8,11 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ThemeColorsRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
+
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdmin('settings.update');
     }
 
     /**

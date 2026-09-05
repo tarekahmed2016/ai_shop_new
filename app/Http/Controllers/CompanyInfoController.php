@@ -13,6 +13,8 @@ class CompanyInfoController extends Controller
 
     public function index()
     {
+        $this->authorizeAdmin('settings.update');
+
         return Inertia::render('CompanyInfo/CompanyInfoPage', [
             'companyInfo' => $this->companyInfoService->getCompanyInfo(),
         ]);

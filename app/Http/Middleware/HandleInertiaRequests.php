@@ -8,6 +8,7 @@ use App\Services\PageService;
 use App\Services\PublicHomeService;
 use App\Services\PublicNavService;
 use App\Support\CustomerContext;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use App\Support\MerchantContext;
 use App\Support\ThemeColor;
 use App\Support\UserCapabilities;
@@ -52,6 +53,9 @@ class HandleInertiaRequests extends Middleware
                 'user' => $user,
                 'role' => $user?->getRoleNames()->first(),
                 'isAdmin' => $isAdmin,
+                'permissions' => $isAdmin
+                    ? $user->getAllPermissions()->pluck('name')->values()->all()
+                    : [],
                 'showUnifiedAccountNav' => $user !== null && ! $isAdmin,
                 'isCustomer' => (bool) $user?->customer,
                 'capabilities' => $user ? UserCapabilities::for($user) : null,
@@ -76,6 +80,12 @@ class HandleInertiaRequests extends Middleware
             'menuPages' => fn () => app(PageService::class)->getPublicMenuPages(),
             'publicNavContext' => fn () => app(PublicNavService::class)->getContext(),
             'webPush' => fn () => $this->webPushShare($request),
+            'classificationAsyncEnabled' => fn () => CustomerRequestPipelineConfig::asyncEnabled(),
+            'classificationStatusPoll' => fn () => [
+                'interval_ms' => CustomerRequestPipelineConfig::statusPollIntervalMs(),
+                'timeout_ms' => CustomerRequestPipelineConfig::statusPollTimeoutMs(),
+                'retry_ms' => CustomerRequestPipelineConfig::statusPollRetryMs(),
+            ],
         ];
     }
 

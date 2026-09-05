@@ -15,6 +15,8 @@ class RoleController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('roles.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'name', 'created_at']) ? $request->input('sort_column') : 'created_at';
         $sortDir = $request->input('sort_direction', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -48,6 +50,8 @@ class RoleController extends Controller
 
     public function destroy(Role $role)
     {
+        $this->authorizeAdmin('roles.delete');
+
         $this->roleService->delete(role: $role);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

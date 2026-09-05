@@ -47,21 +47,37 @@ class RequestMatchingService
      */
     public function sync(CustomerRequest $customerRequest, bool $strict = false): array
     {
-        $customerRequest->loadMissing('category');
+        $result = DB::transaction(function () use ($customerRequest) {
+            $locked = CustomerRequest::query()
+                ->whereKey($customerRequest->id)
+                ->lockForUpdate()
+                ->first();
 
-        $reason = $this->ineligibilityReason($customerRequest);
-        $eligibleMerchantIds = $reason === null
-            ? $this->eligibleMerchantIds($customerRequest)
-            : collect();
+            if ($locked === null) {
+                return [
+                    'eligible' => false,
+                    'reason' => null,
+                    'created' => 0,
+                    'created_match_ids' => [],
+                    'removed' => 0,
+                    'retained' => 0,
+                ];
+            }
 
-        $result = DB::transaction(function () use ($customerRequest, $eligibleMerchantIds, $reason) {
+            $locked->loadMissing('category');
+
+            $reason = $this->ineligibilityReason($locked);
+            $eligibleMerchantIds = $reason === null
+                ? $this->eligibleMerchantIds($locked)
+                : collect();
+
             $this->merchantRequestMatchService->recordEligibleMerchants(
-                $customerRequest,
+                $locked,
                 $eligibleMerchantIds,
             );
 
             $existingByMerchantId = RequestMatch::query()
-                ->where('customer_request_id', $customerRequest->id)
+                ->where('customer_request_id', $locked->id)
                 ->pluck('id', 'merchant_id');
 
             $eligibleIdList = $eligibleMerchantIds->map(fn ($id) => (int) $id)->all();
@@ -73,7 +89,7 @@ class RequestMatchingService
                 $removed = $existingByMerchantId->count();
                 if ($removed > 0) {
                     RequestMatch::query()
-                        ->where('customer_request_id', $customerRequest->id)
+                        ->where('customer_request_id', $locked->id)
                         ->delete();
                 }
                 $retained = 0;
@@ -102,7 +118,7 @@ class RequestMatchingService
                     }
                 }
 
-                $createdMatchIds = $this->insertPendingMatches((int) $customerRequest->id, $newMerchantIds, $chunkSize);
+                $createdMatchIds = $this->insertPendingMatches((int) $locked->id, $newMerchantIds, $chunkSize);
                 $retained = count($eligibleIdList) - count($newMerchantIds);
             }
 
@@ -125,13 +141,29 @@ class RequestMatchingService
 
         app(MerchantOfferService::class)->invalidateSubmittedOffersMissingMatch($customerRequest);
 
-        if ($strict && $reason !== null) {
+        $this->markMatchingCompletedIfReady($customerRequest);
+
+        if ($strict && $result['reason'] !== null) {
             throw ValidationException::withMessages([
-                'category_id' => $reason,
+                'category_id' => $result['reason'],
             ]);
         }
 
         return $result;
+    }
+
+    /**
+     * A successful sync — including zero eligible merchants — means
+     * matching is done. Only Ready rows are marked; cancelled/closed
+     * requests must stay eligible for no-op recovery.
+     */
+    private function markMatchingCompletedIfReady(CustomerRequest $customerRequest): void
+    {
+        CustomerRequest::query()
+            ->whereKey($customerRequest->id)
+            ->where('status', RequestStatus::Ready)
+            ->whereNull('matching_completed_at')
+            ->update(['matching_completed_at' => now()]);
     }
 
     public function removeMatchesForMerchantCategory(Merchant $merchant, int $categoryId): int

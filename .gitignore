@@ -25,3 +25,11 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Editor swap files
+*.swp
+*.swo
+
+# Editor swap files
+*.swp
+*.swo

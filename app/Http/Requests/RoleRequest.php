@@ -8,9 +8,11 @@ use Illuminate\Validation\Rule;
 
 class RoleRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
+
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('roles.create', 'roles.update', 'role');
     }
 
     /**

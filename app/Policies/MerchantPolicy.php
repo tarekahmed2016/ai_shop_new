@@ -7,17 +7,18 @@ use App\Enums\MerchantOfferCredits\AdminPermission;
 use App\Models\Merchant;
 use App\Models\User;
 use App\Services\MerchantContextService;
+use App\Support\AdminAccess;
 
 class MerchantPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'merchants.view');
     }
 
     public function view(User $user, Merchant $merchant): bool
     {
-        if ($user->hasRole('admin')) {
+        if (AdminAccess::allows($user, 'merchants.view')) {
             return true;
         }
 
@@ -29,12 +30,12 @@ class MerchantPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'merchants.create');
     }
 
     public function update(User $user, Merchant $merchant): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'merchants.update');
     }
 
     public function viewCredits(User $user, Merchant $merchant): bool

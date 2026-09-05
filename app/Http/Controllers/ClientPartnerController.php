@@ -16,6 +16,8 @@ class ClientPartnerController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('clients-partners.view');
+
         $search = (string) $request->input('search', '');
         $typeFilter = in_array($request->input('type'), ['all', ...ClientPartnerType::values()]) ? $request->input('type') : 'all';
         $sortBy = in_array($request->input('sort_column'), ['id', 'type', 'name_ar', 'name_en', 'website', 'ordering', 'created_at']) ? $request->input('sort_column') : ($typeFilter === 'all' ? 'type' : 'ordering');
@@ -41,6 +43,8 @@ class ClientPartnerController extends Controller
 
     public function getNextOrdering(Request $request)
     {
+        $this->authorizeAdmin('clients-partners.view');
+
         $validated = $request->validate([
             'type' => ['required', Rule::enum(ClientPartnerType::class)],
         ]);
@@ -75,6 +79,8 @@ class ClientPartnerController extends Controller
 
     public function destroy(ClientPartner $clientsPartner)
     {
+        $this->authorizeAdmin('clients-partners.delete');
+
         $this->clientPartnerService->delete(clientPartner: $clientsPartner);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

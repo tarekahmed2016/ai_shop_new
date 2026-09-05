@@ -7,6 +7,26 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
+## Queue & scheduler (customer AI pipeline)
+
+Stuck-job recovery (`RecoverStuckAiRequestsJob` / idle `ready_for_review`+`failed` expiry) **does not run** just because a queue worker is up. Production must have both:
+
+1. **Queue worker** (only needed when `CLASSIFICATION_ASYNC_ENABLED=true`):
+
+```bash
+php artisan queue:work --queue=ai-processing,default --sleep=1 --tries=3 --timeout=150
+```
+
+2. **Scheduler cron, every minute** (required in every environment that should recover stuck AI rows or expire abandoned attempts). Exact crontab for this host:
+
+```cron
+* * * * * cd /opt/lampp/htdocs/ai_shop_new && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Laravel then fires `php artisan customer-requests:recover-stuck-ai` every `CUSTOMER_REQUEST_STUCK_AI_RECOVERY_EVERY_MINUTES` minutes (default 5) and `php artisan customer-requests:recover-pending-matching` every `CUSTOMER_REQUEST_MATCHING_RECOVERY_EVERY_MINUTES` minutes (default 5). The same cron also runs daily retention: `queue:prune-batches` (48h), `queue:prune-failed` (7d), and `cache:prune-expired`. If that cron is missing, run those artisan commands by hand as a one-off. Rollback of the async pipeline is `CLASSIFICATION_ASYNC_ENABLED=false` — the legacy synchronous classify/confirm path stays in the codebase.
+
+One worker listening `ai-processing,default` (AI first) is enough until the default queue regularly backs up with matched-request notification jobs. Split workers only after that is observed; do not add Redis until queue/cache DB load is measured under real async traffic.
+
 ## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:

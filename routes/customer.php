@@ -19,12 +19,18 @@ Route::middleware(['customer'])->prefix('customer')->name('customer.')->group(fu
         ->middleware('throttle:request-classification')
         ->name('requests.classify');
     Route::post('/requests/classifications/{requestClassification}/confirm', [CustomerPortalController::class, 'requestsClassificationConfirm'])
+        ->middleware('throttle:request-classification')
         ->name('requests.classifications.confirm');
     Route::post('/requests/{customerRequest}/classify', [CustomerPortalController::class, 'requestsRetryClassification'])
         ->middleware('throttle:request-classification')
         ->name('requests.classify.resume');
     Route::post('/requests/{customerRequest}/category', [CustomerPortalController::class, 'requestsFinalizeCategory'])
+        ->middleware('throttle:request-classification')
         ->name('requests.category');
+    Route::get('/requests/{customerRequest}/classification-status', [CustomerPortalController::class, 'requestsClassificationStatus'])
+        ->middleware('throttle:classification-status')
+        ->name('requests.classification-status')
+        ->where('customerRequest', '[0-9A-HJKMNP-TV-Z]{26}');
     Route::get('/requests/{customerRequest}', [CustomerPortalController::class, 'requestsShow'])->name('requests.show');
     Route::get('/requests/{customerRequest}/image', [CustomerPortalController::class, 'requestsImage'])->name('requests.image');
     Route::get('/push-subscriptions/config', [CustomerPushSubscriptionController::class, 'config'])

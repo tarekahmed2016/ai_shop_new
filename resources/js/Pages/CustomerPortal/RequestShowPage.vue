@@ -1,29 +1,95 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
-import { Link, useForm, usePage } from '@inertiajs/vue3'
+import { computed, onMounted, ref, watch } from 'vue'
+import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { faWhatsapp } from '@fortawesome/free-brands-svg-icons'
+import { generateSubmissionToken } from '../../Utils/submissionToken.js'
+import { useCustomerRequestStatusPolling } from '../../Composables/Customer/useCustomerRequestStatusPolling.js'
 
 const { t, locale } = useI18n()
 const page = usePage()
+const asyncEnabled = computed(() => page.props.classificationAsyncEnabled === true)
+const pollConfig = computed(() => page.props.classificationStatusPoll || {})
 const request = computed(() => page.props.request || {})
 const offers = computed(() => page.props.offers || [])
 const contactReveal = computed(() => page.props.contactReveal || null)
-const classification = computed(() => page.props.classification || null)
+
+// Seeded from the Inertia response, then kept fresh by plain-fetch polling
+// (never another Inertia visit/reload) while the AI pipeline is running.
+const liveStatus = ref(page.props.status || null)
+const classification = computed(() => liveStatus.value?.classification ?? null)
+
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
 const revealingOfferId = ref('')
 
+const confirmToken = ref(generateSubmissionToken())
+const retryToken = ref(generateSubmissionToken())
+
 const confirmForm = useForm({
     category_id: '',
+    submission_token: confirmToken.value,
 })
 const retryForm = useForm({
     additional_details: '',
+    submission_token: retryToken.value,
     image: null,
 })
 const revealForm = useForm({})
 
-const isPendingClassification = computed(() => request.value.status_formatted?.name === 'PendingClassification')
+const { status: polledStatus, start: startPolling } = useCustomerRequestStatusPolling(
+    () => request.value.public_id,
+    {
+        timeoutMs: Number(page.props.status?.poll_timeout_ms ?? pollConfig.value.timeout_ms),
+        fallbackIntervalMs: Number(page.props.status?.poll_interval_ms ?? pollConfig.value.interval_ms),
+        retryIntervalMs: Number(pollConfig.value.retry_ms),
+        onUpdate: (data) => {
+            liveStatus.value = data
+        },
+        onSettled: (data) => {
+            liveStatus.value = data
+            // Only ai_stage "ready" needs fresh server-rendered props
+            // (category/offers/contactReveal) — every other terminal
+            // outcome (ready_for_review/failed/duplicate_blocked/expired)
+            // is already fully described by the status payload itself.
+            if (data?.ai_stage === 'ready') {
+                router.reload({ only: ['request', 'status', 'classification', 'offers', 'contactReveal'], preserveScroll: true })
+            }
+        },
+        onTimeout: (data) => {
+            if (data) {
+                liveStatus.value = data
+            }
+        },
+    },
+)
+
+onMounted(() => {
+    if (liveStatus.value?.poll) {
+        startPolling(liveStatus.value)
+    }
+})
+
+const viewMode = computed(() => {
+    const stage = liveStatus.value?.ai_stage ?? null
+
+    if (stage === 'queued_classification' || stage === 'classifying' || stage === 'queued_duplicate_check' || stage === 'checking_duplicate') {
+        return 'processing'
+    }
+    if (stage === 'queued_final_duplicate_check' || stage === 'checking_final_duplicate' || stage === 'finalizing') {
+        return 'finalizing'
+    }
+    if (stage === 'failed') return 'failed'
+    if (stage === 'duplicate_blocked') return 'duplicate'
+    if (stage === 'expired') return 'expired'
+    if (stage === 'ready_for_review') return 'review'
+    if (stage === null && request.value.status_formatted?.name === 'PendingClassification' && classification.value) {
+        return 'review' // legacy row, classified synchronously before this pipeline existed
+    }
+
+    return 'offers'
+})
+
 const revealLimitReached = computed(() => {
     if (!contactReveal.value) {
         return false
@@ -47,6 +113,7 @@ const isMobileClient = computed(() => {
 
 const offerWhatsAppHref = (offer) => {
     const contact = offer.contact || {}
+
     return isMobileClient.value ? contact.whatsapp_mobile_url : contact.whatsapp_web_url
 }
 
@@ -84,16 +151,44 @@ const formatConfidence = (value) => {
 }
 
 const confirmSuggestion = (categoryPublicId) => {
-    if (!classification.value?.public_id || !categoryPublicId) return
+    if (!classification.value?.public_id || !categoryPublicId || confirmForm.processing) return
+
     confirmForm.category_id = categoryPublicId
-    confirmForm.post(route('customer.requests.classifications.confirm', classification.value.public_id))
+    if (asyncEnabled.value) {
+        confirmForm.submission_token = confirmToken.value
+    }
+    confirmForm.post(route('customer.requests.classifications.confirm', classification.value.public_id), {
+        onFinish: () => {
+            if (asyncEnabled.value) {
+                confirmToken.value = generateSubmissionToken()
+                confirmForm.submission_token = confirmToken.value
+            }
+            if (liveStatus.value?.poll) {
+                startPolling(liveStatus.value)
+            }
+        },
+    })
 }
 
 const retryAnalysis = () => {
+    if (retryForm.processing) return
+
     retryForm.additional_details = additionalDetails.value
+    if (asyncEnabled.value) {
+        retryForm.submission_token = retryToken.value
+    }
     retryForm.post(route('customer.requests.classify.resume', request.value.public_id), {
         forceFormData: true,
         preserveScroll: true,
+        onFinish: () => {
+            if (asyncEnabled.value) {
+                retryToken.value = generateSubmissionToken()
+                retryForm.submission_token = retryToken.value
+            }
+            if (liveStatus.value?.poll) {
+                startPolling(liveStatus.value)
+            }
+        },
     })
 }
 
@@ -136,8 +231,60 @@ watch(classification, (value) => {
                 </div>
             </div>
 
-            <div v-if="isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+            <!-- Processing / duplicate-checking: AI job(s) running in the queue. -->
+            <div v-if="viewMode === 'processing'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-3">
+                <div class="flex items-center gap-3">
+                    <span class="inline-block h-4 w-4 rounded-full border-2 border-blue-500 border-t-transparent animate-spin" />
+                    <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.classify.processingTitle') }}</h2>
+                </div>
+                <p class="text-body text-gray-700 dark:text-gray-300">{{ liveStatus?.message }}</p>
+                <p class="text-muted text-sm">{{ t('customerPortal.classify.checkingBack') }}</p>
+            </div>
+
+            <!-- Finalizing: customer already confirmed, final atomic quota-consume + Ready transition is running. -->
+            <div v-else-if="viewMode === 'finalizing'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-3">
+                <div class="flex items-center gap-3">
+                    <span class="inline-block h-4 w-4 rounded-full border-2 border-green-500 border-t-transparent animate-spin" />
+                    <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ liveStatus?.message }}</h2>
+                </div>
+                <p class="text-muted text-sm">{{ t('customerPortal.classify.checkingBack') }}</p>
+            </div>
+
+            <!-- Failed classification: retry (or suspended message, already localized server-side). -->
+            <div v-else-if="viewMode === 'failed'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+                <p class="form-error">{{ liveStatus?.message || t('customerPortal.classify.failed') }}</p>
+                <template v-if="!liveStatus?.suspended">
+                    <textarea v-model="additionalDetails" rows="3" class="form-input text-body" :placeholder="t('customerPortal.classify.moreDetails')" />
+                    <button type="button" class="btn btn-primary px-4 py-2 disabled:opacity-50" :disabled="processing" @click="retryAnalysis">
+                        {{ retryForm.processing ? t('customerPortal.classify.analyzing') : t('customerPortal.classify.retryAnalysis') }}
+                    </button>
+                </template>
+            </div>
+
+            <!-- Duplicate detected (early or final check): the row is kept, cancelled, and permanently points at the pre-existing request. -->
+            <div v-else-if="viewMode === 'duplicate'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+                <p class="text-body text-amber-700 dark:text-amber-300">{{ liveStatus?.message }}</p>
+                <Link
+                    v-if="liveStatus?.duplicate_of_request_public_id"
+                    :href="route('customer.requests.show', liveStatus.duplicate_of_request_public_id)"
+                    class="btn btn-primary inline-flex px-4 py-2"
+                >
+                    {{ t('customerPortal.classify.viewDuplicate') }}
+                </Link>
+            </div>
+
+            <!-- Expired: abandoned too long, cleaned up by the recovery sweep. -->
+            <div v-else-if="viewMode === 'expired'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+                <p class="text-body text-gray-700 dark:text-gray-300">{{ liveStatus?.message || t('customerPortal.classify.failed') }}</p>
+                <Link :href="route('customer.requests.index')" class="btn btn-secondary inline-flex px-4 py-2">
+                    {{ t('customerPortal.classify.backToRequests') }}
+                </Link>
+            </div>
+
+            <!-- Ready for review: customer picks/confirms a category (or retries). -->
+            <div v-else-if="viewMode === 'review'" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
                 <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.classify.resumeTitle') }}</h2>
+                <p v-if="liveStatus?.quota_exhausted" class="form-error">{{ liveStatus.message }}</p>
                 <p v-if="classification?.failed" class="form-error">{{ t('customerPortal.classify.failed') }}</p>
                 <p v-if="classification?.suggested_category_inactive" class="form-error">{{ t('customerPortal.classify.inactiveSuggestion') }}</p>
                 <p v-if="classification?.needs_more_information && classification?.question" class="text-body font-medium text-amber-700 dark:text-amber-300">
@@ -184,7 +331,8 @@ watch(classification, (value) => {
                 <p v-if="retryForm.errors.additional_details" class="form-error">{{ retryForm.errors.additional_details }}</p>
             </div>
 
-            <div v-if="!isPendingClassification" class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
+            <!-- Ready/Closed: normal offers view. -->
+            <div v-else class="bg-white dark:bg-gray-800 rounded-lg shadow p-4 md:p-6 space-y-4">
                 <h2 class="text-card-title text-gray-900 dark:text-gray-100">{{ t('customerPortal.show.offersTitle') }}</h2>
                 <p class="text-muted">{{ t('customerPortal.show.offersCount', { count: offers.length }) }}</p>
                 <p v-if="contactReveal" class="text-muted text-sm">

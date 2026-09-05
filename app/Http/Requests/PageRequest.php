@@ -10,11 +10,12 @@ use Illuminate\Validation\Rule;
 
 class PageRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('pages.create', 'pages.update', 'page');
     }
 
     protected function prepareForValidation(): void

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ActivityLogs\Event;
 use App\Enums\MarketerCommissions\CommissionType;
 use App\Enums\MarketerCommissions\Status as CommissionStatus;
 use App\Enums\Payments\Method;
@@ -26,6 +27,7 @@ class MarketerCommissionService
     public function __construct(
         public PlatformSettingService $platformSettingService,
         public PaymentTransactionService $paymentTransactionService,
+        public ActivityLogService $activityLogService,
     ) {}
 
     /**
@@ -238,11 +240,39 @@ class MarketerCommissionService
         mixed $customerRate,
         mixed $merchantRate,
     ): Marketer {
-        $marketer->customer_commission_rate = $this->nullableRate($customerRate, 'customer_commission_rate');
-        $marketer->merchant_commission_rate = $this->nullableRate($merchantRate, 'merchant_commission_rate');
-        $marketer->save();
+        return DB::transaction(function () use ($marketer, $customerRate, $merchantRate) {
+            $before = [
+                'customer_commission_rate' => $marketer->customer_commission_rate,
+                'merchant_commission_rate' => $marketer->merchant_commission_rate,
+            ];
 
-        return $marketer->refresh();
+            $marketer->customer_commission_rate = $this->nullableRate($customerRate, 'customer_commission_rate');
+            $marketer->merchant_commission_rate = $this->nullableRate($merchantRate, 'merchant_commission_rate');
+            $marketer->save();
+
+            $fresh = $marketer->refresh();
+            $after = [
+                'customer_commission_rate' => $fresh->customer_commission_rate,
+                'merchant_commission_rate' => $fresh->merchant_commission_rate,
+            ];
+
+            if ($before === $after) {
+                return $fresh;
+            }
+
+            $this->activityLogService->recordAction(
+                subject: $fresh,
+                event: Event::Updated,
+                oldValues: $before,
+                newValues: $after,
+                metadata: [
+                    'action' => 'marketer.rates_changed',
+                ],
+                subjectLabel: $fresh->user?->name ?? $fresh->referral_code,
+            );
+
+            return $fresh;
+        });
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use App\Support\SafeRasterImage;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -20,6 +21,7 @@ class CustomerPortalClassificationRetryRequest extends FormRequest
     {
         return [
             'additional_details' => ['nullable', 'string', 'max:5000'],
+            'submission_token' => CustomerRequestPipelineConfig::submissionTokenRules(),
             'image' => SafeRasterImage::rules(required: false),
             'customer_id' => ['prohibited'],
             'user_id' => ['prohibited'],

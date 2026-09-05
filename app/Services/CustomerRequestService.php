@@ -3,12 +3,15 @@
 namespace App\Services;
 
 use App\Enums\Categories\Status as CategoryStatus;
+use App\Enums\CustomerRequests\AiStage;
+use App\Enums\CustomerRequests\IntakeAction;
 use App\Enums\CustomerRequests\Source;
 use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
+use App\Services\CustomerRequests\CustomerRequestIdempotencyService;
 use App\Support\CustomerRequests\CustomerRequestMessages;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Http\UploadedFile;
@@ -37,6 +40,7 @@ class CustomerRequestService
         public CustomerRequestLimitService $customerRequestLimitService,
         public CustomerContactAbuseService $customerContactAbuseService,
         public CustomerExtraRequestService $customerExtraRequestService,
+        public CustomerRequestIdempotencyService $idempotency,
     ) {}
 
     public function getPaginatedRequests(
@@ -153,6 +157,10 @@ class CustomerRequestService
             $request->status = RequestStatus::PendingClassification;
             $request->request_text = (string) $data['request_text'];
             $request->category_id = null;
+            // Legacy synchronous path: persisting a Web pending row is the
+            // consumption moment (same as pre-pipeline). The async path
+            // never calls this method.
+            $request->quota_consumed_at = now();
             $request->save();
 
             if ($dailyQuotaExhausted) {
@@ -176,6 +184,123 @@ class CustomerRequestService
 
             return $request->fresh(['image']);
         });
+    }
+
+    /**
+     * Create the "processing placeholder" row for a brand-new async-pipeline
+     * submission. No quota/credit is consumed here — the row exists purely
+     * so a job token can be attached and polled while classification runs
+     * in a queue worker. Callers must dispatch ClassifyCustomerRequestJob
+     * with the returned row's ai_job_token ->afterCommit() once this
+     * returns (it opens/commits its own transaction).
+     */
+    public function createProcessingRequest(
+        Customer $customer,
+        string $requestText,
+        ?UploadedFile $image,
+        string $submissionToken,
+        string $jobToken,
+    ): CustomerRequest {
+        return DB::transaction(function () use ($customer, $requestText, $image, $submissionToken, $jobToken) {
+            $request = new CustomerRequest;
+            $request->public_id = (string) Str::ulid();
+            $request->customer_id = $customer->id;
+            $request->source = Source::Web;
+            $request->status = RequestStatus::PendingClassification;
+            $request->request_text = $requestText;
+            $request->category_id = null;
+            $request->submission_token = $submissionToken;
+            $request->ai_stage = AiStage::QueuedClassification;
+            $request->ai_job_token = $jobToken;
+            $request->ai_stage_updated_at = now();
+            $request->ai_attempts = 0;
+            $request->save();
+
+            $this->idempotency->remember($customer, $request, IntakeAction::Classify, $submissionToken);
+
+            $this->activityLogService->recordCreated(
+                subject: $request,
+                allowedFields: self::ACTIVITY_FIELDS,
+                subjectLabel: $customer->display_name,
+                metadata: [
+                    'action' => 'customer.request_processing_created',
+                    'customer_id' => $customer->id,
+                    'user_id' => $customer->user_id,
+                ],
+            );
+
+            if ($image) {
+                $this->requestImageService->store($request, $image);
+            }
+
+            return $request->fresh(['image']);
+        });
+    }
+
+    /**
+     * Re-arm an existing owned pending row for a fresh classification pass
+     * (customer retry/resume). Appends details / replaces the image exactly
+     * like the legacy path, then hands the row back to the caller with the
+     * ai_stage/token already advanced — caller dispatches the job.
+     */
+    public function rearmForClassification(
+        CustomerRequest $customerRequest,
+        ?string $additionalDetails,
+        ?UploadedFile $image,
+        string $submissionToken,
+        string $jobToken,
+    ): CustomerRequest {
+        return DB::transaction(function () use ($customerRequest, $additionalDetails, $image, $submissionToken, $jobToken) {
+            if (is_string($additionalDetails) && trim($additionalDetails) !== '') {
+                $customerRequest->request_text = trim($customerRequest->request_text."\n".$additionalDetails);
+            }
+
+            if ($image) {
+                $this->requestImageService->store($customerRequest, $image);
+            }
+
+            $customerRequest->submission_token = $submissionToken;
+            $customerRequest->ai_stage = AiStage::QueuedClassification;
+            $customerRequest->ai_job_token = $jobToken;
+            $customerRequest->ai_stage_updated_at = now();
+            $customerRequest->ai_attempts = 0;
+            $customerRequest->ai_stage_reason = null;
+            $customerRequest->confirmed_category_id = null;
+            $customerRequest->confirmed_classification_id = null;
+            $customerRequest->save();
+
+            $this->idempotency->remember($customerRequest->customer, $customerRequest, IntakeAction::Retry, $submissionToken);
+
+            return $customerRequest->fresh(['image']);
+        });
+    }
+
+    /**
+     * Terminal outcome for a duplicate-blocked row (early or final check).
+     * The row is kept (not deleted) so the customer always gets a
+     * permanently-available, graceful answer — nothing was ever consumed
+     * for it (quota_consumed_at stays null), so keeping it has zero quota
+     * impact.
+     */
+    public function markDuplicateBlocked(CustomerRequest $customerRequest, int $matchedRequestId): void
+    {
+        if ($this->customerExtraRequestService->hasConsumedForRequest((int) $customerRequest->id)) {
+            $this->customerExtraRequestService->restoreConsumedForRequest($customerRequest);
+        }
+
+        $customerRequest->status = RequestStatus::Cancelled;
+        $customerRequest->ai_stage = AiStage::DuplicateBlocked;
+        $customerRequest->ai_job_token = null;
+        $customerRequest->duplicate_of_customer_request_id = $matchedRequestId;
+        $customerRequest->ai_stage_reason = null;
+        $customerRequest->ai_stage_updated_at = now();
+        $customerRequest->save();
+
+        $matched = CustomerRequest::query()->find($matchedRequestId);
+        if ($matched instanceof CustomerRequest) {
+            app(CustomerRequests\CustomerRequestDuplicateNoticeService::class)
+                ->remember($customerRequest, $matched);
+        }
     }
 
     public function discardPendingUnfinalized(CustomerRequest $customerRequest): void

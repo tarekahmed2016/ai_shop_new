@@ -7,18 +7,19 @@ use App\Models\CustomerRequest;
 use App\Models\User;
 use App\Services\MerchantPermissionService;
 use App\Services\RequestMatchingService;
+use App\Support\AdminAccess;
 use App\Support\MerchantContext;
 
 class CustomerRequestPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'customer-requests.view');
     }
 
     public function view(User $user, CustomerRequest $customerRequest): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'customer-requests.view');
     }
 
     public function viewMatchedAny(User $user): bool
@@ -72,16 +73,16 @@ class CustomerRequestPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'customer-requests.create');
     }
 
     public function update(User $user, CustomerRequest $customerRequest): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'customer-requests.update');
     }
 
     public function match(User $user, CustomerRequest $customerRequest): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'matching.recalculate');
     }
 }

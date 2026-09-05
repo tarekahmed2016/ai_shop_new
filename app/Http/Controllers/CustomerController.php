@@ -74,7 +74,7 @@ class CustomerController extends Controller
 
     public function updateDailyLimit(CustomerDailyRequestLimitRequest $request)
     {
-        $this->authorize('viewAny', Customer::class);
+        $this->authorize('manageLimits', Customer::class);
         $this->customerService->updateDailyLimit(
             (int) $request->validated('daily_limit'),
             $request->validated('notes'),

@@ -7,12 +7,14 @@ use App\Enums\Customers\Status as CustomerStatus;
 use App\Enums\RequestClassifications\Status as ClassificationStatus;
 use App\Models\Category;
 use App\Models\Customer;
+use App\Models\CustomerRequest;
 use App\Models\RequestClassification;
 use App\Models\RequestMatch;
 use App\Models\User;
 use App\Services\Classification\FakeClassificationProvider;
 use App\Services\Classification\OpenAIClassificationProvider;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role as SpatieRole;
 
@@ -26,6 +28,7 @@ beforeEach(function () {
         'services.openai.base_url' => 'https://api.openai.com/v1',
     ]);
     app()->forgetInstance(AiClassificationProviderInterface::class);
+    enableAsyncClassification();
 });
 
 test('openai provider is bound when configured', function () {
@@ -70,10 +73,17 @@ test('openai classification persists usage and rejects invented categories', fun
         ], 200),
     ]);
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Broken phone screen',
-        ])
+            'submission_token' => (string) Str::ulid(),
+        ]);
+
+    $pending = CustomerRequest::query()->latest('id')->first();
+    $response->assertRedirect(route('customer.requests.show', $pending));
+
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $pending))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('classification.detected_item', 'Phone display')
@@ -109,10 +119,17 @@ test('openai api failure becomes a failed classification without matching', func
         'https://api.openai.com/v1/responses' => Http::response(['error' => ['message' => 'unavailable']], 503),
     ]);
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Something unknown',
-        ])
+            'submission_token' => (string) Str::ulid(),
+        ]);
+
+    $pending = CustomerRequest::query()->latest('id')->first();
+    $response->assertRedirect(route('customer.requests.show', $pending));
+
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $pending))
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->where('classification.failed', true));
 

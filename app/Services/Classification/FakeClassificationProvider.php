@@ -12,9 +12,12 @@ class FakeClassificationProvider implements AiClassificationProviderInterface
 {
     public ?ClassificationInput $lastInput = null;
 
+    public int $calls = 0;
+
     public function classify(ClassificationInput $input): ClassificationResult
     {
         $this->lastInput = $input;
+        $this->calls++;
         $text = $input->requestText;
         $forcedContact = $this->forcedContact($input);
 

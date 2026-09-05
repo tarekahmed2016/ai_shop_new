@@ -11,8 +11,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role as SpatieRole;
 
 test('admin can add and deduct credits with ledger history', function () {
     $admin = creditAdmin();
@@ -237,11 +235,7 @@ test('admin merchants index uses a credit balance aggregate without loading ledg
 });
 
 test('admin without add permission cannot bulk credit', function () {
-    SpatieRole::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
-    Permission::firstOrCreate(['name' => AdminPermission::View->value, 'guard_name' => 'web']);
-    $admin = User::factory()->create();
-    $admin->assignRole('admin');
-    $admin->givePermissionTo(AdminPermission::View->value);
+    $admin = creditAdmin([AdminPermission::View->value]);
     $merchant = Merchant::factory()->create();
 
     $this->actingAs($admin)

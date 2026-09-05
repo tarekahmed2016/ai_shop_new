@@ -16,6 +16,8 @@ class CertificateAwardController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('certificates-awards.view');
+
         $search = (string) $request->input('search', '');
         $typeFilter = in_array($request->input('type'), ['all', ...CertificateAwardType::values()]) ? $request->input('type') : 'all';
         $sortBy = in_array($request->input('sort_column'), ['id', 'type', 'title_ar', 'title_en', 'issuer_ar', 'issuer_en', 'issued_date', 'ordering', 'created_at']) ? $request->input('sort_column') : ($typeFilter === 'all' ? 'type' : 'ordering');
@@ -41,6 +43,8 @@ class CertificateAwardController extends Controller
 
     public function getNextOrdering(Request $request)
     {
+        $this->authorizeAdmin('certificates-awards.view');
+
         $validated = $request->validate([
             'type' => ['required', Rule::enum(CertificateAwardType::class)],
         ]);
@@ -75,6 +79,8 @@ class CertificateAwardController extends Controller
 
     public function destroy(CertificateAward $certificatesAward)
     {
+        $this->authorizeAdmin('certificates-awards.delete');
+
         $this->certificateAwardService->delete(certificateAward: $certificatesAward);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

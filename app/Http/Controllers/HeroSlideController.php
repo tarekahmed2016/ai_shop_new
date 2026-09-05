@@ -14,6 +14,8 @@ class HeroSlideController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('hero-slides.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'title_ar', 'title_en', 'ordering', 'created_at']) ? $request->input('sort_column') : 'ordering';
         $sortDir = $request->input('sort_direction', 'asc') === 'desc' ? 'desc' : 'asc';
@@ -32,6 +34,8 @@ class HeroSlideController extends Controller
 
     public function getNextOrdering()
     {
+        $this->authorizeAdmin('hero-slides.view');
+
         return response()->json([
             'ordering' => nextOrdering(model: $this->heroSlideService->orderingQuery()),
         ]);
@@ -60,6 +64,8 @@ class HeroSlideController extends Controller
 
     public function destroy(HeroSlide $heroSlide)
     {
+        $this->authorizeAdmin('hero-slides.delete');
+
         $this->heroSlideService->delete(heroSlide: $heroSlide);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

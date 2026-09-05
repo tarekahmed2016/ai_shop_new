@@ -14,6 +14,8 @@ class ServiceController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('services.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'name_ar', 'name_en', 'ordering', 'created_at']) ? $request->input('sort_column') : 'ordering';
         $sortDir = $request->input('sort_direction', 'asc') === 'desc' ? 'desc' : 'asc';
@@ -32,6 +34,8 @@ class ServiceController extends Controller
 
     public function getNextOrdering()
     {
+        $this->authorizeAdmin('services.view');
+
         return response()->json([
             'ordering' => nextOrdering(model: $this->serviceService->orderingQuery()),
         ]);
@@ -60,6 +64,8 @@ class ServiceController extends Controller
 
     public function destroy(Service $service)
     {
+        $this->authorizeAdmin('services.delete');
+
         $this->serviceService->delete(service: $service);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

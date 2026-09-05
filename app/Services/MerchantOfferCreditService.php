@@ -10,6 +10,8 @@ use App\Models\CustomerRequest;
 use App\Models\Merchant;
 use App\Models\MerchantOffer;
 use App\Models\MerchantOfferCreditTransaction;
+use App\Models\PlatformSetting;
+use App\Models\PlatformSettingChange;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
@@ -31,7 +33,24 @@ class MerchantOfferCreditService
 
     public function setEnforcementEnabled(bool $enabled): void
     {
-        $this->platformSettingService->setOfferCreditEnforcementEnabled($enabled);
+        $old = $this->isEnforcementEnabled();
+        if ($old === $enabled) {
+            return;
+        }
+
+        $actor = auth()->user() instanceof User ? auth()->user() : null;
+
+        DB::transaction(function () use ($enabled, $old, $actor) {
+            $this->platformSettingService->setOfferCreditEnforcementEnabled($enabled);
+
+            PlatformSettingChange::query()->create([
+                'key' => PlatformSetting::KEY_OFFER_CREDIT_ENFORCEMENT,
+                'old_value' => $old ? '1' : '0',
+                'new_value' => $enabled ? '1' : '0',
+                'notes' => null,
+                'changed_by_user_id' => $actor?->id,
+            ]);
+        });
     }
 
     public function maxManualAmount(): int

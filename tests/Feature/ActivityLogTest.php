@@ -111,6 +111,42 @@ test('ordinary mass assignment cannot create activity logs directly', function (
     expect(ActivityLog::count())->toBe(0);
 });
 
+test('recordChanges keeps metadata-only updates', function () {
+    $subject = User::factory()->create(['name' => 'Unchanged']);
+    $originalValues = $subject->only(['name']);
+
+    $activityLog = app(ActivityLogService::class)->recordChanges(
+        subject: $subject,
+        originalValues: $originalValues,
+        allowedFields: ['name'],
+        metadata: ['action' => 'permissions.updated'],
+        actor: $this->admin,
+    );
+
+    expect($activityLog)->not->toBeNull()
+        ->and($activityLog->old_values)->toBeNull()
+        ->and($activityLog->new_values)->toBeNull()
+        ->and($activityLog->metadata)->toBe(['action' => 'permissions.updated']);
+});
+
+test('recordAction writes explicit before and after values without secrets', function () {
+    $subject = User::factory()->create();
+
+    $activityLog = app(ActivityLogService::class)->recordAction(
+        subject: $subject,
+        event: Event::Updated,
+        oldValues: ['role' => 'staff', 'password' => 'secret'],
+        newValues: ['role' => 'admin', 'password' => 'secret'],
+        metadata: ['action' => 'user.role_changed', 'access_token' => 'tok'],
+        actor: $this->admin,
+    );
+
+    expect($activityLog->actor_id)->toBe($this->admin->id)
+        ->and($activityLog->old_values)->toBe(['role' => 'staff'])
+        ->and($activityLog->new_values)->toBe(['role' => 'admin'])
+        ->and($activityLog->metadata)->toBe(['action' => 'user.role_changed']);
+});
+
 test('creating a user through the service records activity', function () {
     $this->actingAs($this->admin)
         ->post(route('users.store'), [

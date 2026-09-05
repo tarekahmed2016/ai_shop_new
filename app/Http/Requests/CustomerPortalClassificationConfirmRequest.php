@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\Categories\Status as CategoryStatus;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -27,6 +28,7 @@ class CustomerPortalClassificationConfirmRequest extends FormRequest
                     fn ($query) => $query->where('status', CategoryStatus::Active->value)
                 ),
             ],
+            'submission_token' => CustomerRequestPipelineConfig::submissionTokenRules(),
             'customer_id' => ['prohibited'],
             'user_id' => ['prohibited'],
             'merchant_id' => ['prohibited'],

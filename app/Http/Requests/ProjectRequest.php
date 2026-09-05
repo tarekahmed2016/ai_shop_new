@@ -10,11 +10,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ProjectRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('projects.create', 'projects.update', 'project');
     }
 
     protected function prepareForValidation(): void

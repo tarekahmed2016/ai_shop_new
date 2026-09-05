@@ -12,11 +12,12 @@ use Illuminate\Validation\Rule;
 
 class CertificateAwardRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('certificates-awards.create', 'certificates-awards.update', 'certificatesAward');
     }
 
     protected function prepareForValidation(): void

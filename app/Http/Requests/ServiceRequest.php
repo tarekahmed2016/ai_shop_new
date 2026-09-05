@@ -10,11 +10,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class ServiceRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('services.create', 'services.update', 'service');
     }
 
     protected function prepareForValidation(): void

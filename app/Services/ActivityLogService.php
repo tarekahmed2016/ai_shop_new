@@ -112,7 +112,7 @@ class ActivityLogService
         $oldValues = $this->sanitizeValues($oldValues);
         $newValues = $this->sanitizeValues($newValues);
 
-        if ($oldValues === [] && $newValues === []) {
+        if ($oldValues === [] && $newValues === [] && $metadata === []) {
             return null;
         }
 
@@ -152,6 +152,40 @@ class ActivityLogService
             metadata: $metadata,
             actor: null,
             captureRequestContext: false,
+        );
+    }
+
+    /**
+     * Record an explicit admin/operator action that is not a model-field diff.
+     *
+     * @param  array<string, mixed>  $oldValues
+     * @param  array<string, mixed>  $newValues
+     * @param  array<string, mixed>  $metadata
+     */
+    public function recordAction(
+        Model $subject,
+        Event $event,
+        array $oldValues = [],
+        array $newValues = [],
+        array $metadata = [],
+        ?string $subjectLabel = null,
+        ?User $actor = null
+    ): ActivityLog {
+        $oldValues = $this->sanitizeValues($oldValues);
+        $newValues = $this->sanitizeValues($newValues);
+
+        if ($oldValues === [] && $newValues === [] && $metadata === []) {
+            throw new LogicException('Activity action requires values or metadata.');
+        }
+
+        return $this->record(
+            subject: $subject,
+            event: $event,
+            oldValues: $oldValues,
+            newValues: $newValues,
+            subjectLabel: $subjectLabel,
+            metadata: $metadata,
+            actor: $actor,
         );
     }
 

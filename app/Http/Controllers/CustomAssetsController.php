@@ -13,6 +13,8 @@ class CustomAssetsController extends Controller
 
     public function index()
     {
+        $this->authorizeAdmin('settings.update');
+
         return Inertia::render('CustomAssets/CustomAssetsPage', [
             'customAssets' => $this->companyInfoService->getCustomAssets(),
         ]);

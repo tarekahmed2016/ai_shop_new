@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ActivityLogs\Event;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Enums\Marketers\Status;
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
@@ -20,6 +21,10 @@ use Illuminate\Validation\ValidationException;
 
 class MarketerService
 {
+    public function __construct(
+        public ActivityLogService $activityLogService,
+    ) {}
+
     public function apply(User $user): Marketer
     {
         return DB::transaction(function () use ($user) {
@@ -122,11 +127,15 @@ class MarketerService
                     ]);
                 }
 
-                return Marketer::query()->create([
+                $marketer = Marketer::query()->create([
                     'user_id' => $user->id,
                     'referral_code' => $this->generateUniqueReferralCode(),
                     'status' => $status,
                 ]);
+
+                $this->recordAdminCreated($marketer);
+
+                return $marketer;
             }
 
             $email = strtolower(trim((string) $data['email']));
@@ -144,11 +153,15 @@ class MarketerService
             $user->status = UserStatus::Active;
             $user->save();
 
-            return Marketer::query()->create([
+            $marketer = Marketer::query()->create([
                 'user_id' => $user->id,
                 'referral_code' => $this->generateUniqueReferralCode(),
                 'status' => $status,
             ]);
+
+            $this->recordAdminCreated($marketer);
+
+            return $marketer;
         });
     }
 
@@ -271,10 +284,38 @@ class MarketerService
             throw new InvalidMarketerTransitionException('This status change is not allowed.');
         }
 
-        $marketer->status = $to;
-        $marketer->save();
+        return DB::transaction(function () use ($marketer, $to) {
+            $fromStatus = $marketer->status;
 
-        return $marketer;
+            $marketer->status = $to;
+            $marketer->save();
+
+            $this->activityLogService->recordAction(
+                subject: $marketer,
+                event: Event::Updated,
+                oldValues: ['status' => $fromStatus],
+                newValues: ['status' => $to],
+                metadata: [
+                    'action' => 'marketer.status_changed',
+                ],
+                subjectLabel: $marketer->user?->name ?? $marketer->referral_code,
+            );
+
+            return $marketer;
+        });
+    }
+
+    private function recordAdminCreated(Marketer $marketer): void
+    {
+        $this->activityLogService->recordAction(
+            subject: $marketer,
+            event: Event::Created,
+            newValues: ['status' => $marketer->status],
+            metadata: [
+                'action' => 'marketer.admin_created',
+            ],
+            subjectLabel: $marketer->user?->name ?? $marketer->referral_code,
+        );
     }
 
     /**

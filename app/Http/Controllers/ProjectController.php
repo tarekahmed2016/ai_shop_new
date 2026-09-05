@@ -14,6 +14,8 @@ class ProjectController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('projects.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'name_ar', 'name_en', 'client_name_ar', 'client_name_en', 'ordering', 'project_date', 'created_at']) ? $request->input('sort_column') : 'ordering';
         $sortDir = $request->input('sort_direction', 'asc') === 'desc' ? 'desc' : 'asc';
@@ -32,6 +34,8 @@ class ProjectController extends Controller
 
     public function getNextOrdering()
     {
+        $this->authorizeAdmin('projects.view');
+
         return response()->json([
             'ordering' => nextOrdering(model: $this->projectService->orderingQuery()),
         ]);
@@ -60,6 +64,8 @@ class ProjectController extends Controller
 
     public function destroy(Project $project)
     {
+        $this->authorizeAdmin('projects.delete');
+
         $this->projectService->delete(project: $project);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

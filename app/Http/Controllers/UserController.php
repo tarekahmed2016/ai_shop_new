@@ -16,6 +16,8 @@ class UserController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('users.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'name', 'email', 'created_at']) ? $request->input('sort_column') : 'created_at';
         $sortDir = $request->input('sort_direction', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -50,6 +52,8 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        $this->authorizeAdmin('users.delete');
+
         $this->userService->delete(user: $user);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

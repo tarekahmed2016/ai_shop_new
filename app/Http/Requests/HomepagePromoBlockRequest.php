@@ -13,11 +13,12 @@ use Illuminate\Validation\Rule;
 
 class HomepagePromoBlockRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('homepage-promos.create', 'homepage-promos.update', 'homepagePromo');
     }
 
     protected function prepareForValidation(): void

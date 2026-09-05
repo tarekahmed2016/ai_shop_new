@@ -73,6 +73,14 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(8)->by((string) ($request->user()?->id ?: $request->ip()));
         });
 
+        RateLimiter::for('classification-status', function (Request $request) {
+            return Limit::perMinute(60)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
+        RateLimiter::for('merchant-team-write', function (Request $request) {
+            return Limit::perMinute(10)->by((string) ($request->user()?->id ?: $request->ip()));
+        });
+
         Vite::prefetch(concurrency: 3);
 
         $this->app->bind(ReportHandlerInterface::class, SafeWebPushReportHandler::class);

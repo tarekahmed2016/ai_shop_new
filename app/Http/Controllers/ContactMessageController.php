@@ -14,6 +14,8 @@ class ContactMessageController extends Controller
 
     public function index(Request $request): Response
     {
+        $this->authorizeAdmin('contact-messages.view');
+
         $search = (string) $request->input('search', '');
         $statusFilter = in_array($request->input('status'), ['all', 'read', 'unread']) ? $request->input('status') : 'all';
 
@@ -33,6 +35,8 @@ class ContactMessageController extends Controller
 
     public function markAsRead(ContactMessage $contactMessage)
     {
+        $this->authorizeAdmin('contact-messages.update');
+
         $this->contactMessageService->markAsRead(contactMessage: $contactMessage);
 
         return redirect()->back()->with('success', 'تم التحديث بنجاح');
@@ -40,6 +44,8 @@ class ContactMessageController extends Controller
 
     public function markAsUnread(ContactMessage $contactMessage)
     {
+        $this->authorizeAdmin('contact-messages.update');
+
         $this->contactMessageService->markAsUnread(contactMessage: $contactMessage);
 
         return redirect()->back()->with('success', 'تم التحديث بنجاح');
@@ -47,6 +53,8 @@ class ContactMessageController extends Controller
 
     public function destroy(ContactMessage $contactMessage)
     {
+        $this->authorizeAdmin('contact-messages.delete');
+
         $this->contactMessageService->delete(contactMessage: $contactMessage);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

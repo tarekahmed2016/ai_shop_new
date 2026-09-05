@@ -8,13 +8,14 @@ use App\Models\MerchantOffer;
 use App\Models\MerchantOfferImage;
 use App\Models\User;
 use App\Services\MerchantPermissionService;
+use App\Support\AdminAccess;
 use App\Support\MerchantContext;
 
 class MerchantOfferPolicy
 {
     public function view(User $user, MerchantOffer $offer): bool
     {
-        if ($user->hasRole('admin')) {
+        if (AdminAccess::allows($user, 'customer-requests.view')) {
             return true;
         }
 

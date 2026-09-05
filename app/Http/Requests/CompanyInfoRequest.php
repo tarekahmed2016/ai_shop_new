@@ -11,11 +11,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CompanyInfoRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdmin('settings.update');
     }
 
     protected function prepareForValidation(): void

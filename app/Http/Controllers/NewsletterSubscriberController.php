@@ -14,6 +14,8 @@ class NewsletterSubscriberController extends Controller
 
     public function index(Request $request): Response
     {
+        $this->authorizeAdmin('newsletter-subscribers.view');
+
         $search = (string) $request->input('search', '');
         $sortBy = in_array($request->input('sort_column'), ['id', 'email', 'created_at']) ? $request->input('sort_column') : 'created_at';
         $sortDir = $request->input('sort_direction', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -36,6 +38,8 @@ class NewsletterSubscriberController extends Controller
 
     public function destroy(NewsletterSubscriber $newsletterSubscriber)
     {
+        $this->authorizeAdmin('newsletter-subscribers.delete');
+
         $this->newsletterSubscriberService->delete(subscriber: $newsletterSubscriber);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');
@@ -43,6 +47,8 @@ class NewsletterSubscriberController extends Controller
 
     public function unsubscribe(NewsletterSubscriber $newsletterSubscriber)
     {
+        $this->authorizeAdmin('newsletter-subscribers.update');
+
         $this->newsletterSubscriberService->unsubscribe(subscriber: $newsletterSubscriber);
 
         return redirect()->back()->with('success', 'تم التحديث بنجاح');

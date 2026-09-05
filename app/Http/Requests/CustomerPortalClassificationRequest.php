@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Enums\CustomerRequests\Status as RequestStatus;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use App\Support\SafeRasterImage;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,6 +31,7 @@ class CustomerPortalClassificationRequest extends FormRequest
                     fn ($query) => $query->where('status', RequestStatus::PendingClassification->value)
                 ),
             ],
+            'submission_token' => CustomerRequestPipelineConfig::submissionTokenRules(),
             'image' => SafeRasterImage::rules(required: false),
             'customer_id' => ['prohibited'],
             'user_id' => ['prohibited'],

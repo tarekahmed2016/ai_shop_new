@@ -10,9 +10,11 @@ use Illuminate\Validation\Rule;
 
 class ClientPartnerRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
+
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('clients-partners.create', 'clients-partners.update', 'clientsPartner');
     }
 
     protected function prepareForValidation(): void

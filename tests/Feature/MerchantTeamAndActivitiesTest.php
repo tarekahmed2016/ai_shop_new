@@ -125,6 +125,8 @@ test('owner can attach an existing centralized user without overwriting password
         ->withSession(teamSession($merchant))
         ->post(route('merchant.team.store'), [
             'email' => 'existing@example.com',
+            'name' => 'Ignored Name',
+            'phone' => '0199999999',
             'role' => Role::Staff->value,
             'status' => MembershipStatus::Active->value,
             'password' => 'should-not-apply',
@@ -134,6 +136,8 @@ test('owner can attach an existing centralized user without overwriting password
 
     expect($existing->fresh()->password)->toBe($hashBefore)
         ->and(Hash::check('original-pass-99', $existing->fresh()->password))->toBeTrue()
+        ->and($existing->fresh()->name)->not->toBe('Ignored Name')
+        ->and($existing->fresh()->phone)->not->toBe('0199999999')
         ->and(MerchantUser::query()->where('merchant_id', $merchant->id)->where('user_id', $existing->id)->exists())->toBeTrue();
 });
 
@@ -147,6 +151,9 @@ test('same user can belong to multiple merchants via team attach', function () {
         ->withSession(teamSession($merchantA))
         ->post(route('merchant.team.store'), [
             'email' => 'shared@example.com',
+            'name' => 'Shared User',
+            'password' => 'password12',
+            'password_confirmation' => 'password12',
             'role' => Role::Staff->value,
             'status' => MembershipStatus::Active->value,
         ])
@@ -164,6 +171,9 @@ test('duplicate membership in same merchant is rejected', function () {
         ->withSession(teamSession($merchant))
         ->post(route('merchant.team.store'), [
             'email' => 'dup@example.com',
+            'name' => 'Dup User',
+            'password' => 'password12',
+            'password_confirmation' => 'password12',
             'role' => Role::Manager->value,
             'status' => MembershipStatus::Active->value,
         ])

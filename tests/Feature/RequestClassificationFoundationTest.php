@@ -2,6 +2,8 @@
 
 use App\Contracts\AiClassificationProviderInterface;
 use App\Enums\Categories\Status as CategoryStatus;
+use App\Enums\CustomerRequests\AiStage;
+use App\Enums\CustomerRequests\Status;
 use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Enums\RequestClassifications\Status as ClassificationStatus;
@@ -16,12 +18,24 @@ use App\Models\User;
 use App\Services\Classification\FakeClassificationProvider;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role as SpatieRole;
 
+/**
+ * QUEUE_CONNECTION=sync in phpunit.xml means every ClassifyCustomerRequestJob
+ * / DetectDuplicateCustomerRequestJob / FinalizeCustomerRequestJob dispatch
+ * in this file runs synchronously, inline, before the triggering HTTP
+ * response is returned. That lets these tests assert on the pipeline's
+ * *end* state after one HTTP call, exactly like the old synchronous
+ * implementation did — while the actual production code path never calls
+ * an AI provider from the HTTP request (see AsyncClassificationPipelineTest
+ * for tests that freeze the pipeline mid-flight with Queue::fake()).
+ */
 beforeEach(function () {
     Storage::fake('local');
     SpatieRole::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+    enableAsyncClassification();
 });
 
 function classificationCustomer(?array $userAttrs = []): array
@@ -43,15 +57,22 @@ function classificationCustomer(?array $userAttrs = []): array
     return compact('user', 'customer');
 }
 
+function submissionToken(): string
+{
+    return (string) Str::ulid();
+}
+
 test('guest and unlinked user cannot classify', function () {
     $this->post(route('customer.requests.classify'), [
         'request_text' => 'Need ABS sensor FORCE_HIGH',
+        'submission_token' => submissionToken(),
     ])->assertRedirect(route('login'));
 
     $plain = User::factory()->create();
     $this->actingAs($plain)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Need ABS sensor',
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect(route('account.customer.enable'));
 });
@@ -84,6 +105,28 @@ test('customer submitted category_id is prohibited and cannot skip ai classifica
         ->and(file_get_contents(resource_path('js/Pages/CustomerPortal/RequestShowPage.vue')))->not->toContain('CategoryTreeSelector');
 });
 
+test('classify validates required fields and never calls AI without a valid submission', function () {
+    ['user' => $user, 'customer' => $customer] = classificationCustomer();
+
+    $this->actingAs($user)
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor for my car',
+            'submission_token' => submissionToken(),
+            'customer_id' => $customer->id,
+            'user_id' => $user->id,
+            'merchant_id' => 999,
+        ])
+        ->assertSessionHasErrors(['customer_id', 'user_id', 'merchant_id']);
+
+    $this->actingAs($user)
+        ->post(route('customer.requests.classify'), [
+            'request_text' => 'ABS Sensor for my car',
+        ])
+        ->assertSessionHasErrors('submission_token');
+
+    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(0);
+});
+
 test('high confidence suggestion does not match until customer confirms', function () {
     $parent = Category::factory()->create(['name_en' => 'Vehicles', 'status' => CategoryStatus::Active]);
     $category = Category::factory()->create([
@@ -95,34 +138,22 @@ test('high confidence suggestion does not match until customer confirms', functi
     MerchantCategory::factory()->create(['merchant_id' => $merchant->id, 'category_id' => $category->id]);
     ['user' => $user, 'customer' => $customer] = classificationCustomer();
 
-    $this->actingAs($user)
+    $response = $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor for my car',
-            'customer_id' => $customer->id,
-            'user_id' => $user->id,
-            'merchant_id' => 999,
-        ])
-        ->assertSessionHasErrors(['customer_id', 'user_id', 'merchant_id']);
-
-    $this->actingAs($user)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'ABS Sensor for my car',
+            'submission_token' => submissionToken(),
             'image' => UploadedFile::fake()->image('part.jpg'),
-        ])
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('CustomerPortal/RequestCreatePage', false)
-            ->where('classification.confidence_band', 'high')
-            ->where('classification.detected_item', 'ABS Sensor')
-            ->where('classification.primary.category_public_id', $category->public_id)
-            ->where('classification.failed', false)
-        );
+        ]);
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
+    $response->assertRedirect(route('customer.requests.show', $pending));
+
     $attempt = RequestClassification::query()->where('customer_request_id', $pending->id)->first();
 
-    expect($pending->status)->toBe(RequestStatus::PendingClassification)
-        ->and($pending->category_id)->toBeNull()
+    expect($pending->fresh()->status)->toBe(RequestStatus::PendingClassification)
+        ->and($pending->fresh()->ai_stage)->toBe(AiStage::ReadyForReview)
+        ->and($pending->fresh()->category_id)->toBeNull()
+        ->and($pending->fresh()->quota_consumed_at)->toBeNull()
         ->and(RequestMatch::query()->where('customer_request_id', $pending->id)->count())->toBe(0)
         ->and($attempt->status)->toBe(ClassificationStatus::Suggested)
         ->and($attempt->suggested_category_id)->toBe($category->id)
@@ -130,6 +161,17 @@ test('high confidence suggestion does not match until customer confirms', functi
         ->and($attempt->model)->toBe('fake-v1')
         ->and($attempt->input_has_image)->toBeTrue()
         ->and($attempt->confidence)->toBe(0.9);
+
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $pending))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('CustomerPortal/RequestShowPage', false)
+            ->where('classification.confidence_band', 'high')
+            ->where('classification.detected_item', 'ABS Sensor')
+            ->where('classification.primary.category_public_id', $category->public_id)
+            ->where('classification.failed', false)
+        );
 
     $provider = app(AiClassificationProviderInterface::class);
     expect($provider)->toBeInstanceOf(FakeClassificationProvider::class)
@@ -147,11 +189,14 @@ test('high confidence suggestion does not match until customer confirms', functi
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $attempt), [
             'category_id' => $category->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect(route('customer.requests.show', $pending));
 
     expect($pending->fresh()->status)->toBe(RequestStatus::Ready)
+        ->and($pending->fresh()->ai_stage)->toBe(AiStage::Ready)
         ->and($pending->fresh()->category_id)->toBe($category->id)
+        ->and($pending->fresh()->quota_consumed_at)->not->toBeNull()
         ->and($attempt->fresh()->status)->toBe(ClassificationStatus::Confirmed)
         ->and($attempt->fresh()->customer_confirmed_category_id)->toBe($category->id)
         ->and(RequestMatch::query()->where('customer_request_id', $pending->id)->count())->toBe(1);
@@ -160,25 +205,31 @@ test('high confidence suggestion does not match until customer confirms', functi
 test('medium confidence presents up to three suggestions and confirms selected one', function () {
     $a = Category::factory()->create(['name_en' => 'Auto Spare Parts']);
     $b = Category::factory()->create(['name_en' => 'Auto Electrical']);
-    $c = Category::factory()->create(['name_en' => 'Car Accessories']);
+    Category::factory()->create(['name_en' => 'Car Accessories']);
     ['user' => $user] = classificationCustomer();
 
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'FORCE_MEDIUM electrical part',
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk()
+        ->assertRedirect();
+
+    $classification = RequestClassification::query()->latest('id')->first();
+    expect(count($classification->alternatives ?? []))->toBeLessThanOrEqual(3)
+        ->and($classification->customerRequest->ai_stage)->toBe(AiStage::ReadyForReview);
+
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $classification->customerRequest))
         ->assertInertia(fn (Assert $page) => $page
             ->where('classification.confidence_band', 'medium')
             ->has('classification.suggestions')
         );
 
-    $classification = RequestClassification::query()->latest('id')->first();
-    expect(count($classification->alternatives ?? []))->toBeLessThanOrEqual(3);
-
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $b->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect();
 
@@ -194,24 +245,28 @@ test('low confidence shows needs more information and retry creates history', fu
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'FORCE_LOW unknown part',
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk()
+        ->assertRedirect();
+
+    $pending = CustomerRequest::query()->first();
+
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $pending))
         ->assertInertia(fn (Assert $page) => $page
             ->where('classification.confidence_band', 'low')
             ->where('classification.needs_more_information', true)
             ->where('classification.question', 'What vehicle make and model is this part for?')
         );
 
-    $pending = CustomerRequest::query()->first();
     expect(RequestMatch::query()->count())->toBe(0);
 
     $this->actingAs($user)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'FORCE_LOW unknown part',
+        ->post(route('customer.requests.classify.resume', $pending), [
             'additional_details' => 'Toyota Camry 2018',
-            'pending_request_id' => $pending->public_id,
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk();
+        ->assertRedirect(route('customer.requests.show', $pending));
 
     expect(RequestClassification::query()->count())->toBe(2)
         ->and($pending->fresh()->request_text)->toContain('Toyota Camry 2018');
@@ -219,25 +274,30 @@ test('low confidence shows needs more information and retry creates history', fu
 
 test('customer cannot classify or confirm another customers request', function () {
     $category = Category::factory()->create();
-    ['user' => $userA, 'customer' => $customerA] = classificationCustomer(['email' => 'a-class@example.com']);
+    ['user' => $userA] = classificationCustomer(['email' => 'a-class@example.com']);
     ['user' => $userB] = classificationCustomer(['email' => 'b-class@example.com']);
 
     $this->actingAs($userA)
-        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor']);
+        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor', 'submission_token' => submissionToken()]);
 
     $classification = RequestClassification::query()->first();
     $pending = $classification->customerRequest;
 
     $this->actingAs($userB)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'more',
-            'pending_request_id' => $pending->public_id,
+        ->get(route('customer.requests.show', $pending))
+        ->assertNotFound();
+
+    $this->actingAs($userB)
+        ->post(route('customer.requests.classify.resume', $pending), [
+            'additional_details' => 'more',
+            'submission_token' => submissionToken(),
         ])
         ->assertNotFound();
 
     $this->actingAs($userB)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $category->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertNotFound();
 
@@ -252,17 +312,21 @@ test('inactive and invented categories from provider are ignored and cannot be c
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'FORCE_MALFORMED mystery',
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('classification.primary', null)
-        );
+        ->assertRedirect();
+
+    $first = RequestClassification::query()->latest('id')->first();
+    $this->actingAs($user)
+        ->get(route('customer.requests.show', $first->customerRequest))
+        ->assertInertia(fn (Assert $page) => $page->where('classification.primary', null));
 
     $this->actingAs($user)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'FORCE_INACTIVE '.$inactive->public_id,
+        ->post(route('customer.requests.classify.resume', $first->customerRequest), [
+            'additional_details' => 'FORCE_INACTIVE '.$inactive->public_id,
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     $classification = RequestClassification::query()->latest('id')->first();
     expect($classification->suggested_category_id)->toBeNull();
@@ -270,12 +334,14 @@ test('inactive and invented categories from provider are ignored and cannot be c
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $inactive->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertSessionHasErrors('category_id');
 
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $active->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertSessionHasErrors('category_id');
 });
@@ -287,26 +353,54 @@ test('provider failure stays friendly and retry remains available', function () 
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'FORCE_FAIL boom',
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->where('classification.failed', true)
-        );
-
-    expect(RequestClassification::query()->latest('id')->first()->status)->toBe(ClassificationStatus::Failed)
-        ->and(RequestMatch::query()->count())->toBe(0);
+        ->assertRedirect();
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
 
+    expect($pending->ai_stage)->toBe(AiStage::Failed)
+        ->and(RequestClassification::query()->latest('id')->first()->status)->toBe(ClassificationStatus::Failed)
+        ->and(RequestMatch::query()->count())->toBe(0)
+        ->and($pending->quota_consumed_at)->toBeNull();
+
     $this->actingAs($user)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'ABS Sensor after failure',
-            'pending_request_id' => $pending->public_id,
+        ->get(route('customer.requests.show', $pending))
+        ->assertInertia(fn (Assert $page) => $page->where('classification.failed', true));
+
+    // The stored request_text is appended-to, not replaced (same mechanism
+    // used for "needs more information" clarifications), so the original
+    // FORCE_FAIL trigger is still present and the provider fails again —
+    // this proves retry creates a fresh attempt/history row and the row
+    // stays retryable (never gets stuck) even across repeated failures.
+    $this->actingAs($user)
+        ->post(route('customer.requests.classify.resume', $pending), [
+            'additional_details' => 'still no luck',
+            'submission_token' => submissionToken(),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
-        ->and(RequestClassification::query()->where('customer_request_id', $pending->id)->count())->toBe(2);
+        ->and(RequestClassification::query()->where('customer_request_id', $pending->id)->count())->toBe(2)
+        ->and($pending->fresh()->ai_stage)->toBe(AiStage::Failed);
+
+    // A retry with text that no longer contains the trigger word succeeds.
+    $secondPending = CustomerRequest::factory()->create([
+        'customer_id' => $customer->id,
+        'status' => Status::PendingClassification,
+        'ai_stage' => AiStage::Failed,
+        'ai_stage_updated_at' => now(),
+        'request_text' => 'a broken sensor',
+    ]);
+
+    $this->actingAs($user)
+        ->post(route('customer.requests.classify.resume', $secondPending), [
+            'additional_details' => 'ABS Sensor for my car',
+            'submission_token' => submissionToken(),
+        ])
+        ->assertRedirect();
+
+    expect($secondPending->fresh()->ai_stage)->toBe(AiStage::ReadyForReview);
 });
 
 test('pending classification can be resumed from request details after leaving create page', function () {
@@ -318,9 +412,10 @@ test('pending classification can be resumed from request details after leaving c
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor for my car',
+            'submission_token' => submissionToken(),
             'image' => UploadedFile::fake()->image('part.jpg'),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
     $firstAttempt = RequestClassification::query()->where('customer_request_id', $pending->id)->first();
@@ -355,6 +450,7 @@ test('pending classification can be resumed from request details after leaving c
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $firstAttempt), [
             'category_id' => $category->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect(route('customer.requests.show', $pending));
 
@@ -375,6 +471,7 @@ test('customer cannot confirm an unrelated category on a pending request', funct
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor',
+            'submission_token' => submissionToken(),
         ]);
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
@@ -382,6 +479,7 @@ test('customer cannot confirm an unrelated category on a pending request', funct
     $this->actingAs($user)
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $override->public_id,
+            'submission_token' => submissionToken(),
             'customer_request_id' => 999,
         ])
         ->assertSessionHasErrors('customer_request_id');
@@ -389,6 +487,7 @@ test('customer cannot confirm an unrelated category on a pending request', funct
     $this->actingAs($user)
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $override->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertSessionHasErrors('category_id');
 
@@ -404,6 +503,7 @@ test('retry classification adds history on the same request and reuses the priva
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor',
+            'submission_token' => submissionToken(),
             'image' => UploadedFile::fake()->image('part.jpg'),
         ]);
 
@@ -413,6 +513,7 @@ test('retry classification adds history on the same request and reuses the priva
     $this->actingAs($user)
         ->post(route('customer.requests.classify.resume', $pending), [
             'additional_details' => 'Toyota Camry 2018',
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect(route('customer.requests.show', $pending));
 
@@ -444,6 +545,7 @@ test('needs more information can be resumed with clarification on the same reque
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'FORCE_LOW unknown part',
+            'submission_token' => submissionToken(),
         ]);
 
     $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
@@ -459,6 +561,7 @@ test('needs more information can be resumed with clarification on the same reque
     $this->actingAs($user)
         ->post(route('customer.requests.classify.resume', $pending), [
             'additional_details' => 'Honda Civic 2016',
+            'submission_token' => submissionToken(),
         ])
         ->assertRedirect();
 
@@ -473,7 +576,7 @@ test('customer cannot resume confirm or retry another customers pending request'
     ['user' => $userB] = classificationCustomer(['email' => 'owner-b@example.com']);
 
     $this->actingAs($userA)
-        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor']);
+        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor', 'submission_token' => submissionToken()]);
 
     $classification = RequestClassification::query()->first();
     $pending = $classification->customerRequest;
@@ -485,18 +588,21 @@ test('customer cannot resume confirm or retry another customers pending request'
     $this->actingAs($userB)
         ->post(route('customer.requests.classify.resume', $pending), [
             'additional_details' => 'more',
+            'submission_token' => submissionToken(),
         ])
         ->assertNotFound();
 
     $this->actingAs($userB)
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $category->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertNotFound();
 
     $this->actingAs($userB)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $category->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertNotFound();
 
@@ -512,6 +618,7 @@ test('inactive suggested category cannot be confirmed from request details', fun
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor',
+            'submission_token' => submissionToken(),
         ]);
 
     $pending = CustomerRequest::query()->first();
@@ -529,6 +636,7 @@ test('inactive suggested category cannot be confirmed from request details', fun
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $attempt), [
             'category_id' => $active->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertSessionHasErrors('category_id');
 
@@ -537,6 +645,7 @@ test('inactive suggested category cannot be confirmed from request details', fun
     $this->actingAs($user)
         ->post(route('customer.requests.category', $pending), [
             'category_id' => $other->public_id,
+            'submission_token' => submissionToken(),
         ])
         ->assertSessionHasErrors('category_id');
 
@@ -578,20 +687,15 @@ test('ready closed and cancelled requests cannot be classified again', function 
         $this->actingAs($user)
             ->post(route('customer.requests.classify.resume', $row), [
                 'additional_details' => 'retry',
+                'submission_token' => submissionToken(),
             ])
             ->assertSessionHasErrors();
 
         $this->actingAs($user)
             ->post(route('customer.requests.category', $row), [
                 'category_id' => $category->public_id,
+                'submission_token' => submissionToken(),
             ])
             ->assertSessionHasErrors('category_id');
     }
-
-    $this->actingAs($user)
-        ->post(route('customer.requests.classify'), [
-            'request_text' => 'ABS Sensor',
-            'pending_request_id' => $ready->public_id,
-        ])
-        ->assertSessionHasErrors('pending_request_id');
 });

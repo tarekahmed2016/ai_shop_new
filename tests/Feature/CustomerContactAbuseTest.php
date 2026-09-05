@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\CustomerRequests\AiStage;
 use App\Enums\Customers\Status as CustomerStatus;
 use App\Enums\Marketers\Status as MarketerStatus;
 use App\Enums\MerchantMemberships\Status as MembershipStatus;
@@ -17,6 +18,7 @@ use App\Services\CustomerContactAbuseService;
 use App\Services\MerchantPermissionService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role as SpatieRole;
 
@@ -26,6 +28,7 @@ beforeEach(function () {
     app(MerchantPermissionService::class)->seedCatalog();
     $this->admin = User::factory()->create();
     $this->admin->assignRole('admin');
+    enableAsyncClassification();
 });
 
 function abuseCustomer(array $userAttrs = []): array
@@ -49,6 +52,7 @@ test('text contact abuse blocks persistence matching and suspends the customer',
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => $text,
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertSessionHasErrors('request_text');
 
@@ -79,8 +83,9 @@ test('safe product text is not treated as contact abuse', function (string $text
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => $text,
+            'submission_token' => (string) Str::ulid(),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     expect($customer->fresh()->status)->toBe(CustomerStatus::Active)
         ->and(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
@@ -94,17 +99,28 @@ test('safe product text is not treated as contact abuse', function (string $text
 ]);
 
 test('mocked image contact abuse is blocked without live ai', function (string $token) {
+    // This trigger is only detectable by the (fake, mocked) AI vision
+    // pass, which now runs exclusively inside the queued classification
+    // job — never inline on the HTTP request. So the row IS created (the
+    // pipeline can't know it's abusive until the job runs), and gets
+    // suspended/failed asynchronously rather than being rejected upfront
+    // with a session validation error.
     Category::factory()->create();
     ['user' => $user, 'customer' => $customer] = abuseCustomer(['email' => 'image-'.strtolower($token).'@example.com']);
 
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Need this part '.$token,
+            'submission_token' => (string) Str::ulid(),
             'image' => UploadedFile::fake()->image('part.jpg'),
         ])
-        ->assertSessionHasErrors('request_text');
+        ->assertRedirect();
 
-    expect(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(0)
+    $pending = CustomerRequest::query()->where('customer_id', $customer->id)->first();
+
+    expect($pending)->not->toBeNull()
+        ->and($pending->ai_stage)->toBe(AiStage::Failed)
+        ->and($pending->quota_consumed_at)->toBeNull()
         ->and(RequestMatch::query()->count())->toBe(0)
         ->and($customer->fresh()->isSuspended())->toBeTrue();
 })->with([
@@ -121,9 +137,10 @@ test('normal product images are allowed', function () {
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor for my car',
+            'submission_token' => (string) Str::ulid(),
             'image' => UploadedFile::fake()->image('part.jpg'),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     expect($customer->fresh()->status)->toBe(CustomerStatus::Active)
         ->and(CustomerRequest::query()->where('customer_id', $customer->id)->count())->toBe(1)
@@ -131,16 +148,21 @@ test('normal product images are allowed', function () {
 });
 
 test('forced qr contact token is blocked before matching', function () {
+    // Same as above: FORCE_CONTACT_QR is only recognized by the fake AI
+    // provider, so the row is created then asynchronously failed/blocked
+    // by the classification job — matching never happens for it.
     Category::factory()->create();
     ['user' => $user, 'customer' => $customer] = abuseCustomer(['email' => 'qr@example.com']);
 
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Need part FORCE_CONTACT_QR',
+            'submission_token' => (string) Str::ulid(),
         ])
-        ->assertSessionHasErrors('request_text');
+        ->assertRedirect();
 
-    expect(CustomerRequest::query()->count())->toBe(0)
+    expect(CustomerRequest::query()->count())->toBe(1)
+        ->and(RequestMatch::query()->count())->toBe(0)
         ->and($customer->fresh()->suspension_types)->toContain('qr');
 });
 
@@ -168,6 +190,7 @@ test('customer suspension does not disable merchant or marketer capability', fun
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'Call me on 9xxxxxxx',
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertSessionHasErrors('request_text');
 
@@ -184,7 +207,7 @@ test('customer suspension does not disable merchant or marketer capability', fun
         );
 
     $this->actingAs($user)
-        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor'])
+        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor', 'submission_token' => (string) Str::ulid()])
         ->assertSessionHasErrors('request_text');
 
     $this->actingAs($user)
@@ -216,6 +239,6 @@ test('customer suspension does not disable merchant or marketer capability', fun
         ->and($customer->fresh()->suspension_reason)->toBe('contact_information_in_request');
 
     $this->actingAs($user)
-        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor'])
-        ->assertOk();
+        ->post(route('customer.requests.classify'), ['request_text' => 'ABS Sensor', 'submission_token' => (string) Str::ulid()])
+        ->assertRedirect();
 });

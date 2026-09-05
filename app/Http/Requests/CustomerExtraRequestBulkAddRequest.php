@@ -13,7 +13,7 @@ class CustomerExtraRequestBulkAddRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('viewAny', Customer::class) === true;
+        return $this->user()?->can('manageLimits', Customer::class) === true;
     }
 
     /**

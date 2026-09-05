@@ -2,9 +2,11 @@
 import { computed, ref, watch } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { generateSubmissionToken } from '../../Utils/submissionToken.js'
 
 const { t, locale } = useI18n()
 const page = usePage()
+const asyncEnabled = computed(() => page.props.classificationAsyncEnabled === true)
 const classification = computed(() => page.props.classification || null)
 const pendingRequest = computed(() => page.props.pendingRequest || null)
 const requestQuota = computed(() => page.props.requestQuota || page.props.customerContext?.request_quota || {})
@@ -18,15 +20,21 @@ const atLimit = computed(() => !hasPending.value && !canCreate.value)
 const selectedSuggestion = ref('')
 const additionalDetails = ref('')
 
+// Generated once per page load so a double-click / network retry reuses
+// the same idempotency key. Only used when the async pipeline flag is on.
+const submissionToken = ref(generateSubmissionToken())
+
 const classifyForm = useForm({
     request_text: '',
     additional_details: '',
     pending_request_id: '',
+    submission_token: submissionToken.value,
     image: null,
 })
 
 const confirmForm = useForm({
     category_id: '',
+    submission_token: submissionToken.value,
 })
 
 watch(classification, (value) => {
@@ -51,15 +59,27 @@ const onFileChange = (event) => {
 const analyze = () => {
     classifyForm.additional_details = additionalDetails.value
     classifyForm.pending_request_id = pendingRequest.value?.public_id || ''
+    if (asyncEnabled.value) {
+        classifyForm.submission_token = submissionToken.value
+    }
     classifyForm.post(route('customer.requests.classify'), {
         forceFormData: true,
         preserveScroll: true,
+        onFinish: () => {
+            if (asyncEnabled.value) {
+                submissionToken.value = generateSubmissionToken()
+                classifyForm.submission_token = submissionToken.value
+            }
+        },
     })
 }
 
 const confirmSuggestion = (categoryPublicId) => {
     if (!classification.value?.public_id || !categoryPublicId) return
     confirmForm.category_id = categoryPublicId
+    if (asyncEnabled.value) {
+        confirmForm.submission_token = submissionToken.value
+    }
     confirmForm.post(route('customer.requests.classifications.confirm', classification.value.public_id))
 }
 
@@ -105,7 +125,7 @@ const canSubmit = computed(() => !isSuspended.value && !atLimit.value && !!class
                     <p v-if="classifyForm.errors.image" class="form-error">{{ classifyForm.errors.image }}</p>
                 </div>
 
-                <div v-if="!classification" class="flex flex-wrap gap-3">
+                <div v-if="asyncEnabled || !classification" class="flex flex-wrap gap-3">
                     <button
                         type="button"
                         class="btn btn-primary px-4 py-2 disabled:opacity-50"
@@ -116,7 +136,7 @@ const canSubmit = computed(() => !isSuspended.value && !atLimit.value && !!class
                     </button>
                 </div>
 
-                <div v-if="classification" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <div v-if="!asyncEnabled && classification" class="space-y-4 border-t border-gray-200 dark:border-gray-700 pt-4">
                     <p v-if="classification.failed" class="form-error">{{ t('customerPortal.classify.failed') }}</p>
 
                     <template v-else-if="classification.confidence_band === 'high' && classification.primary">

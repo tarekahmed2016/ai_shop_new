@@ -10,11 +10,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class HeroSlideRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('hero-slides.create', 'hero-slides.update', 'heroSlide');
     }
 
     protected function prepareForValidation(): void

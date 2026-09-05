@@ -16,7 +16,7 @@ class CustomerExtraRequestAddRequest extends FormRequest
         $customer = $this->route('customer');
 
         return $customer instanceof Customer
-            && $this->user()?->can('update', $customer) === true;
+            && $this->user()?->can('manageLimits', $customer) === true;
     }
 
     /**

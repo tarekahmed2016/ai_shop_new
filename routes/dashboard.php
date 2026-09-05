@@ -86,8 +86,9 @@ Route::middleware(['merchant'])->group(function () {
     Route::delete('/merchant/activities/{merchantCategory}', [MerchantBusinessActivityController::class, 'destroy'])->name('merchant.activities.destroy');
 
     Route::get('/merchant/team', [MerchantTeamController::class, 'index'])->name('merchant.team.index');
-    Route::get('/merchant/team/lookup', [MerchantTeamController::class, 'lookup'])->name('merchant.team.lookup');
-    Route::post('/merchant/team', [MerchantTeamController::class, 'store'])->name('merchant.team.store');
+    Route::post('/merchant/team', [MerchantTeamController::class, 'store'])
+        ->middleware('throttle:merchant-team-write')
+        ->name('merchant.team.store');
     Route::patch('/merchant/team/{membership}', [MerchantTeamController::class, 'update'])->name('merchant.team.update');
     Route::delete('/merchant/team/{membership}', [MerchantTeamController::class, 'destroy'])->name('merchant.team.destroy');
     Route::get('/merchant/business-profile', [MerchantBusinessProfileController::class, 'edit'])->name('merchant.business-profile.edit');

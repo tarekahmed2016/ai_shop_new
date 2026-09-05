@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import DashboardModalShell from '../../Common/DashboardModalShell.vue'
@@ -19,10 +19,6 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const existingUser = ref(null)
-const lookupLoading = ref(false)
-const lookupMessage = ref('')
-
 const form = useForm({
   email: '',
   name: '',
@@ -35,7 +31,6 @@ const form = useForm({
 })
 
 const isEdit = computed(() => !!props.membership)
-const isExistingUser = computed(() => !!existingUser.value && !isEdit.value)
 const isOwnerTarget = computed(() => props.membership?.role === 'merchant-owner' || props.membership?.is_full_access)
 
 const assignableForRole = computed(() => {
@@ -76,9 +71,6 @@ const defaultPermissionsForRole = (role) => {
 watch(() => props.isOpen, async (isOpen) => {
   if (!isOpen) return
 
-  existingUser.value = null
-  lookupMessage.value = ''
-
   if (props.membership) {
     form.email = props.membership.user?.email || ''
     form.name = props.membership.user?.name || ''
@@ -116,56 +108,11 @@ const togglePermission = (key) => {
   }
 }
 
-const lookupEmail = async () => {
-  if (isEdit.value) return
-
-  const email = (form.email || '').trim().toLowerCase()
-  existingUser.value = null
-  lookupMessage.value = ''
-
-  if (!email || !email.includes('@')) {
-    return
-  }
-
-  lookupLoading.value = true
-
-  try {
-    const response = await fetch(route('merchant.team.lookup', { email }), {
-      headers: {
-        Accept: 'application/json',
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      credentials: 'same-origin',
-    })
-
-    if (!response.ok) {
-      return
-    }
-
-    const payload = await response.json()
-
-    if (payload.exists && payload.user) {
-      existingUser.value = payload.user
-      form.name = payload.user.name || ''
-      form.phone = payload.user.phone || ''
-      form.password = ''
-      form.password_confirmation = ''
-      lookupMessage.value = t('merchantTeam.form.existingUserHint')
-    } else {
-      lookupMessage.value = t('merchantTeam.form.newUserHint')
-    }
-  } finally {
-    lookupLoading.value = false
-  }
-}
-
 const submit = () => {
   const options = {
     preserveScroll: true,
     onSuccess: () => {
       form.reset()
-      existingUser.value = null
-      lookupMessage.value = ''
       emit('close')
     }
   }
@@ -187,15 +134,12 @@ const submit = () => {
 
   const payload = {
     email: form.email,
+    name: form.name,
+    phone: form.phone,
+    password: form.password,
+    password_confirmation: form.password_confirmation,
     role: form.role,
     status: form.status,
-  }
-
-  if (!existingUser.value) {
-    payload.name = form.name
-    payload.phone = form.phone
-    payload.password = form.password
-    payload.password_confirmation = form.password_confirmation
   }
 
   if (showPermissionEditor.value) {
@@ -211,8 +155,6 @@ const submit = () => {
 const handleClose = () => {
   form.reset()
   form.clearErrors()
-  existingUser.value = null
-  lookupMessage.value = ''
   emit('close')
 }
 </script>
@@ -245,35 +187,32 @@ const handleClose = () => {
           required
           :disabled="isEdit"
           class="form-input text-body disabled:opacity-60"
-          @blur="lookupEmail"
         />
-        <p v-if="lookupLoading" class="text-muted text-sm mt-1">{{ t('merchantTeam.form.lookingUp') }}</p>
-        <p v-else-if="lookupMessage" class="text-muted text-sm mt-1">{{ lookupMessage }}</p>
+        <p v-if="!isEdit" class="text-muted text-sm mt-1">{{ t('merchantTeam.form.addHint') }}</p>
         <p v-if="form.errors.email" class="form-error">{{ form.errors.email }}</p>
       </div>
 
       <div v-if="!isEdit">
         <label class="form-label text-label">
           {{ t('merchantTeam.form.nameLabel') }}
-          <span v-if="!isExistingUser" class="text-red-500">*</span>
+          <span class="text-red-500">*</span>
         </label>
         <input
           v-model="form.name"
           type="text"
-          :required="!isExistingUser"
-          :disabled="isExistingUser"
-          class="form-input text-body disabled:opacity-60"
+          required
+          class="form-input text-body"
         />
         <p v-if="form.errors.name" class="form-error">{{ form.errors.name }}</p>
       </div>
 
-      <div v-if="!isEdit && !isExistingUser">
+      <div v-if="!isEdit">
         <label class="form-label text-label">{{ t('merchantTeam.form.phoneLabel') }}</label>
         <input v-model="form.phone" type="text" class="form-input text-body" />
         <p v-if="form.errors.phone" class="form-error">{{ form.errors.phone }}</p>
       </div>
 
-      <div v-if="!isEdit && !isExistingUser">
+      <div v-if="!isEdit">
         <label class="form-label text-label">
           {{ t('merchantTeam.form.passwordLabel') }} <span class="text-red-500">*</span>
         </label>
@@ -281,7 +220,7 @@ const handleClose = () => {
         <p v-if="form.errors.password" class="form-error">{{ form.errors.password }}</p>
       </div>
 
-      <div v-if="!isEdit && !isExistingUser">
+      <div v-if="!isEdit">
         <label class="form-label text-label">
           {{ t('merchantTeam.form.passwordConfirmationLabel') }} <span class="text-red-500">*</span>
         </label>

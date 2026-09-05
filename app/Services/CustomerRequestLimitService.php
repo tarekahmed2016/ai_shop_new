@@ -2,10 +2,13 @@
 
 namespace App\Services;
 
+use App\Enums\CustomerRequests\AiStage;
 use App\Enums\CustomerRequests\Source;
+use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
 use App\Support\CustomerRequests\CustomerRequestMessages;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
@@ -53,6 +56,23 @@ class CustomerRequestLimitService
         return max(1, min($max, (int) $override));
     }
 
+    /**
+     * Count of requests that actually consumed a daily-quota slot today.
+     *
+     * The day-window bucketing intentionally stays keyed on `created_at`
+     * (the day the customer submitted), but a row now only counts once
+     * `quota_consumed_at` is set — i.e. once it has actually reached the
+     * authoritative finalization gate (App\Jobs\FinalizeCustomerRequestJob).
+     * Rows still mid-pipeline (queued/classifying/duplicate-checking/
+     * reviewing), rows that failed classification, and rows blocked as
+     * duplicates never set `quota_consumed_at`, so they are correctly
+     * excluded here. Historical rows are backfilled with
+     * `quota_consumed_at = created_at` (see the migration), which is
+     * provably count-identical to the pre-existing raw-row-count query for
+     * every row that existed before this pipeline, because under the old
+     * synchronous code a Web/WhatsApp row was never persisted until quota
+     * had already been consumed.
+     */
     public function todayCount(Customer $customer, ?CarbonImmutable $now = null): int
     {
         [$start, $end] = $this->todayUtcRange($now);
@@ -60,8 +80,83 @@ class CustomerRequestLimitService
         return CustomerRequest::query()
             ->where('customer_id', $customer->id)
             ->whereIn('source', [Source::Web, Source::WhatsApp])
+            ->whereNotNull('quota_consumed_at')
             ->whereBetween('created_at', [$start, $end])
             ->count();
+    }
+
+    /**
+     * Anti-abuse ceiling: how many non-Ready (still PendingClassification)
+     * rows this customer currently has open, regardless of ai_stage. This
+     * is independent of the daily accepted-request quota — quota is no
+     * longer tied to row existence, so without this a customer could
+     * otherwise accumulate unlimited unconfirmed AI-processing rows at real
+     * (unmetered) AI cost.
+     */
+    public function openAttemptCount(Customer $customer): int
+    {
+        return CustomerRequest::query()
+            ->where('customer_id', $customer->id)
+            ->where('status', RequestStatus::PendingClassification)
+            ->count();
+    }
+
+    public function maxOpenAiAttempts(): int
+    {
+        return CustomerRequestPipelineConfig::maxOpenAiAttempts();
+    }
+
+    public function assertOpenAttemptCeilingNotReached(Customer $customer): void
+    {
+        if ($this->openAttemptCount($customer) >= $this->maxOpenAiAttempts()) {
+            throw ValidationException::withMessages([
+                'request_text' => CustomerRequestMessages::tooManyOpenAttempts(),
+            ]);
+        }
+    }
+
+    /**
+     * Rule A1: at most one row per customer may occupy the classification
+     * in-flight stage set at a time.
+     */
+    public function hasClassificationInFlight(Customer $customer, ?int $exceptRequestId = null): bool
+    {
+        return CustomerRequest::query()
+            ->where('customer_id', $customer->id)
+            ->when($exceptRequestId !== null, fn ($q) => $q->where('id', '!=', $exceptRequestId))
+            ->whereIn('ai_stage', array_map(fn (AiStage $s) => $s->value, AiStage::classificationInFlight()))
+            ->exists();
+    }
+
+    public function assertNoClassificationInFlight(Customer $customer, ?int $exceptRequestId = null): void
+    {
+        if ($this->hasClassificationInFlight($customer, $exceptRequestId)) {
+            throw ValidationException::withMessages([
+                'request_text' => CustomerRequestMessages::classificationAlreadyInProgress(),
+            ]);
+        }
+    }
+
+    /**
+     * Rule A2: at most one row per customer may occupy the finalization
+     * in-flight stage set at a time.
+     */
+    public function hasFinalizationInFlight(Customer $customer, ?int $exceptRequestId = null): bool
+    {
+        return CustomerRequest::query()
+            ->where('customer_id', $customer->id)
+            ->when($exceptRequestId !== null, fn ($q) => $q->where('id', '!=', $exceptRequestId))
+            ->whereIn('ai_stage', array_map(fn (AiStage $s) => $s->value, AiStage::finalizationInFlight()))
+            ->exists();
+    }
+
+    public function assertNoFinalizationInFlight(Customer $customer, ?int $exceptRequestId = null): void
+    {
+        if ($this->hasFinalizationInFlight($customer, $exceptRequestId)) {
+            throw ValidationException::withMessages([
+                'category_id' => CustomerRequestMessages::classificationAlreadyInProgress(),
+            ]);
+        }
     }
 
     /**

@@ -7,10 +7,12 @@ use App\Models\MerchantOffer;
 use App\Models\MerchantUser;
 use App\Models\User;
 use App\Services\MerchantOfferCreditService;
+use App\Support\AdminPermissionCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role as SpatieRole;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /*
@@ -27,6 +29,10 @@ use Tests\TestCase;
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature', 'Benchmark');
+
+pest()->beforeEach(function () {
+    seedAdminPermissionCatalog();
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------
@@ -54,23 +60,60 @@ expect()->extend('toBeOne', function () {
 |
 */
 
+function seedAdminPermissionCatalog(): void
+{
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+    foreach (AdminPermissionCatalog::names() as $name) {
+        Permission::firstOrCreate([
+            'name' => $name,
+            'guard_name' => 'web',
+        ]);
+    }
+
+    $admin = SpatieRole::firstOrCreate([
+        'name' => 'admin',
+        'guard_name' => 'web',
+    ]);
+    $admin->syncPermissions(AdminPermissionCatalog::names());
+
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+}
+
+function syncAdminRolePermissions(array $permissions): void
+{
+    $admin = SpatieRole::findByName('admin', 'web');
+    $admin->syncPermissions($permissions);
+    app(PermissionRegistrar::class)->forgetCachedPermissions();
+}
+
+function adminWithPermissions(array $permissions): User
+{
+    seedAdminPermissionCatalog();
+    syncAdminRolePermissions($permissions);
+
+    $admin = User::factory()->create();
+    $admin->assignRole('admin');
+
+    return $admin->fresh();
+}
+
 function creditAdmin(?array $permissions = null): User
 {
-    SpatieRole::firstOrCreate(['name' => 'admin', 'guard_name' => 'web']);
+    seedAdminPermissionCatalog();
 
-    foreach (AdminPermission::values() as $name) {
-        Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+    if ($permissions !== null) {
+        $kept = array_values(array_diff(
+            AdminPermissionCatalog::names(),
+            AdminPermission::values(),
+        ));
+        syncAdminRolePermissions(array_merge($kept, $permissions));
     }
 
     $admin = User::factory()->create();
     $admin->assignRole('admin');
 
-    $grant = $permissions ?? AdminPermission::values();
-    if ($grant !== []) {
-        $admin->givePermissionTo($grant);
-    }
-
-    return $admin;
+    return $admin->fresh();
 }
 
 function enableOfferCreditEnforcement(): void
@@ -89,6 +132,11 @@ function attachMerchantOwner(Merchant $merchant, ?User $owner = null): User
     ]);
 
     return $owner;
+}
+
+function enableAsyncClassification(): void
+{
+    config(['classification.async_enabled' => true]);
 }
 
 function revealCustomerOfferContact(User $user, MerchantOffer $offer): TestResponse

@@ -8,6 +8,7 @@ use App\Enums\MerchantPermissions\PermissionKey;
 use App\Enums\Merchants\Status as MerchantStatus;
 use App\Enums\RequestMatches\Status as MatchStatus;
 use App\Enums\Users\Status as UserStatus;
+use App\Jobs\DispatchMatchedRequestNotificationChunk;
 use App\Jobs\DispatchMatchedRequestNotifications;
 use App\Models\Category;
 use App\Models\CustomerRequest;
@@ -24,8 +25,10 @@ use App\Services\MatchedRequestRecipientResolver;
 use App\Services\MerchantPermissionService;
 use App\Services\RequestMatchingService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
@@ -260,7 +263,7 @@ test('rerun and orchestration retry do not duplicate recipient notifications', f
     Notification::assertSentToTimes($user, MatchedCustomerRequestNotification::class, 1);
 
     $job = new DispatchMatchedRequestNotifications((int) $request->id, $result['created_match_ids']);
-    $job->handle(app(MatchedRequestPushDispatcher::class));
+    $job->handle(app(MatchedRequestRecipientResolver::class));
     Notification::assertSentToTimes($user, MatchedCustomerRequestNotification::class, 1);
 });
 
@@ -284,7 +287,7 @@ test('one thousand matched recipients are processed in configured chunks', funct
     });
 
     $job = new DispatchMatchedRequestNotifications((int) $seeded['request']->id, $seeded['matchIds']);
-    $job->handle(app(MatchedRequestPushDispatcher::class));
+    $job->handle(app(MatchedRequestRecipientResolver::class));
 
     $resolver = app(MatchedRequestRecipientResolver::class);
     expect($resolver->chunks)->toBe(5)
@@ -337,4 +340,243 @@ test('offer notifications remain a separate dispatcher', function () {
         ->and($source)->not->toContain('DispatchMatchedRequestNotifications')
         ->and($offerNotification)->not->toContain('public int $tries')
         ->and(class_exists(CustomerOfferReceivedNotification::class))->toBeTrue();
+});
+
+/*
+|--------------------------------------------------------------------------
+| Bounded chunk-job fan-out (orchestration job splits into batched jobs)
+|--------------------------------------------------------------------------
+*/
+
+test('a single match produces exactly one bounded chunk job', function () {
+    Bus::fake();
+
+    $job = new DispatchMatchedRequestNotifications(999, [1]);
+    $job->handle(app(MatchedRequestRecipientResolver::class));
+
+    Bus::assertBatchCount(1);
+    Bus::assertBatched(function ($batch) {
+        return $batch->jobs->count() === 1
+            && $batch->jobs[0] instanceof DispatchMatchedRequestNotificationChunk
+            && $batch->jobs[0]->matchIds === [1]
+            && $batch->jobs[0]->chunkIndex === 1
+            && $batch->jobs[0]->chunkCount === 1;
+    });
+});
+
+test('a single match is still delivered end to end through the new chunked architecture', function () {
+    Notification::fake();
+    ['user' => $user, 'request' => $request] = fanOutMatchedSetup();
+
+    app(RequestMatchingService::class)->sync($request);
+
+    Notification::assertSentToTimes($user, MatchedCustomerRequestNotification::class, 1);
+});
+
+test('exactly the configured chunk size worth of matches produces a single chunk job', function () {
+    Bus::fake();
+    config(['notifications.matched_request_chunk_size' => 200]);
+    $matchIds = range(1, 200);
+
+    $job = new DispatchMatchedRequestNotifications(999, $matchIds);
+    $job->handle(app(MatchedRequestRecipientResolver::class));
+
+    Bus::assertBatchCount(1);
+    Bus::assertBatched(function ($batch) use ($matchIds) {
+        return $batch->jobs->count() === 1
+            && $batch->jobs[0]->matchIds === $matchIds
+            && $batch->jobs[0]->chunkCount === 1;
+    });
+});
+
+test('more than the configured chunk size worth of matches produces multiple bounded chunk jobs', function () {
+    Bus::fake();
+    config(['notifications.matched_request_chunk_size' => 200]);
+    $matchIds = range(1, 401);
+
+    $job = new DispatchMatchedRequestNotifications(999, $matchIds);
+    $job->handle(app(MatchedRequestRecipientResolver::class));
+
+    Bus::assertBatchCount(1);
+    Bus::assertBatched(function ($batch) {
+        if ($batch->jobs->count() !== 3) {
+            return false;
+        }
+
+        $sizes = $batch->jobs->map(fn ($job) => count($job->matchIds))->all();
+        $allIds = $batch->jobs->flatMap(fn ($job) => $job->matchIds)->sort()->values()->all();
+        $chunkCounts = $batch->jobs->map(fn ($job) => $job->chunkCount)->unique()->all();
+        $chunkIndexes = $batch->jobs->map(fn ($job) => $job->chunkIndex)->sort()->values()->all();
+
+        return $sizes === [200, 200, 1]
+            && $allIds === range(1, 401)
+            && $chunkCounts === [3]
+            && $chunkIndexes === [1, 2, 3];
+    });
+});
+
+test('ten thousand matches never load into a single unbounded job', function () {
+    Bus::fake();
+    config(['notifications.matched_request_chunk_size' => 200]);
+    $matchIds = range(1, 10000);
+
+    $job = new DispatchMatchedRequestNotifications(999, $matchIds);
+    $job->handle(app(MatchedRequestRecipientResolver::class));
+
+    Bus::assertBatchCount(1);
+    Bus::assertBatched(function ($batch) {
+        return $batch->jobs->count() === 50
+            && $batch->jobs->every(fn ($job) => count($job->matchIds) <= 200);
+    });
+});
+
+test('the batch tolerates individual chunk failures instead of cancelling the whole request', function () {
+    Bus::fake();
+    $matchIds = range(1, 401);
+
+    $job = new DispatchMatchedRequestNotifications(999, $matchIds);
+    $job->handle(app(MatchedRequestRecipientResolver::class));
+
+    Bus::assertBatched(function ($batch) {
+        return $batch->allowsFailures() === true;
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Failure logging
+|--------------------------------------------------------------------------
+*/
+
+test('a permanently failed chunk logs customer request id, chunk identifiers, and exception info', function () {
+    Log::spy();
+
+    $chunk = new DispatchMatchedRequestNotificationChunk(
+        customerRequestId: 4242,
+        matchIds: [10, 11, 12],
+        chunkIndex: 2,
+        chunkCount: 5,
+    );
+
+    $exception = new RuntimeException('recipient lookup exploded');
+    $chunk->failed($exception);
+
+    Log::shouldHaveReceived('error')->withArgs(function ($message, $context) {
+        return $message === 'Matched-request notification chunk failed permanently'
+            && $context['customer_request_id'] === 4242
+            && $context['chunk_index'] === 2
+            && $context['chunk_count'] === 5
+            && $context['match_ids_count'] === 3
+            && $context['exception_class'] === RuntimeException::class
+            && $context['exception_message'] === 'recipient lookup exploded'
+            && ! array_key_exists('match_ids', $context);
+    });
+});
+
+test('a permanently failed orchestration dispatch logs customer request id and match count', function () {
+    Log::spy();
+
+    $job = new DispatchMatchedRequestNotifications(4242, [10, 11, 12]);
+    $exception = new RuntimeException('batch store failed');
+    $job->failed($exception);
+
+    Log::shouldHaveReceived('error')->withArgs(function ($message, $context) {
+        return $message === 'Matched-request notification dispatch failed permanently'
+            && $context['customer_request_id'] === 4242
+            && $context['match_ids_count'] === 3
+            && $context['exception_class'] === RuntimeException::class;
+    });
+});
+
+/*
+|--------------------------------------------------------------------------
+| Queue configuration safety
+|--------------------------------------------------------------------------
+*/
+
+test('database queue retry_after stays safely above every matched-request job timeout', function () {
+    $retryAfter = (int) config('queue.connections.database.retry_after');
+    $orchestrationTimeout = (new DispatchMatchedRequestNotifications(1, [1]))->timeout;
+    $chunkTimeout = (new DispatchMatchedRequestNotificationChunk(1, [1], 1, 1))->timeout;
+
+    expect($retryAfter)->toBeGreaterThan($orchestrationTimeout)
+        ->and($retryAfter)->toBeGreaterThan($chunkTimeout);
+});
+
+/*
+|--------------------------------------------------------------------------
+| Commit ordering + idempotent retries
+|--------------------------------------------------------------------------
+*/
+
+test('the orchestration job is never queued before the triggering transaction commits', function () {
+    Queue::fake();
+
+    try {
+        DB::transaction(function () {
+            app(MatchedRequestPushDispatcher::class)->dispatchAfterCommit(777, [1, 2, 3]);
+            Queue::assertNotPushed(DispatchMatchedRequestNotifications::class);
+
+            throw new RuntimeException('force rollback');
+        });
+    } catch (RuntimeException) {
+        // expected
+    }
+
+    Queue::assertNotPushed(DispatchMatchedRequestNotifications::class);
+
+    DB::transaction(function () {
+        app(MatchedRequestPushDispatcher::class)->dispatchAfterCommit(778, [4, 5, 6]);
+        Queue::assertNotPushed(DispatchMatchedRequestNotifications::class);
+    });
+
+    Queue::assertPushed(DispatchMatchedRequestNotifications::class, 1);
+});
+
+test('retrying a chunk job after it already succeeded does not duplicate the notification', function () {
+    Notification::fake();
+    ['user' => $user, 'request' => $request] = fanOutMatchedSetup();
+    $result = app(RequestMatchingService::class)->sync($request);
+
+    Notification::assertSentToTimes($user, MatchedCustomerRequestNotification::class, 1);
+
+    $chunk = new DispatchMatchedRequestNotificationChunk(
+        (int) $request->id,
+        $result['created_match_ids'],
+        1,
+        1,
+    );
+
+    // Simulate the queue worker retrying the same chunk job again.
+    $chunk->handle(app(MatchedRequestPushDispatcher::class));
+    $chunk->handle(app(MatchedRequestPushDispatcher::class));
+
+    Notification::assertSentToTimes($user, MatchedCustomerRequestNotification::class, 1);
+});
+
+test('recipient permission filtering is preserved when notifications route through chunk jobs', function () {
+    Notification::fake();
+    ['user' => $owner, 'merchant' => $merchant, 'request' => $request] = fanOutMatchedSetup();
+    $staff = User::factory()->create(['status' => UserStatus::Active]);
+    fanOutMembership($staff, $merchant, Role::Staff);
+
+    $noView = User::factory()->create(['status' => UserStatus::Active]);
+    $noViewMembership = fanOutMembership($noView, $merchant, Role::Staff);
+    app(MerchantPermissionService::class)->syncPermissions($noViewMembership, [
+        PermissionKey::TeamView->value,
+    ], log: false);
+
+    $result = app(RequestMatchingService::class)->sync($request);
+
+    $chunk = new DispatchMatchedRequestNotificationChunk(
+        (int) $request->id,
+        $result['created_match_ids'],
+        1,
+        1,
+    );
+    $chunk->handle(app(MatchedRequestPushDispatcher::class));
+
+    Notification::assertSentTo($owner, MatchedCustomerRequestNotification::class);
+    Notification::assertSentTo($staff, MatchedCustomerRequestNotification::class);
+    Notification::assertNotSentTo($noView, MatchedCustomerRequestNotification::class);
 });

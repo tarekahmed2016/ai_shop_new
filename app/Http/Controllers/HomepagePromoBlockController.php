@@ -15,6 +15,8 @@ class HomepagePromoBlockController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('homepage-promos.view');
+
         $search = (string) $request->input('search', '');
         $typeFilter = in_array($request->input('type'), array_merge(['all'], HomepagePromoType::values())) ? $request->input('type') : 'all';
         $sortBy = in_array($request->input('sort_column'), ['id', 'title_ar', 'title_en', 'type', 'ordering', 'created_at']) ? $request->input('sort_column') : 'ordering';
@@ -45,6 +47,8 @@ class HomepagePromoBlockController extends Controller
 
     public function getNextOrdering(Request $request)
     {
+        $this->authorizeAdmin('homepage-promos.view');
+
         $type = HomepagePromoType::tryFrom((string) $request->input('type', HomepagePromoType::FeatureBand->value))
             ?? HomepagePromoType::FeatureBand;
 
@@ -79,6 +83,8 @@ class HomepagePromoBlockController extends Controller
 
     public function destroy(HomepagePromoBlock $homepagePromo)
     {
+        $this->authorizeAdmin('homepage-promos.delete');
+
         $this->homepagePromoBlockService->delete(block: $homepagePromo);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

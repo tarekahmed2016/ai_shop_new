@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Support\AdminPermissionCatalog;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -16,54 +17,7 @@ class RoleSeeder extends Seeder
     {
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
-        $permissions = [
-            'users.view',
-            'users.create',
-            'users.update',
-            'users.delete',
-            'roles.view',
-            'roles.create',
-            'roles.update',
-            'roles.delete',
-            'services.view',
-            'services.create',
-            'services.update',
-            'services.delete',
-            'projects.view',
-            'projects.create',
-            'projects.update',
-            'projects.delete',
-            'team-members.view',
-            'team-members.create',
-            'team-members.update',
-            'team-members.delete',
-            'clients-partners.view',
-            'clients-partners.create',
-            'clients-partners.update',
-            'clients-partners.delete',
-            'certificates-awards.view',
-            'certificates-awards.create',
-            'certificates-awards.update',
-            'certificates-awards.delete',
-            'contact-messages.view',
-            'contact-messages.update',
-            'contact-messages.delete',
-            'settings.update',
-            'pages.view',
-            'pages.create',
-            'pages.update',
-            'pages.delete',
-            'marketers.view',
-            'marketers.create',
-            'marketers.update',
-            'marketers.approve',
-            'marketers.reject',
-            'marketers.activate',
-            'merchant-credits.view',
-            'merchant-credits.add',
-            'merchant-credits.deduct',
-            'merchant-credits.manage-settings',
-        ];
+        $permissions = AdminPermissionCatalog::names();
 
         foreach ($permissions as $permission) {
             Permission::firstOrCreate([

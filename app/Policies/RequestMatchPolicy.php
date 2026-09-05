@@ -4,18 +4,19 @@ namespace App\Policies;
 
 use App\Models\RequestMatch;
 use App\Models\User;
+use App\Support\AdminAccess;
 use App\Support\MerchantContext;
 
 class RequestMatchPolicy
 {
     public function viewAny(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'matching.view');
     }
 
     public function view(User $user, RequestMatch $requestMatch): bool
     {
-        if ($user->hasRole('admin')) {
+        if (AdminAccess::allows($user, 'matching.view')) {
             return true;
         }
 
@@ -24,12 +25,12 @@ class RequestMatchPolicy
 
     public function create(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'matching.recalculate');
     }
 
     public function update(User $user, RequestMatch $requestMatch): bool
     {
-        if ($user->hasRole('admin')) {
+        if (AdminAccess::allows($user, 'matching.recalculate')) {
             return true;
         }
 
@@ -38,12 +39,12 @@ class RequestMatchPolicy
 
     public function delete(User $user, RequestMatch $requestMatch): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'matching.recalculate');
     }
 
     public function match(User $user): bool
     {
-        return $user->hasRole('admin');
+        return AdminAccess::allows($user, 'matching.recalculate');
     }
 
     private function ownsActiveMatch(RequestMatch $requestMatch): bool

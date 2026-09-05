@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Marketer;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -9,7 +10,7 @@ class MarketerCommissionSettingsRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->hasRole('admin') === true;
+        return $this->user()?->can('manageCommissionSettings', Marketer::class) === true;
     }
 
     /**

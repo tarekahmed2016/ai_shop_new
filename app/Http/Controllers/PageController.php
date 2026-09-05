@@ -14,6 +14,8 @@ class PageController extends Controller
 
     public function index(Request $request)
     {
+        $this->authorizeAdmin('pages.view');
+
         $search = (string) $request->input('search', '');
         $status = $request->filled('status')
             ? filter_var($request->input('status'), FILTER_VALIDATE_BOOLEAN)
@@ -55,6 +57,8 @@ class PageController extends Controller
 
     public function destroy(Page $page)
     {
+        $this->authorizeAdmin('pages.delete');
+
         $this->pageService->delete($page);
 
         return redirect()->back()->with('success', 'تم الحذف بنجاح');

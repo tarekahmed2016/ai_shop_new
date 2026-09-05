@@ -10,11 +10,12 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class TeamMemberRequest extends FormRequest
 {
+    use Concerns\AuthorizesAdminPermission;
     use SanitizesRichTextInput;
 
     public function authorize(): bool
     {
-        return true;
+        return $this->authorizeAdminMutation('team-members.create', 'team-members.update', 'teamMember');
     }
 
     protected function prepareForValidation(): void

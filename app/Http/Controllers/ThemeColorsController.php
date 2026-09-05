@@ -13,6 +13,8 @@ class ThemeColorsController extends Controller
 
     public function index()
     {
+        $this->authorizeAdmin('settings.update');
+
         return Inertia::render('ThemeColors/ThemeColorsPage', [
             'themeColors' => $this->companyInfoService->getThemeColors(),
         ]);

@@ -4,25 +4,42 @@ namespace App\Services;
 
 use App\Contracts\AiClassificationProviderInterface;
 use App\Enums\Categories\Status as CategoryStatus;
+use App\Enums\CustomerRequests\AiStage;
+use App\Enums\CustomerRequests\IntakeAction;
 use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Enums\RequestClassifications\Status as ClassificationStatus;
 use App\Exceptions\DuplicateCustomerRequestException;
+use App\Jobs\ClassifyCustomerRequestJob;
+use App\Jobs\FinalizeCustomerRequestJob;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerRequest;
 use App\Models\RequestClassification;
 use App\Models\RequestImage;
+use App\Services\CustomerRequests\CustomerRequestAiStageService;
+use App\Services\CustomerRequests\CustomerRequestIdempotencyService;
 use App\Support\Classification\ClassificationCandidate;
 use App\Support\Classification\ClassificationInput;
 use App\Support\Classification\ClassificationResult;
 use App\Support\CustomerRequests\CustomerRequestMessages;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
 use App\Support\CustomerRequests\NormalizedRequestSnapshot;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
+/**
+ * Classification + confirm orchestration.
+ *
+ * While classification.async_enabled is false, classify()/confirm()/retry()/
+ * finalizeWithCategory() remain the live synchronous HTTP path (OpenAI
+ * inside the request). When the flag is on, HTTP handlers call the intake*
+ * methods instead; those never call an AI provider and only dispatch jobs.
+ * runClassificationAttempt() is the async job body.
+ */
 class RequestClassificationService
 {
     public function __construct(
@@ -34,7 +51,13 @@ class RequestClassificationService
         public CustomerRequestLimitService $customerRequestLimitService,
         public CustomerRequestDuplicateDetectionService $duplicateDetectionService,
         public NormalizedRequestSnapshotService $normalizedRequestSnapshotService,
+        public CustomerRequestAiStageService $stageService,
+        public CustomerRequestIdempotencyService $idempotency,
     ) {}
+
+    // =====================================================================
+    // Legacy synchronous path (classification.async_enabled = false)
+    // =====================================================================
 
     /**
      * @param  array<string, mixed>  $data
@@ -158,8 +181,6 @@ class RequestClassificationService
     }
 
     /**
-     * Retry classification against an existing pending request. Does not create a new customer_request.
-     *
      * @param  array<string, mixed>  $data
      */
     public function retry(Customer $customer, CustomerRequest $request, array $data, ?UploadedFile $image = null): RequestClassification
@@ -176,6 +197,316 @@ class RequestClassificationService
             'pending_request_id' => $request->public_id,
         ], $image);
     }
+
+    // =====================================================================
+    // Intake (async HTTP request path — zero AI calls)
+    // =====================================================================
+
+    /**
+     * Start a brand-new async classification pipeline. Idempotent per
+     * (customer, submission_token): a repeated POST with the same token
+     * returns the same row without creating a second one or dispatching a
+     * second job.
+     */
+    public function intakeClassify(Customer $customer, string $requestText, ?UploadedFile $image, string $submissionToken): CustomerRequest
+    {
+        $this->customerContactAbuseService->assertCanCreate($customer);
+
+        $text = trim($requestText);
+        $layerOne = $this->contactInformationScanner->scanText($text);
+        if ($layerOne->detected) {
+            $this->customerContactAbuseService->blockAndSuspend($customer, $layerOne->types);
+        }
+
+        // IMPORTANT: the per-customer lock below (runSerialized) must be
+        // fully released before the classification job is dispatched.
+        // With QUEUE_CONNECTION=sync (as in tests), job dispatch runs the
+        // job inline, and DetectDuplicateCustomerRequestJob acquires this
+        // exact same per-customer lock — re-entering a non-reentrant
+        // Cache::lock from the same call stack would deadlock until the
+        // lock's wait-timeout. Dispatching only after the lock closure
+        // returns keeps this safe under every queue driver.
+        $dispatch = null;
+
+        $request = $this->duplicateDetectionService->runSerialized($customer, function () use ($customer, $text, $image, $submissionToken, &$dispatch) {
+            $existing = $this->idempotency->findRequest($customer, IntakeAction::Classify, $submissionToken)
+                ?? $this->findBySubmissionToken($customer, $submissionToken);
+            if ($existing !== null) {
+                return $existing;
+            }
+
+            $this->customerRequestLimitService->assertOpenAttemptCeilingNotReached($customer);
+            $this->customerRequestLimitService->assertNoClassificationInFlight($customer);
+            // Advisory fast-fail only — the authoritative check happens
+            // once more, atomically, inside FinalizeCustomerRequestJob.
+            $this->customerRequestLimitService->assertWithinLimit($customer);
+
+            $jobToken = $this->stageService->newToken();
+
+            try {
+                $created = $this->customerRequestService->createProcessingRequest(
+                    $customer,
+                    $text,
+                    $image,
+                    $submissionToken,
+                    $jobToken,
+                );
+            } catch (UniqueConstraintViolationException $exception) {
+                // Lost a race against an identical concurrent retry of the
+                // same token (e.g. two browser tabs). Return the winner.
+                return $this->idempotency->findRequest($customer, IntakeAction::Classify, $submissionToken)
+                    ?? $this->findBySubmissionToken($customer, $submissionToken)
+                    ?? throw $exception;
+            }
+
+            $dispatch = ['id' => $created->id, 'token' => $jobToken];
+
+            return $created;
+        });
+
+        if ($dispatch !== null) {
+            ClassifyCustomerRequestJob::dispatch($dispatch['id'], $dispatch['token'])->afterCommit();
+        }
+
+        return $request;
+    }
+
+    /**
+     * Re-run classification on an existing owned row (customer retry after
+     * a failure, or "add more details" from the review screen going back
+     * through AI again). Idempotent per (row, submission_token).
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function intakeRetryClassification(Customer $customer, CustomerRequest $request, array $data, ?UploadedFile $image, string $submissionToken): CustomerRequest
+    {
+        if ((int) $request->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        $this->customerContactAbuseService->assertCanCreate($customer);
+
+        $additional = isset($data['additional_details']) ? (string) $data['additional_details'] : null;
+        if (is_string($additional) && trim($additional) !== '') {
+            $layerOne = $this->contactInformationScanner->scanText($additional);
+            if ($layerOne->detected) {
+                $this->customerContactAbuseService->blockAndSuspend($customer, $layerOne->types);
+            }
+        }
+
+        // See the identical comment in intakeClassify() — dispatch must
+        // happen only after the per-customer lock is released.
+        $dispatch = null;
+
+        $updated = $this->duplicateDetectionService->runSerialized($customer, function () use ($customer, $request, $additional, $image, $submissionToken, &$dispatch) {
+            $request->refresh();
+
+            $accepted = $this->idempotency->find($customer, IntakeAction::Retry, $submissionToken);
+            if ($accepted !== null) {
+                if ((int) $accepted->customer_request_id !== (int) $request->id) {
+                    throw ValidationException::withMessages([
+                        'request_text' => 'This request can no longer be classified.',
+                    ]);
+                }
+
+                return $request; // idempotent resend of the exact same retry click
+            }
+
+            if ($request->submission_token === $submissionToken) {
+                $this->idempotency->remember($customer, $request, IntakeAction::Retry, $submissionToken);
+
+                return $request;
+            }
+
+            // ai_stage === null is a legacy row (classified synchronously
+            // before this pipeline existed) — resumable exactly like
+            // before as long as it's still open (PendingClassification).
+            // It simply graduates into the async pipeline from here on.
+            $legacyOpen = $request->ai_stage === null && $request->status === RequestStatus::PendingClassification;
+            if (! $legacyOpen && ($request->ai_stage === null || ! $request->ai_stage->isTerminalClassification())) {
+                throw ValidationException::withMessages([
+                    'request_text' => 'This request can no longer be classified.',
+                ]);
+            }
+
+            $this->customerRequestLimitService->assertNoClassificationInFlight($customer, exceptRequestId: $request->id);
+
+            $jobToken = $this->stageService->newToken();
+            $result = $this->customerRequestService->rearmForClassification($request, $additional, $image, $submissionToken, $jobToken);
+
+            $dispatch = ['id' => $result->id, 'token' => $jobToken];
+
+            return $result;
+        });
+
+        if ($dispatch !== null) {
+            ClassifyCustomerRequestJob::dispatch($dispatch['id'], $dispatch['token'])->afterCommit();
+        }
+
+        return $updated;
+    }
+
+    /**
+     * Confirm a suggested category (either an explicit RequestClassification
+     * — the "confirm" route — or the row's own latest classification — the
+     * "finalizeWithCategory" resume-review route). Both funnel here.
+     * Idempotent per (row, submission_token): does NOT touch quota/credit —
+     * that only ever happens inside FinalizeCustomerRequestJob.
+     */
+    public function intakeConfirm(Customer $customer, CustomerRequest $request, RequestClassification $classification, string $categoryPublicId, string $submissionToken): CustomerRequest
+    {
+        if ((int) $request->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        if ((int) $classification->customer_request_id !== (int) $request->id) {
+            abort(404);
+        }
+
+        $accepted = $this->idempotency->find($customer, IntakeAction::Confirm, $submissionToken);
+        if ($accepted !== null) {
+            if ((int) $accepted->customer_request_id !== (int) $request->id) {
+                throw ValidationException::withMessages([
+                    'category_id' => 'This request can no longer be classified.',
+                ]);
+            }
+
+            return $request->fresh(['image']);
+        }
+
+        $outcome = $this->stageService->guardedTransition(
+            $request->id,
+            acceptedStages: null,
+            expectedToken: null,
+            mutate: function (CustomerRequest $locked) use ($customer, $classification, $categoryPublicId, $submissionToken) {
+                $alreadyAccepted = $this->idempotency->find($customer, IntakeAction::Confirm, $submissionToken);
+                if ($alreadyAccepted !== null && (int) $alreadyAccepted->customer_request_id === (int) $locked->id) {
+                    return ['noop' => true, 'token' => null];
+                }
+
+                if ($locked->submission_token === $submissionToken
+                    && in_array($locked->ai_stage, [
+                        AiStage::QueuedFinalDuplicateCheck,
+                        AiStage::CheckingFinalDuplicate,
+                        AiStage::Finalizing,
+                        AiStage::Ready,
+                        AiStage::DuplicateBlocked,
+                    ], true)
+                ) {
+                    $this->idempotency->remember($customer, $locked, IntakeAction::Confirm, $submissionToken);
+
+                    return ['noop' => true, 'token' => null];
+                }
+
+                $legacyOpen = $locked->ai_stage === null && $locked->status === RequestStatus::PendingClassification;
+                if (! $legacyOpen && $locked->ai_stage !== AiStage::ReadyForReview) {
+                    throw ValidationException::withMessages([
+                        'category_id' => 'This request can no longer be classified.',
+                    ]);
+                }
+
+                $this->customerRequestLimitService->assertNoFinalizationInFlight($customer, exceptRequestId: $locked->id);
+
+                $category = $this->assertConfirmableCategory($classification, $categoryPublicId);
+                $jobToken = $this->stageService->newToken();
+
+                $locked->submission_token = $submissionToken;
+                $locked->confirmed_category_id = $category->id;
+                $locked->confirmed_classification_id = $classification->id;
+                $locked->ai_stage_reason = null;
+                $this->stageService->advance($locked, AiStage::QueuedFinalDuplicateCheck, $jobToken);
+                $this->idempotency->remember($customer, $locked, IntakeAction::Confirm, $submissionToken);
+
+                return ['noop' => false, 'token' => $jobToken];
+            },
+        );
+
+        if ($outcome === null) {
+            abort(404);
+        }
+
+        if ($outcome['noop'] === false) {
+            FinalizeCustomerRequestJob::dispatch($request->id, $outcome['token'])->afterCommit();
+        }
+
+        return $request->fresh(['image']);
+    }
+
+    private function findBySubmissionToken(Customer $customer, string $submissionToken): ?CustomerRequest
+    {
+        return CustomerRequest::query()
+            ->where('customer_id', $customer->id)
+            ->where('submission_token', $submissionToken)
+            ->first();
+    }
+
+    // =====================================================================
+    // AI-calling body — invoked only from ClassifyCustomerRequestJob
+    // =====================================================================
+
+    /**
+     * @return array{classification: RequestClassification, failed: bool, comparable: bool}
+     */
+    public function runClassificationAttempt(CustomerRequest $request): array
+    {
+        $input = $this->buildInput($request);
+
+        try {
+            $raw = $this->provider->classify($input);
+            $sanitized = $this->sanitizeResult($raw);
+
+            if ($this->contactInformationScanner->confirmedFromAi($sanitized)) {
+                $request->loadMissing('customer');
+                if ($request->customer !== null) {
+                    $this->customerContactAbuseService->suspendForContact(
+                        $request->customer,
+                        $sanitized->contactInformationTypes !== [] ? $sanitized->contactInformationTypes : ['phone'],
+                    );
+                }
+
+                $classification = $this->storeAttempt($request, $sanitized, ClassificationStatus::Failed, $input->hasImage);
+
+                return ['classification' => $classification, 'failed' => true, 'comparable' => false];
+            }
+
+            $status = $this->statusFor($sanitized);
+            $classification = $this->storeAttempt($request, $sanitized, $status, $input->hasImage);
+
+            $snapshot = $this->normalizedRequestSnapshotService->fromClassificationResult(
+                $sanitized,
+                $this->categoryFromPublicId($sanitized->primaryCategoryPublicId),
+            );
+            $comparable = NormalizedRequestSnapshot::isComparable($snapshot);
+            if ($comparable) {
+                $this->normalizedRequestSnapshotService->store($request, $snapshot);
+            }
+
+            return ['classification' => $classification, 'failed' => false, 'comparable' => $comparable];
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $classification = $this->storeAttempt(
+                $request,
+                new ClassificationResult(
+                    detectedItem: null,
+                    confidence: null,
+                    primaryCategoryPublicId: null,
+                    alternatives: [],
+                    needsMoreInformation: false,
+                    question: null,
+                    reason: 'provider-failed',
+                ),
+                ClassificationStatus::Failed,
+                $input->hasImage,
+            );
+
+            return ['classification' => $classification, 'failed' => true, 'comparable' => false];
+        }
+    }
+
+    // =====================================================================
+    // Customer-facing presentation
+    // =====================================================================
 
     /**
      * @return array<string, mixed>
@@ -292,6 +623,89 @@ class RequestClassificationService
     }
 
     /**
+     * Polling / Inertia-prop payload describing where a pending row is in
+     * the async pipeline. Safe to call for legacy rows (ai_stage null).
+     *
+     * @return array<string, mixed>
+     */
+    public function statusPayload(CustomerRequest $request): array
+    {
+        $request->loadMissing(['duplicateOf:id,public_id', 'customer']);
+        $stage = $request->ai_stage;
+        $suspended = (bool) ($request->customer?->isSuspended());
+
+        $payload = [
+            'request_public_id' => $request->public_id,
+            'status' => $request->status->name,
+            'ai_stage' => $stage?->value,
+            'poll' => $stage !== null && ($stage->isClassificationInFlight() || $stage->isFinalizationInFlight()),
+            'poll_interval_ms' => CustomerRequestPipelineConfig::statusPollIntervalMs(),
+            'poll_timeout_ms' => CustomerRequestPipelineConfig::statusPollTimeoutMs(),
+            'message' => null,
+            'classification' => null,
+            'duplicate_of_request_public_id' => null,
+            'suspended' => $suspended,
+            'quota_exhausted' => false,
+        ];
+
+        if ($stage === null) {
+            // Legacy row, created before this pipeline existed.
+            if ($request->status === RequestStatus::PendingClassification) {
+                $latest = $request->latestClassification()->first();
+                $payload['classification'] = $latest ? $this->presentForCustomer($latest) : null;
+            }
+
+            return $payload;
+        }
+
+        if ($stage->isClassificationInFlight() || $stage->isFinalizationInFlight()) {
+            $payload['message'] = $stage->isFinalizationInFlight()
+                ? CustomerRequestMessages::finalizing()
+                : CustomerRequestMessages::processing();
+
+            return $payload;
+        }
+
+        if ($stage === AiStage::ReadyForReview) {
+            $latest = $request->latestClassification()->first();
+            $payload['classification'] = $latest ? $this->presentForCustomer($latest) : null;
+            if ($request->ai_stage_reason === 'quota_exhausted_at_finalization') {
+                $payload['message'] = CustomerRequestMessages::quotaExhaustedAtFinalization();
+                $payload['quota_exhausted'] = true;
+            }
+
+            return $payload;
+        }
+
+        if ($stage === AiStage::Failed) {
+            $latest = $request->latestClassification()->first();
+            $payload['classification'] = $latest ? $this->presentForCustomer($latest) : null;
+            $payload['message'] = $suspended
+                ? CustomerRequestMessages::suspended()
+                : CustomerRequestMessages::classificationFailed();
+
+            return $payload;
+        }
+
+        if ($stage === AiStage::DuplicateBlocked) {
+            $payload['message'] = CustomerRequestMessages::duplicateRequest();
+            $payload['duplicate_of_request_public_id'] = $request->duplicateOf?->public_id;
+
+            return $payload;
+        }
+
+        if ($stage === AiStage::Expired) {
+            $payload['message'] = CustomerRequestMessages::classificationFailed();
+        }
+
+        return $payload;
+    }
+
+    // =====================================================================
+    // Shared private helpers
+    // =====================================================================
+
+    /**
      * @param  array<string, mixed>  $data
      */
     private function persistAfterScan(
@@ -353,15 +767,6 @@ class RequestClassificationService
         }
 
         $this->normalizedRequestSnapshotService->store($request, $snapshot);
-    }
-
-    private function categoryFromPublicId(?string $publicId): ?Category
-    {
-        if (! is_string($publicId) || $publicId === '') {
-            return null;
-        }
-
-        return Category::query()->where('public_id', $publicId)->first();
     }
 
     private function existingPendingRequest(Customer $customer, mixed $pendingPublicId): ?CustomerRequest
@@ -436,6 +841,24 @@ class RequestClassificationService
             imageContents: $contents,
             taxonomy: $this->taxonomyForProvider(),
         );
+    }
+
+    private function assertPendingClassification(CustomerRequest $request): void
+    {
+        if ($request->status !== RequestStatus::PendingClassification) {
+            throw ValidationException::withMessages([
+                'category_id' => 'This request can no longer be classified.',
+            ]);
+        }
+    }
+
+    private function categoryFromPublicId(?string $publicId): ?Category
+    {
+        if (! is_string($publicId) || $publicId === '') {
+            return null;
+        }
+
+        return Category::query()->where('public_id', $publicId)->first();
     }
 
     private function buildInput(CustomerRequest $request): ClassificationInput
@@ -651,15 +1074,6 @@ class RequestClassificationService
         }
 
         return array_slice($items, 0, 3);
-    }
-
-    private function assertPendingClassification(CustomerRequest $request): void
-    {
-        if ($request->status !== RequestStatus::PendingClassification) {
-            throw ValidationException::withMessages([
-                'category_id' => 'This request can no longer be classified.',
-            ]);
-        }
     }
 
     private function requireActiveCategory(string $categoryPublicId): Category

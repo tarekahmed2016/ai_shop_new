@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\CustomerRequests\AiStage;
 use App\Enums\CustomerRequests\Source;
 use App\Enums\CustomerRequests\Status;
 use Database\Factories\CustomerRequestFactory;
@@ -36,6 +37,16 @@ class CustomerRequest extends Model
             'category_id' => 'integer',
             'customer_id' => 'integer',
             'normalized_request_json' => 'array',
+            'ai_stage' => AiStage::class,
+            'ai_stage_updated_at' => 'datetime',
+            'ai_attempts' => 'integer',
+            'confirmed_category_id' => 'integer',
+            'confirmed_classification_id' => 'integer',
+            'quota_consumed_at' => 'datetime',
+            'ai_stage_reason' => 'string',
+            'duplicate_of_customer_request_id' => 'integer',
+            'matching_completed_at' => 'datetime',
+            'matching_last_attempt_at' => 'datetime',
         ];
     }
 
@@ -236,5 +247,16 @@ class CustomerRequest extends Model
     public function activityLogs(): MorphMany
     {
         return $this->morphMany(ActivityLog::class, 'subject');
+    }
+
+    /**
+     * The pre-existing request this row was found to duplicate (early or
+     * final duplicate check). Only set when ai_stage = DuplicateBlocked.
+     *
+     * @return BelongsTo<CustomerRequest, $this>
+     */
+    public function duplicateOf(): BelongsTo
+    {
+        return $this->belongsTo(CustomerRequest::class, 'duplicate_of_customer_request_id');
     }
 }

@@ -8,4 +8,11 @@ return [
     'high_confidence' => (float) env('AI_CLASSIFICATION_HIGH_CONFIDENCE', 0.85),
     'medium_confidence' => (float) env('AI_CLASSIFICATION_MEDIUM_CONFIDENCE', 0.60),
     'timeout' => (int) env('AI_CLASSIFICATION_TIMEOUT', 30),
+
+    // Rollout flag for the queued AI pipeline. Default false keeps the
+    // legacy synchronous classify/confirm/retry path as the live HTTP
+    // behavior (rollback = leave this false / flip it back). Flip true
+    // only after queue workers are confirmed healthy. See
+    // config/customer_requests.php and README "Queue & scheduler".
+    'async_enabled' => (bool) env('CLASSIFICATION_ASYNC_ENABLED', false),
 ];

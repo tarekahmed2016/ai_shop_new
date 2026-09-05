@@ -29,6 +29,7 @@ beforeEach(function () {
 
     $this->admin = User::factory()->create();
     $this->admin->assignRole('admin');
+    enableAsyncClassification();
 });
 
 function linkedCustomer(?array $userAttrs = [], ?array $customerAttrs = []): array
@@ -110,15 +111,17 @@ test('customer can create web request that becomes ready and matches eligible me
     $this->actingAs($user)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor for my car',
+            'submission_token' => (string) Str::ulid(),
             'image' => UploadedFile::fake()->image('need.jpg'),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     $classification = RequestClassification::query()->latest('id')->first();
 
     $this->actingAs($user)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertRedirect();
 
@@ -171,14 +174,16 @@ test('customer ownership isolation for requests and images', function () {
     $this->actingAs($userA)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor with image',
+            'submission_token' => (string) Str::ulid(),
             'image' => UploadedFile::fake()->image('own.jpg'),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     $classification = RequestClassification::query()->latest('id')->first();
     $this->actingAs($userA)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertRedirect();
 
@@ -277,14 +282,16 @@ test('merchant matched image access still works for customer-created request', f
     $this->actingAs($customerUser)
         ->post(route('customer.requests.classify'), [
             'request_text' => 'ABS Sensor Merchant visible',
+            'submission_token' => (string) Str::ulid(),
             'image' => UploadedFile::fake()->image('shared.jpg'),
         ])
-        ->assertOk();
+        ->assertRedirect();
 
     $classification = RequestClassification::query()->latest('id')->first();
     $this->actingAs($customerUser)
         ->post(route('customer.requests.classifications.confirm', $classification), [
             'category_id' => $classification->suggestedCategory->public_id,
+            'submission_token' => (string) Str::ulid(),
         ])
         ->assertRedirect();
 

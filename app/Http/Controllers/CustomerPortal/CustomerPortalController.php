@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\CustomerPortal;
 
+use App\Enums\CustomerRequests\Status as RequestStatus;
 use App\Exceptions\DuplicateCustomerRequestException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\CustomerPortalClassificationConfirmRequest;
@@ -17,13 +18,17 @@ use App\Models\RequestClassification;
 use App\Models\RequestImage;
 use App\Services\CategoryService;
 use App\Services\CustomerPortalService;
+use App\Services\CustomerRequests\CustomerRequestDuplicateNoticeService;
 use App\Services\MerchantOfferService;
 use App\Services\OfferContactRevealService;
 use App\Services\RequestClassificationService;
 use App\Support\CustomerRequests\CustomerRequestMessages;
+use App\Support\CustomerRequests\CustomerRequestPipelineConfig;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -80,9 +85,6 @@ class CustomerPortalController extends Controller
         $customer = $this->customerPortalService->requireCustomer();
 
         return Inertia::render('CustomerPortal/RequestCreatePage', [
-            'classification' => null,
-            'pendingRequest' => null,
-            'classificationError' => null,
             'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
         ]);
     }
@@ -102,36 +104,53 @@ class CustomerPortalController extends Controller
             ->with('success', 'تم إنشاء الطلب بنجاح');
     }
 
+    /**
+     * Classify a new customer request. When classification.async_enabled is
+     * false this is the legacy synchronous path (AI inside the HTTP request,
+     * Inertia re-render of the create page). When the flag is on, this is
+     * intake-only: the row is queued and the customer is redirected to show.
+     */
     public function requestsClassify(CustomerPortalClassificationRequest $request): Response|RedirectResponse
     {
         $customer = $this->customerPortalService->requireCustomer();
 
-        try {
-            $classification = $this->requestClassificationService->classify(
-                customer: $customer,
-                data: $request->validated(),
-                image: $request->file('image'),
-            );
-        } catch (DuplicateCustomerRequestException $exception) {
-            return redirect()
-                ->route('customer.requests.show', $exception->matchedRequest)
-                ->with('error', CustomerRequestMessages::duplicateRequest());
+        if (! CustomerRequestPipelineConfig::asyncEnabled()) {
+            try {
+                $classification = $this->requestClassificationService->classify(
+                    customer: $customer,
+                    data: $request->validated(),
+                    image: $request->file('image'),
+                );
+            } catch (DuplicateCustomerRequestException $exception) {
+                return redirect()
+                    ->route('customer.requests.show', $exception->matchedRequest)
+                    ->with('error', CustomerRequestMessages::duplicateRequest());
+            }
+
+            $message = $classification->status?->name === 'Failed'
+                ? __('We couldn\'t determine the category automatically. Add more details and try again.')
+                : null;
+
+            return Inertia::render('CustomerPortal/RequestCreatePage', [
+                'classification' => $this->requestClassificationService->presentForCustomer($classification),
+                'pendingRequest' => [
+                    'public_id' => $classification->customerRequest?->public_id,
+                    'request_text' => $classification->customerRequest?->request_text,
+                    'has_image' => $classification->customerRequest?->image !== null,
+                ],
+                'classificationError' => $message,
+                'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
+            ]);
         }
 
-        $message = $classification->status?->name === 'Failed'
-            ? __('We couldn\'t determine the category automatically. Add more details and try again.')
-            : null;
+        $row = $this->requestClassificationService->intakeClassify(
+            customer: $customer,
+            requestText: (string) $request->validated('request_text'),
+            image: $request->file('image'),
+            submissionToken: (string) $request->validated('submission_token'),
+        );
 
-        return Inertia::render('CustomerPortal/RequestCreatePage', [
-            'classification' => $this->requestClassificationService->presentForCustomer($classification),
-            'pendingRequest' => [
-                'public_id' => $classification->customerRequest?->public_id,
-                'request_text' => $classification->customerRequest?->request_text,
-                'has_image' => $classification->customerRequest?->image !== null,
-            ],
-            'classificationError' => $message,
-            'requestQuota' => $this->customerPortalService->customerRequestLimitService->snapshot($customer),
-        ]);
+        return redirect()->route('customer.requests.show', $row);
     }
 
     public function requestsClassificationConfirm(
@@ -140,21 +159,39 @@ class CustomerPortalController extends Controller
     ): RedirectResponse {
         $customer = $this->customerPortalService->requireCustomer();
 
-        try {
-            $created = $this->requestClassificationService->confirm(
-                customer: $customer,
-                classification: $requestClassification,
-                categoryPublicId: $request->validated('category_id'),
-            );
-        } catch (DuplicateCustomerRequestException $exception) {
+        if (! CustomerRequestPipelineConfig::asyncEnabled()) {
+            try {
+                $created = $this->requestClassificationService->confirm(
+                    customer: $customer,
+                    classification: $requestClassification,
+                    categoryPublicId: $request->validated('category_id'),
+                );
+            } catch (DuplicateCustomerRequestException $exception) {
+                return redirect()
+                    ->route('customer.requests.show', $exception->matchedRequest)
+                    ->with('error', CustomerRequestMessages::duplicateRequest());
+            }
+
             return redirect()
-                ->route('customer.requests.show', $exception->matchedRequest)
-                ->with('error', CustomerRequestMessages::duplicateRequest());
+                ->route('customer.requests.show', $created)
+                ->with('success', 'تم إنشاء الطلب بنجاح');
         }
 
-        return redirect()
-            ->route('customer.requests.show', $created)
-            ->with('success', 'تم إنشاء الطلب بنجاح');
+        $owned = $requestClassification->customerRequest()->first();
+
+        if ($owned === null) {
+            abort(404);
+        }
+
+        $updated = $this->requestClassificationService->intakeConfirm(
+            customer: $customer,
+            request: $owned,
+            classification: $requestClassification,
+            categoryPublicId: (string) $request->validated('category_id'),
+            submissionToken: (string) $request->validated('submission_token'),
+        );
+
+        return redirect()->route('customer.requests.show', $updated);
     }
 
     public function requestsRetryClassification(
@@ -164,22 +201,34 @@ class CustomerPortalController extends Controller
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
 
-        try {
-            $this->requestClassificationService->retry(
-                customer: $customer,
-                request: $owned,
-                data: $request->validated(),
-                image: $request->file('image'),
-            );
-        } catch (DuplicateCustomerRequestException $exception) {
+        if (! CustomerRequestPipelineConfig::asyncEnabled()) {
+            try {
+                $this->requestClassificationService->retry(
+                    customer: $customer,
+                    request: $owned,
+                    data: $request->validated(),
+                    image: $request->file('image'),
+                );
+            } catch (DuplicateCustomerRequestException $exception) {
+                return redirect()
+                    ->route('customer.requests.show', $exception->matchedRequest)
+                    ->with('error', CustomerRequestMessages::duplicateRequest());
+            }
+
             return redirect()
-                ->route('customer.requests.show', $exception->matchedRequest)
-                ->with('error', CustomerRequestMessages::duplicateRequest());
+                ->route('customer.requests.show', $owned)
+                ->with('success', 'تم تحديث تحليل الطلب');
         }
 
-        return redirect()
-            ->route('customer.requests.show', $owned)
-            ->with('success', 'تم تحديث تحليل الطلب');
+        $updated = $this->requestClassificationService->intakeRetryClassification(
+            customer: $customer,
+            request: $owned,
+            data: $request->validated(),
+            image: $request->file('image'),
+            submissionToken: (string) $request->validated('submission_token'),
+        );
+
+        return redirect()->route('customer.requests.show', $updated);
     }
 
     public function requestsFinalizeCategory(
@@ -189,28 +238,48 @@ class CustomerPortalController extends Controller
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
 
-        try {
-            $finalized = $this->requestClassificationService->finalizeWithCategory(
-                customer: $customer,
-                request: $owned,
-                categoryPublicId: $request->validated('category_id'),
-            );
-        } catch (DuplicateCustomerRequestException $exception) {
+        if (! CustomerRequestPipelineConfig::asyncEnabled()) {
+            try {
+                $finalized = $this->requestClassificationService->finalizeWithCategory(
+                    customer: $customer,
+                    request: $owned,
+                    categoryPublicId: $request->validated('category_id'),
+                );
+            } catch (DuplicateCustomerRequestException $exception) {
+                return redirect()
+                    ->route('customer.requests.show', $exception->matchedRequest)
+                    ->with('error', CustomerRequestMessages::duplicateRequest());
+            }
+
             return redirect()
-                ->route('customer.requests.show', $exception->matchedRequest)
-                ->with('error', CustomerRequestMessages::duplicateRequest());
+                ->route('customer.requests.show', $finalized)
+                ->with('success', 'تم إنشاء الطلب بنجاح');
         }
 
-        return redirect()
-            ->route('customer.requests.show', $finalized)
-            ->with('success', 'تم إنشاء الطلب بنجاح');
+        $latest = $owned->latestClassification()->first();
+        if ($latest === null) {
+            throw ValidationException::withMessages([
+                'category_id' => CustomerRequestMessages::confirmSuggestedOnly(),
+            ]);
+        }
+
+        $updated = $this->requestClassificationService->intakeConfirm(
+            customer: $customer,
+            request: $owned,
+            classification: $latest,
+            categoryPublicId: (string) $request->validated('category_id'),
+            submissionToken: (string) $request->validated('submission_token'),
+        );
+
+        return redirect()->route('customer.requests.show', $updated);
     }
 
     public function requestsShow(CustomerRequest $customerRequest): Response
     {
         $customer = $this->customerPortalService->requireCustomer();
         $owned = $this->customerPortalService->findOwnRequestOrFail($customer, $customerRequest);
-        $classification = $this->requestClassificationService->presentLatestForPendingRequest($owned);
+        $status = $this->requestClassificationService->statusPayload($owned);
+        $showOffers = in_array($owned->status, [RequestStatus::Ready, RequestStatus::Closed], true);
 
         return Inertia::render('CustomerPortal/RequestShowPage', [
             'request' => [
@@ -220,6 +289,7 @@ class CustomerPortalController extends Controller
                 'status_formatted' => $owned->status_formatted,
                 'source' => $owned->source?->value,
                 'created_at' => $owned->created_at,
+                'ai_stage' => $owned->ai_stage?->value,
                 'category' => $owned->category ? [
                     'public_id' => $owned->category->public_id,
                     'name_ar' => $owned->category->name_ar,
@@ -227,16 +297,51 @@ class CustomerPortalController extends Controller
                 ] : null,
                 'has_image' => $owned->image !== null,
                 'offers_count' => $owned->submittedOffers()->count(),
-                'can_resume_classification' => $classification !== null,
+                'can_resume_classification' => $status['classification'] !== null,
             ],
-            'classification' => $classification,
-            'offers' => $classification !== null
-                ? []
-                : $this->merchantOfferService->presentSubmittedForCustomer($owned),
-            'contactReveal' => $classification !== null
-                ? null
-                : $this->offerContactRevealService->quotaSnapshot($owned, $customer),
+            'status' => $status,
+            'classification' => $status['classification'],
+            'offers' => $showOffers
+                ? $this->merchantOfferService->presentSubmittedForCustomer($owned)
+                : [],
+            'contactReveal' => $showOffers
+                ? $this->offerContactRevealService->quotaSnapshot($owned, $customer)
+                : null,
         ]);
+    }
+
+    /**
+     * Plain JSON polling endpoint — never an Inertia response, so the
+     * frontend can poll it with `fetch()` without triggering an Inertia
+     * page visit/re-render on every tick.
+     *
+     * Bound as a public_id string (not implicit-model) so a deleted
+     * pending row still returns a graceful JSON payload (cached duplicate
+     * notice, or a generic "no longer available" message) instead of an
+     * unexplained 404.
+     */
+    public function requestsClassificationStatus(
+        string $customerRequest,
+        CustomerRequestDuplicateNoticeService $duplicateNoticeService,
+    ): JsonResponse {
+        $customer = $this->customerPortalService->requireCustomer();
+
+        $owned = CustomerRequest::query()
+            ->where('public_id', $customerRequest)
+            ->first();
+
+        if ($owned === null) {
+            return response()->json($duplicateNoticeService->resolveForMissingRow(
+                (int) $customer->id,
+                $customerRequest,
+            ));
+        }
+
+        if ((int) $owned->customer_id !== (int) $customer->id) {
+            abort(404);
+        }
+
+        return response()->json($this->requestClassificationService->statusPayload($owned));
     }
 
     public function requestsImage(CustomerRequest $customerRequest): StreamedResponse
